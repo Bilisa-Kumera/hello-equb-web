@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1036981151221",
+    "project_id": "hello-equb",
+    "storage_bucket": "hello-equb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1036981151221:android:203871b087561c778facbc",
+        "android_client_info": {
+          "package_name": "com.hello.equb"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLyGjSfl6aerMMJh9Ub6qIBgOILQBTp_U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
