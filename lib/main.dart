@@ -6,7 +6,6 @@ import 'package:ekubee/features/app_update/presentation/providers/update_provide
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -33,6 +32,7 @@ import 'provider/cooperate_equbs_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> requestCameraAndGalleryPermissions() async {
+  if (kIsWeb) return;
   await Permission.camera.request();
   await Permission.storage.request();
 }
@@ -43,6 +43,13 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 Future<void> _initGetStorageSafely() async {
+  if (kIsWeb) {
+    try {
+      await GetStorage.init();
+    } catch (_) {}
+    return;
+  }
+
   try {
     // Some devices/ROMs can have a broken/unreadable documents dir (app_flutter),
     // which makes `GetStorage.init()` throw and crash the app at startup.
@@ -103,61 +110,60 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   await _ensureFirebaseInitialized();
 
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-  );
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) async {
-      Map<String, dynamic> data = {};
-      if (response.payload != null && response.payload!.isNotEmpty) {
-        try {
-          data = Map<String, dynamic>.from(jsonDecode(response.payload!));
-        } catch (_) {}
-      }
-      _handleNotificationNavigation(data);
-    },
-  );
+  if (!kIsWeb) {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
+        Map<String, dynamic> data = {};
+        if (response.payload != null && response.payload!.isNotEmpty) {
+          try {
+            data = Map<String, dynamic>.from(jsonDecode(response.payload!));
+          } catch (_) {}
+        }
+        _handleNotificationNavigation(data);
+      },
+    );
 
-  const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'high_importance_channel',
-    'High Importance Notifications',
-    description: 'This channel is used for important notifications.',
-    importance: Importance.high,
-  );
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(channel);
-  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel',
+      'High Importance Notifications',
+      description: 'This channel is used for important notifications.',
+      importance: Importance.high,
+    );
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
     await FirebaseMessaging.instance.requestPermission();
-  }
-  // if (Platform.isAndroid || Platform.isIOS) {
-  //   await FirebaseMessaging.instance.requestPermission();
-  // }
 
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-    if (message.notification != null) {
-      await flutterLocalNotificationsPlugin.show(
-        message.notification.hashCode,
-        message.notification?.title,
-        message.notification?.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            channel.id,
-            channel.name,
-            channelDescription: channel.description,
-            importance: Importance.high,
-            priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      if (message.notification != null) {
+        await flutterLocalNotificationsPlugin.show(
+          message.notification.hashCode,
+          message.notification?.title,
+          message.notification?.body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              channel.id,
+              channel.name,
+              channelDescription: channel.description,
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: '@mipmap/ic_launcher',
+            ),
           ),
-        ),
-        payload: jsonEncode(message.data),
-      );
-    }
-  });
+          payload: jsonEncode(message.data),
+        );
+      }
+    });
+  }
 
   FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
     if (message != null) {
@@ -169,7 +175,9 @@ Future<void> main() async {
     _handleNotificationNavigation(message.data);
   });
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  if (!kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
 
   await PrefUtils().init();
   var languageProvider = LanguageProvider();

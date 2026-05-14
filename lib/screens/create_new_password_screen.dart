@@ -1,7 +1,7 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:ekubee/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +16,7 @@ import 'package:dio/dio.dart';
 import 'package:ekubee/utils/getx_storage_custom.dart';
 import 'package:ekubee/utils/lang_constants.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
 
 import '../utils/secure_storage.dart';
@@ -28,7 +29,8 @@ class CreateNewPasswordScreen extends StatelessWidget {
   final String firstName, lastName, middleName, phoneNumber, email;
   final DataController dataController = DataController();
   final String? referalCode;
-  final File? profilePicture;
+  final XFile? profilePicture;
+  final Uint8List? profilePictureBytes;
   CreateNewPasswordScreen(
       {super.key,
       required this.firstName,
@@ -37,6 +39,7 @@ class CreateNewPasswordScreen extends StatelessWidget {
       required this.phoneNumber,
       required this.email,
       this.profilePicture,
+      this.profilePictureBytes,
       this.referalCode});
 
   final Dio _dio = Dio();
@@ -57,14 +60,18 @@ class CreateNewPasswordScreen extends StatelessWidget {
 
         // Check if image is selected
         if (profilePicture != null) {
-          final fileExtension =
-              profilePicture!.path.split('.').last.toLowerCase();
-          final mimeType = lookupMimeType(profilePicture!.path) ??
+          final fileName = profilePicture!.name.isNotEmpty
+              ? profilePicture!.name
+              : profilePicture!.path;
+          final fileExtension = fileName.split('.').last.toLowerCase();
+          final mimeType = lookupMimeType(fileName) ??
               'application/octet-stream';
+          final bytes = profilePictureBytes ??
+              await profilePicture!.readAsBytes();
 
           // Create multipart data for the image
-          MultipartFile imageFile = await MultipartFile.fromFile(
-            profilePicture!.path,
+          MultipartFile imageFile = MultipartFile.fromBytes(
+            bytes,
             filename: '1.$fileExtension',
             contentType: MediaType.parse(mimeType),
           );

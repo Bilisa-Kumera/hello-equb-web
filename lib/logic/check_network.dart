@@ -1,12 +1,12 @@
-import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ekubee/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:ekubee/utils/app_localizations.dart';
 import 'package:ekubee/utils/custom_button.dart';
-import 'package:android_intent_plus/android_intent.dart';
 import 'package:ekubee/utils/lang_constants.dart';
+
+import 'open_device_settings.dart';
 
 class CheckNetwork extends StatefulWidget {
   final VoidCallback onRetry;
@@ -43,15 +43,6 @@ class _CheckNetworkState extends State<CheckNetwork> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-    }
-  }
-
-  void _openSettings() {
-    if (Platform.isAndroid) {
-      const AndroidIntent intent = AndroidIntent(
-        action: 'android.settings.SETTINGS',
-      );
-      intent.launch();
     }
   }
 
@@ -97,7 +88,7 @@ class _CheckNetworkState extends State<CheckNetwork> {
               CustomTextButton(
                 text: AppKeys.enable.tr(context),
                 onPressed: () async {
-                  _openSettings();
+                  await openDeviceSettings();
                 },
               ),
               const SizedBox(height: 10),

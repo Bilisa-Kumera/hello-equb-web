@@ -1,6 +1,6 @@
 // ignore_for_file: library_private_types_in_public_api
 
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:ekubee/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
@@ -16,19 +16,26 @@ class CustomInputDialog extends StatefulWidget {
 class _CustomInputDialogState extends State<CustomInputDialog> {
   final TextEditingController _amountController = TextEditingController();
   XFile? _image;
+  Uint8List? _imageBytes;
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage() async {
     final pickedImage = await _picker.pickImage(source: ImageSource.gallery);
+    final pickedBytes =
+        pickedImage == null ? null : await pickedImage.readAsBytes();
     setState(() {
       _image = pickedImage;
+      _imageBytes = pickedBytes;
     });
   }
 
   Future<void> _takePhoto() async {
     final pickedImage = await _picker.pickImage(source: ImageSource.camera);
+    final pickedBytes =
+        pickedImage == null ? null : await pickedImage.readAsBytes();
     setState(() {
       _image = pickedImage;
+      _imageBytes = pickedBytes;
     });
   }
 
@@ -55,9 +62,9 @@ class _CustomInputDialogState extends State<CustomInputDialog> {
             ),
           ),
           const SizedBox(height: 16),
-          _image != null
-              ? Image.file(
-                  File(_image!.path),
+          _imageBytes != null
+              ? Image.memory(
+                  _imageBytes!,
                   height: 100,
                   width: 100,
                   fit: BoxFit.cover,

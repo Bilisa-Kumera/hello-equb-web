@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:ekubee/screens/payment_screen.dart';
@@ -40,6 +40,7 @@ class _MyDialogState extends State<MyDialog> {
   TextEditingController referenceController = TextEditingController();
 
   XFile? _image;
+  Uint8List? _imageBytes;
   bool _isSubmitting = false;
   int getPercentage(String joinOption) {
     if (joinOption.contains('/')) {
@@ -54,8 +55,11 @@ class _MyDialogState extends State<MyDialog> {
     percentage = getPercentage(widget.joinOption);
     final ImagePicker picker = ImagePicker();
     final XFile? pickedImage = await picker.pickImage(source: source);
+    final Uint8List? pickedBytes =
+        pickedImage == null ? null : await pickedImage.readAsBytes();
     setState(() {
       _image = pickedImage;
+      _imageBytes = pickedBytes;
     });
   }
 
@@ -84,13 +88,19 @@ class _MyDialogState extends State<MyDialog> {
       CustomSnackBar.show(context, "Please select an image", AppColors.red);
       return;
     }
+    if (_imageBytes == null) {
+      CustomSnackBar.show(
+          context, "Unable to read the selected image", AppColors.red);
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
     });
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
-    final fileExtension = _image!.path.split('.').last.toLowerCase();
-    final mimeType = lookupMimeType(_image!.path) ?? 'application/octet-stream';
+    final fileName = _image!.name.isNotEmpty ? _image!.name : _image!.path;
+    final fileExtension = fileName.split('.').last.toLowerCase();
+    final mimeType = lookupMimeType(fileName) ?? 'application/octet-stream';
 
     if (!(fileExtension == 'png' ||
         fileExtension == 'jpg' ||
@@ -120,9 +130,9 @@ class _MyDialogState extends State<MyDialog> {
         data['dividedBy'] = percentage;
       }
 
-      data['picture'] = await MultipartFile.fromFile(
-        _image!.path,
-        filename: '1.jpg',
+      data['picture'] = MultipartFile.fromBytes(
+        _imageBytes!,
+        filename: _image!.name.isNotEmpty ? _image!.name : '1.$fileExtension',
         contentType: MediaType.parse(mimeType),
       );
 
@@ -363,11 +373,11 @@ class _MyDialogState extends State<MyDialog> {
                     ),
                   ],
                 ),
-                child: _image != null
+                child: _imageBytes != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(10.0),
-                        child: Image.file(
-                          File(_image!.path),
+                        child: Image.memory(
+                          _imageBytes!,
                           fit: BoxFit.cover,
                           height: 100,
                           width: 100,

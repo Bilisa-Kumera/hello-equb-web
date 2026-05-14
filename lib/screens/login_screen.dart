@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:ekubee/utils/colors_constant.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:ekubee/core/api_url.dart';
@@ -154,6 +155,9 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
    
 
     final response = await _dio.post(sendOtpUrl, data: data);
+    if (kDebugMode) {
+      debugPrint('Send OTP request URL: ${response.realUri}');
+    }
 
     
 

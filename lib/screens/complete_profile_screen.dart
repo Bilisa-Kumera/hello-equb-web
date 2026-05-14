@@ -1,6 +1,6 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:ekubee/utils/colors_constant.dart';
@@ -72,7 +72,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
   final Dio _dio = Dio();
   final ImagePicker _picker = ImagePicker();
-  File? _profileImage;
+  XFile? _profileImage;
+  Uint8List? _profileImageBytes;
 
   @override
   void initState() {
@@ -263,8 +264,10 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     final pickedFile = await _picker.pickImage(source: source);
 
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
       setState(() {
-        _profileImage = File(pickedFile.path);
+        _profileImage = pickedFile;
+        _profileImageBytes = bytes;
       });
     }
   }
@@ -457,8 +460,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                     CircleAvatar(
                       radius: 56,
                       backgroundColor: AppColors.lightBlueGray,
-                      backgroundImage: _profileImage != null
-                          ? FileImage(_profileImage!) as ImageProvider
+                      backgroundImage: _profileImageBytes != null
+                          ? MemoryImage(_profileImageBytes!)
                           : (profileAvatarUrl.isNotEmpty)
                               ? NetworkImage(profileAvatarUrl) as ImageProvider
                               : null,
@@ -620,13 +623,18 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                 };
 
                 if (_profileImage != null) {
-                  final fileExtension =
-                      _profileImage!.path.split('.').last.toLowerCase();
-                  final mimeType = lookupMimeType(_profileImage!.path) ??
+                  final fileName = _profileImage!.name.isNotEmpty
+                      ? _profileImage!.name
+                      : _profileImage!.path;
+                  final fileExtension = fileName.split('.').last.toLowerCase();
+                  final mimeType = lookupMimeType(fileName) ??
                       'application/octet-stream';
 
-                  requestBody["picture"] = await MultipartFile.fromFile(
-                    _profileImage!.path,
+                  final bytes = _profileImageBytes ??
+                      await _profileImage!.readAsBytes();
+
+                  requestBody["picture"] = MultipartFile.fromBytes(
+                    bytes,
                     filename: 'profile_pic.$fileExtension',
                     contentType: MediaType.parse(mimeType),
                   );
