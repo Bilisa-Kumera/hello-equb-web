@@ -1,8 +1,8 @@
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
-import 'package:ekubee/screens/complete_profile_screen.dart';
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/utils/custom_button.dart';
+import 'package:helloequb/screens/complete_profile_screen.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/utils/custom_button.dart';
 
 // ignore: must_be_immutable
 class JinEkubDetail extends StatelessWidget {

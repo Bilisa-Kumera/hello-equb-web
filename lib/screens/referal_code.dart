@@ -1,4 +1,4 @@
-import 'package:ekubee/utils/app_localizations.dart';
+import 'package:helloequb/utils/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';

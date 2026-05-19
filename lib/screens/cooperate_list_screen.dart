@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/models/equb_model.dart';
-import 'package:ekubee/utils/colors_constant.dart';
-import 'package:ekubee/core/api_url.dart';
+import 'package:helloequb/models/equb_model.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/core/api_url.dart';
 
 import 'equb_detail_card.dart';
 import 'join_ekub_detail.dart';

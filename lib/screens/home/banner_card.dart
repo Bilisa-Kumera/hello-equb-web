@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ekubee/models/banner_model.dart';
+import 'package:helloequb/models/banner_model.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class BannerCard extends StatelessWidget {

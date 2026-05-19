@@ -1,5 +1,5 @@
-name: ekubee
-description: "A new Flutter project."
+name: helloequb
+description: "Equb smart with Hello Equb."
 
 publish_to: 'none'
 
@@ -14,6 +14,9 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  flutter_bloc: ^9.1.0
+  equatable: ^2.0.5
+  go_router: ^14.3.0
 
   cupertino_icons: ^1.0.2
   carousel_slider: ^5.0.0
@@ -74,8 +77,11 @@ dev_dependencies:
 
 flutter_icons:
   android: true
-  ios: false
-  image_path: "assets/playstore.png"
+  ios: true
+  web:
+    generate: true
+    image_path: "assets/splash.png"
+  image_path: "assets/splash.png"
 
 flutter:
 

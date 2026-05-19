@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
-import 'package:ekubee/screens/LoginScreenWithPin.dart';
-import 'package:ekubee/screens/login_screen_with_pin.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
+import 'package:helloequb/screens/LoginScreenWithPin.dart';
+import 'package:helloequb/screens/login_screen_with_pin.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
 
 class TokenHelper {
   static Future<void> checkTokenExpiration({

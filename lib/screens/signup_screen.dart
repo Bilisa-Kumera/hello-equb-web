@@ -1,15 +1,15 @@
 import 'dart:typed_data';
 
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/main.dart';
-import 'package:ekubee/screens/create_new_password_screen.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_button.dart';
-import 'package:ekubee/utils/custom_text_field.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/main.dart';
+import 'package:helloequb/screens/create_new_password_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_button.dart';
+import 'package:helloequb/utils/custom_text_field.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 import 'package:image_picker/image_picker.dart';
 
 class SignUpScreen extends StatefulWidget {

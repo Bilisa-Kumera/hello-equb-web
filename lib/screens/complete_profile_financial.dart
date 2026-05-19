@@ -1,23 +1,23 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:dio/dio.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:ekubee/utils/financial_dialog.dart';
-import 'package:ekubee/utils/lang_constants.dart';
-import 'package:ekubee/core/api_service_elper.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/models/financial_info.dart';
-import 'package:ekubee/screens/guarantor_screen.dart';
-import 'package:ekubee/screens/profile_screen.dart';
-import 'package:ekubee/utils/custom_button.dart';
-import 'package:ekubee/utils/custom_progress_screen.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
-import 'package:ekubee/utils/app_localizations.dart';
+import 'package:helloequb/utils/financial_dialog.dart';
+import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/core/api_service_elper.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/models/financial_info.dart';
+import 'package:helloequb/screens/guarantor_screen.dart';
+import 'package:helloequb/screens/profile_screen.dart';
+import 'package:helloequb/utils/custom_button.dart';
+import 'package:helloequb/utils/custom_progress_screen.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/app_localizations.dart';
 
 import '../utils/secure_storage.dart';
 

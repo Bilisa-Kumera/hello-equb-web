@@ -1,9 +1,9 @@
 import 'package:dots_indicator/dots_indicator.dart';
-import 'package:ekubee/provider/equb_category_provider.dart';
-import 'package:ekubee/provider/equb_type_provider.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/colors_constant.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/provider/equb_category_provider.dart';
+import 'package:helloequb/provider/equb_type_provider.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../models/equb_model.dart';

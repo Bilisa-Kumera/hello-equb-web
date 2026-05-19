@@ -1,14 +1,22 @@
 import 'dart:async';
-import 'package:ekubee/features/app_update/presentation/providers/update_provider.dart';
-import 'package:ekubee/features/app_update/presentation/providers/update_state.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/features/app_update/presentation/providers/update_provider.dart';
+import 'package:helloequb/features/app_update/presentation/providers/update_state.dart';
+import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dart';
+import 'package:helloequb/features/superapp_auth/data/repositories/superapp_auth_repository_impl.dart';
+import 'package:helloequb/features/superapp_auth/domain/usecases/attempt_superapp_auto_login.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/core/logging/app_logger.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/screens/LoginScreenWithPin.dart';
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/screens/language_screen.dart';
+import 'package:helloequb/screens/LoginScreenWithPin.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/language_screen.dart';
+import 'package:helloequb/core/superapp/superapp_bridge.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,6 +31,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Timer? _timer;
   bool _hasScheduledNavigation = false;
   bool _hasTriggeredUpdateCheck = false;
+  bool _blockNavigationForSuperAppLogin = false;
   String? _shownErrorMessage;
   final DataController dataController = DataController();
 
@@ -51,6 +60,61 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
     _hasTriggeredUpdateCheck = true;
     unawaited(_updateProvider.checkForUpdateOnStartup());
+
+    // Web is only supported inside the SuperApp webview.
+    if (kIsWeb) {
+      final bridge = createSuperAppBridge();
+      AppLogger.log('App started (web)');
+
+      // Some SuperApp webviews inject the bridge after Flutter starts rendering.
+      final ok = await bridge.waitUntilAvailable(
+        timeout: const Duration(seconds: 12),
+        pollInterval: const Duration(milliseconds: 140),
+      );
+
+      if (!ok) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          context.go('/not-superapp');
+        });
+        return;
+      }
+
+      AppLogger.success('Telebirr bridge detected');
+
+      // If rendered inside SuperApp, attempt auto-login from splash.
+      if (dataController.retrieveData<bool>('isLoggedIn') != true) {
+        final cfg = SuperAppAuthConfig.fromEnv();
+        if (cfg.merchantAppId.trim().isNotEmpty) {
+          try {
+            _blockNavigationForSuperAppLogin = true;
+            AppLogger.log('Backend authentication started');
+            final apiBase = cfg.apiBaseUrlOverride ?? '$baseUrl/';
+            final repo = SuperAppAuthRepositoryImpl(
+              apiBaseUrl: apiBase,
+              tokenExchangePath: cfg.tokenExchangePath,
+              profilePath: cfg.profilePath,
+            );
+            await AttemptSuperAppAutoLogin(repo)(
+              merchantAppId: cfg.merchantAppId.trim(),
+            );
+            AppLogger.success('Authentication success');
+            _blockNavigationForSuperAppLogin = false;
+            if (mounted) {
+              _handleUpdateState(_updateProvider.state);
+            }
+          } catch (e) {
+            _blockNavigationForSuperAppLogin = false;
+            AppLogger.error('Authentication failed: $e');
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              context.go('/telebirr');
+            });
+            return;
+          }
+        }
+      }
+    }
   }
 
   void _onUpdateStateChanged() {
@@ -60,6 +124,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _handleUpdateState(UpdateState state) {
     if (!_hasTriggeredUpdateCheck) {
+      return;
+    }
+
+    if (_blockNavigationForSuperAppLogin) {
       return;
     }
 
@@ -93,25 +161,26 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (dataController.retrieveData<bool>('isLoggedIn') == true) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      _go('/home', fallback: const HomeScreen());
       return;
     }
 
     if (dataController.retrieveData<bool>('isFirstTime') == false) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => LoginScreenWithPin(
-            phoneNumber: '',
-          ),
-        ),
-      );
+      _go('/login', fallback: const LoginScreenWithPin(phoneNumber: ''));
       return;
     }
 
+    _go('/language', fallback: const LanguageSelection());
+  }
+
+  void _go(String location, {required Widget fallback}) {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      context.go(location);
+      return;
+    }
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const LanguageSelection()),
+      MaterialPageRoute(builder: (context) => fallback),
     );
   }
 

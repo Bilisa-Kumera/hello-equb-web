@@ -1,7 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:url_launcher/url_launcher.dart';

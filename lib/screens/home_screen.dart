@@ -1,33 +1,33 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:dio/dio.dart';
-import 'package:ekubee/core/api_service_elper.dart';
-import 'package:ekubee/screens/join_ekub_detail.dart';
-import 'package:ekubee/screens/my_other_ekubs.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/colors_constant.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/core/api_service_elper.dart';
+import 'package:helloequb/screens/join_ekub_detail.dart';
+import 'package:helloequb/screens/my_other_ekubs.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/screens/equb_category_screen.dart';
-import 'package:ekubee/screens/profile_screen.dart';
-import 'package:ekubee/screens/notification_screen.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/screens/equb_category_screen.dart';
+import 'package:helloequb/screens/profile_screen.dart';
+import 'package:helloequb/screens/notification_screen.dart';
 
-import 'package:ekubee/utils/custom_bottom_nav.dart';
+import 'package:helloequb/utils/custom_bottom_nav.dart';
 
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:provider/provider.dart';
-import 'package:ekubee/provider/banner_provider.dart';
-import 'package:ekubee/models/banner_model.dart';
-import 'package:ekubee/provider/equb_type_provider.dart';
-import 'package:ekubee/provider/equb_category_provider.dart';
-import 'package:ekubee/provider/equb_provider.dart';
-import 'package:ekubee/provider/cooperate_equbs_provider.dart';
-import 'package:ekubee/models/cooperate_models.dart';
+import 'package:helloequb/provider/banner_provider.dart';
+import 'package:helloequb/models/banner_model.dart';
+import 'package:helloequb/provider/equb_type_provider.dart';
+import 'package:helloequb/provider/equb_category_provider.dart';
+import 'package:helloequb/provider/equb_provider.dart';
+import 'package:helloequb/provider/cooperate_equbs_provider.dart';
+import 'package:helloequb/models/cooperate_models.dart';
 
 import '../utils/getx_storage_custom.dart';
 import '../utils/secure_storage.dart';

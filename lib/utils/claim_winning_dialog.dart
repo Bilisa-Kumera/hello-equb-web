@@ -1,24 +1,24 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'package:ekubee/utils/colors_constant.dart';
-import 'package:ekubee/utils/secure_storage.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'package:dio/dio.dart'; // Add this for Dio usage
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/logic/check_network.dart';
-import 'package:ekubee/models/ekub_category_model.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/logic/check_network.dart';
+import 'package:helloequb/models/ekub_category_model.dart';
 import 'dart:convert';
 
-import 'package:ekubee/models/financial_info.dart';
-import 'package:ekubee/screens/my_equb_screen.dart';
-import 'package:ekubee/screens/my_other_ekubs.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
-import 'package:ekubee/utils/lang_constants.dart'; // For JSON decoding
+import 'package:helloequb/models/financial_info.dart';
+import 'package:helloequb/screens/my_equb_screen.dart';
+import 'package:helloequb/screens/my_other_ekubs.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/lang_constants.dart'; // For JSON decoding
 
 class WinningDialog extends StatefulWidget {
   final String ekubId;

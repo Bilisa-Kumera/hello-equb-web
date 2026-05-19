@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/financeandothermodel.dart';
-import 'package:ekubee/provider/equb_provider.dart';
+import 'package:helloequb/provider/equb_provider.dart';
 import 'package:provider/provider.dart';
 import '../equb_detail_card.dart';
 import '../join_ekub_detail.dart';

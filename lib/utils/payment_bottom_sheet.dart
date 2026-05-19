@@ -1,7 +1,7 @@
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 
 class LotteryDetailBottomSheet extends StatelessWidget {
   final String lottery;

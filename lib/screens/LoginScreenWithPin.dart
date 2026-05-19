@@ -2,17 +2,17 @@
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/logic/check_network.dart';
-import 'package:ekubee/screens/forget_screen.dart';
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/screens/login_screen.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/colors_constant.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
-import 'package:ekubee/utils/lang_constants.dart';
-import 'package:ekubee/utils/custom_progress_screen.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/logic/check_network.dart';
+import 'package:helloequb/screens/forget_screen.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/login_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/custom_progress_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -111,7 +111,6 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
           "password": pinController.text.trim(),
         },
 
-        /// VERY IMPORTANT FOR WEB
         options: Options(
           headers: {
             "Content-Type": "application/json",
@@ -120,7 +119,6 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
       );
 
       if (kDebugMode) {
-        debugPrint('Login request URL: ${response.realUri}');
       }
 
       if (dialogOpen && mounted) {
@@ -427,6 +425,12 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
                         onPressed: waiting
                             ? null
                             : () async {
@@ -442,7 +446,11 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
                         child: waiting
                             ? const CircularProgressIndicator()
                             : Text(
-                                AppKeys.login.tr(context),
+                                AppKeys.login.tr(context), style: TextStyle(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.white,
+                                ),
                               ),
                       ),
                     ),

@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:ekubee/models/ekub_category_model.dart';
+import 'package:helloequb/models/ekub_category_model.dart';
 import 'package:intl/intl.dart';
 
 class DataController extends GetxController {

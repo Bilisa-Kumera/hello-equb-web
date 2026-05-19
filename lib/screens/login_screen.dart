@@ -1,16 +1,16 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/logic/check_network.dart';
-import 'package:ekubee/screens/LoginScreenWithPin.dart';
-import 'package:ekubee/screens/otp_verification_screen.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_progress_screen.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/logic/check_network.dart';
+import 'package:helloequb/screens/LoginScreenWithPin.dart';
+import 'package:helloequb/screens/otp_verification_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_progress_screen.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:email_validator/email_validator.dart';
@@ -156,7 +156,6 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
 
     final response = await _dio.post(sendOtpUrl, data: data);
     if (kDebugMode) {
-      debugPrint('Send OTP request URL: ${response.realUri}');
     }
 
     

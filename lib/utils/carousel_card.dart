@@ -1,8 +1,8 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 

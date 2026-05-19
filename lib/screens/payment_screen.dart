@@ -5,20 +5,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/utils/colors_constant.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/screens/LoginScreenWithPin.dart';
-import 'package:ekubee/screens/waiting_payment.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
-import 'package:ekubee/utils/lang_constants.dart';
-import 'package:ekubee/core/telebirr_service.dart';
-import 'package:ekubee/utils/secure_storage.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/screens/LoginScreenWithPin.dart';
+import 'package:helloequb/screens/waiting_payment.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/core/telebirr_service.dart';
+import 'package:helloequb/utils/secure_storage.dart';
 
-import 'package:ekubee/screens/join_ekub_detail.dart';
-import 'package:ekubee/screens/my_ekub_detail_screen.dart';
+import 'package:helloequb/screens/join_ekub_detail.dart';
+import 'package:helloequb/screens/my_ekub_detail_screen.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 import 'pending_equbs_screen.dart';

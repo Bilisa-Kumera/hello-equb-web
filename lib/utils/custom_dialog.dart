@@ -2,7 +2,7 @@
 
 import 'dart:typed_data';
 
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 

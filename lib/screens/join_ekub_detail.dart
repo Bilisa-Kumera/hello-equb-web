@@ -1,16 +1,16 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:dio/dio.dart';
-import 'package:ekubee/models/equb_model.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/models/equb_model.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/core/amharic_translations.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/screens/join_ekub_confirmation.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_button.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/core/amharic_translations.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/screens/join_ekub_confirmation.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_button.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 import 'package:intl/intl.dart';
 
 import '../utils/custom_appbar.dart';

@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:ekubee/features/app_update/domain/entities/immediate_update_result.dart';
-import 'package:ekubee/features/app_update/domain/exceptions/update_exception.dart';
-import 'package:ekubee/features/app_update/domain/repositories/update_repository.dart';
-import 'package:ekubee/features/app_update/domain/usecases/check_for_update_use_case.dart';
-import 'package:ekubee/features/app_update/presentation/providers/update_state.dart';
+import 'package:helloequb/features/app_update/domain/entities/immediate_update_result.dart';
+import 'package:helloequb/features/app_update/domain/exceptions/update_exception.dart';
+import 'package:helloequb/features/app_update/domain/repositories/update_repository.dart';
+import 'package:helloequb/features/app_update/domain/usecases/check_for_update_use_case.dart';
+import 'package:helloequb/features/app_update/presentation/providers/update_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 

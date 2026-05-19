@@ -1,11 +1,11 @@
 //ignore: unused_import
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:ekubee/core/afaan_oromoo_translation.dart';
-import 'package:ekubee/core/amharic_translations.dart';
-import 'package:ekubee/core/english_translation.dart';
-import 'package:ekubee/core/tigrigna_translation.dart';
-import 'package:ekubee/utils/navigation_service.dart';
+import 'package:helloequb/core/afaan_oromoo_translation.dart';
+import 'package:helloequb/core/amharic_translations.dart';
+import 'package:helloequb/core/english_translation.dart';
+import 'package:helloequb/core/tigrigna_translation.dart';
+import 'package:helloequb/utils/navigation_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter/foundation.dart';

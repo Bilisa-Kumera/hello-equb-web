@@ -1,4 +1,4 @@
-import 'package:ekubee/features/app_update/domain/exceptions/update_exception.dart';
+import 'package:helloequb/features/app_update/domain/exceptions/update_exception.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';

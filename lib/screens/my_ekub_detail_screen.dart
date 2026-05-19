@@ -2,35 +2,35 @@
 
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:confetti/confetti.dart';
-import 'package:ekubee/core/api_service_elper.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/models/ekub_category_model.dart';
-import 'package:ekubee/models/financial_info.dart';
-import 'package:ekubee/screens/complete_profile_screen.dart';
-import 'package:ekubee/screens/fortune_wheel_screen.dart';
-import 'package:ekubee/screens/guarantor_screen.dart';
-import 'package:ekubee/screens/join_ekub_detail.dart';
-import 'package:ekubee/screens/my_other_ekubs.dart';
-import 'package:ekubee/screens/payment_arrangement_screen.dart';
-import 'package:ekubee/screens/pdf_invoice/download_pdf.dart';
-import 'package:ekubee/screens/waiting_payment.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/claim_winning_dialog.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
-import 'package:ekubee/utils/lang_constants.dart';
-import 'package:ekubee/utils/payment_bottom_sheet.dart';
-import 'package:ekubee/utils/request_item_popup.dart';
-import 'package:ekubee/utils/token_helper.dart';
+import 'package:helloequb/core/api_service_elper.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/models/ekub_category_model.dart';
+import 'package:helloequb/models/financial_info.dart';
+import 'package:helloequb/screens/complete_profile_screen.dart';
+import 'package:helloequb/screens/fortune_wheel_screen.dart';
+import 'package:helloequb/screens/guarantor_screen.dart';
+import 'package:helloequb/screens/join_ekub_detail.dart';
+import 'package:helloequb/screens/my_other_ekubs.dart';
+import 'package:helloequb/screens/payment_arrangement_screen.dart';
+import 'package:helloequb/screens/pdf_invoice/download_pdf.dart';
+import 'package:helloequb/screens/waiting_payment.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/claim_winning_dialog.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/payment_bottom_sheet.dart';
+import 'package:helloequb/utils/request_item_popup.dart';
+import 'package:helloequb/utils/token_helper.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/screens/profile_screen.dart';
-import 'package:ekubee/utils/carousel_card.dart';
-import 'package:ekubee/utils/custom_bottom_nav.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/profile_screen.dart';
+import 'package:helloequb/utils/carousel_card.dart';
+import 'package:helloequb/utils/custom_bottom_nav.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 import '../utils/secure_storage.dart';
@@ -677,7 +677,6 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           },
         ),
       );
-      debugPrint("Payment Response: ${response.data}");
       if (response.statusCode == 200 || response.statusCode == 201) {
         ekubRound = response.data['data']['equbRound'].toString();
         totalPaid = response.data['data']['equbersPaid'].toString();
@@ -699,7 +698,6 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         }
 
         setState(() {
-          debugPrint('payments count: ${payments.length}');
           _payments = payments;
           _isLoading = false;
         });
@@ -711,9 +709,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     } on DioError catch (error) {
       if (error.response != null &&
           error.response!.data['msg'] == 'Token is not valid') {}
-      debugPrint('getEkubPayments DioError: ${error.message}');
       if (error.response != null) {
-        debugPrint('getEkubPayments DioError response: ${error.response?.data}');
       }
       if (mounted) {
         setState(() {
@@ -721,7 +717,6 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         });
       }
     } catch (error) {
-      debugPrint('getEkubPayments error: $error');
       setState(() {
         _isLoading = false;
       });
