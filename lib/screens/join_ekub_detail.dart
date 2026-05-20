@@ -2,12 +2,14 @@
 
 import 'package:dio/dio.dart';
 import 'package:helloequb/models/equb_model.dart';
+import 'package:helloequb/screens/allequb_payment.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/core/amharic_translations.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/screens/join_ekub_confirmation.dart';
+import 'package:helloequb/screens/payment_screen.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_button.dart';
 import 'package:helloequb/utils/lang_constants.dart';
@@ -262,6 +264,9 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
   double equivalentEtb = 0;
   double expectedAmount = 0;
 
+  bool hasJoinedBefore = false;
+  bool isCheckingJoinStatus = true;
+
   final DataController dataController = DataController();
 
   int joinedAmount = 0;
@@ -293,6 +298,38 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
     } catch (e) {}
   }
 
+  Future<void> fetchCheckJoinStatus() async {
+    try {
+      final String url = checkJoinUrl;
+      final String? bearerToken = await SecureStorageHelper.getAccessToken();
+      final Dio dio = Dio();
+      final response = await dio.post(
+        url,
+        data: {'equbId': widget.equb.id ?? ''},
+        options: Options(headers: {
+          'Authorization': 'Bearer ${bearerToken ?? ''}',
+          'Content-Type': 'application/json',
+        }),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resp = response.data as Map<String, dynamic>;
+        if (resp['status'] == 'success') {
+          setState(() {
+            hasJoinedBefore = resp['data']?['joined'] == true;
+          });
+        }
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('checkJoinStatus error: $e');
+    } finally {
+      setState(() {
+        isCheckingJoinStatus = false;
+      });
+    }
+  }
+
   NumberFormat numberFormat = NumberFormat.decimalPattern('en_us');
 
   @override
@@ -300,6 +337,7 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
     equivalentEtb = double.parse(widget.equb.equbAmount.toString());
     super.initState();
     fetchCheckUserEqub(widget.equb.id);
+    fetchCheckJoinStatus();
     equivalentController = TextEditingController(
         text: numberFormat
             .format(double.parse(widget.equb.equbAmount.toString())));
@@ -689,7 +727,6 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
   @override
   Widget build(BuildContext context) {
     expectedAmount = 0;
-    String key = amET[widget.equb.equbType] ?? '';
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       bottomNavigationBar: Container(
@@ -710,77 +747,118 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
           top: 16,
         ),
         child: SafeArea(
-          child: CustomTextButton(
-              text: AppKeys.join.tr(context),
-              onPressed: () {
+          child: isCheckingJoinStatus
+            ? const Center(child: CircularProgressIndicator())
+            : (hasJoinedBefore
+              ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+               Text(
+                  AppKeys.alreadyJoined.tr(context),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                CustomTextButton(
+                  text: AppKeys.payment.tr(context),
+                  onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                    builder: (context) => const PaymentList(
+                    ),
+                    ),
+                  );
+                  },
+                ),
+                ],
+              )
+              : CustomTextButton(
+                text: AppKeys.join.tr(context),
+                onPressed: () {
                 if (items.isEmpty) {
                   items.add(ListItem(
-                    title: selectedValue,
-                    subtitle: equivalentController.text,
+                  title: selectedValue,
+                  subtitle: equivalentController.text,
                   ));
                 }
                 expectedAmount = 0;
                 for (var item in items) {
                   expectedAmount +=
-                      double.tryParse(item.subtitle.replaceAll(',', '')) ?? 0.0;
+                    double.tryParse(item.subtitle.replaceAll(',', '')) ??
+                      0.0;
                 }
 
                 items.isNotEmpty
-                    ? Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => JoinEkubConfirmation(
-                                  termAndCondition:
-                                      widget.equb.termAndCondition ?? '',
-                                  termAndConditionInAmharic:
-                                      widget.equb.termAndConditionInAmharic ??
-                                          '',
-                                  equbType: widget.equb.equbType?['name'] ?? '',
-                                  ekubDescription:
-                                      widget.equb.description ?? '',
-                                  ekubId: widget.equb.id ?? '',
-                                  ekubAmount: widget.equb.equbAmount.toString(),
-                                  ekubName: widget.equb.name ?? '',
-                                  ekubRound: widget.equb.nextRound.toString(),
-                                  groupLimit: widget.equb.groupLimit.toString(),
-                                  joinedAmount:
-                                      widget.equb.equbers?.length.toString() ??
-                                          '',
-                                  type: widget.equb.equbType?['name'] ?? '',
-                                  items: items,
-                                  expectedAmount: expectedAmount,
-                                  startDate: widget.equb.startDate ?? '',
-                                  numberOfEkubers:
-                                      widget.equb.numberOfEqubers.toString(),
-                                )))
-                    : Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => JoinEkubConfirmation(
-                                  termAndCondition:
-                                      widget.equb.termAndCondition ?? '',
-                                  termAndConditionInAmharic:
-                                      widget.equb.termAndConditionInAmharic ??
-                                          '',
-                                  equbType: widget.equb.equbType?['name'],
-                                  ekubDescription:
-                                      widget.equb.description ?? '',
-                                  ekubId: widget.equb.id ?? '',
-                                  ekubAmount: widget.equb.equbAmount.toString(),
-                                  ekubName: widget.equb.name ?? '',
-                                  ekubRound: widget.equb.nextRound.toString(),
-                                  groupLimit: widget.equb.groupLimit.toString(),
-                                  joinedAmount:
-                                      widget.equb.equbers?.length.toString() ??
-                                          '',
-                                  type: widget.equb.equbType?['name'],
-                                  items: items,
-                                  expectedAmount: expectedAmount,
-                                  startDate: widget.equb.startDate ?? '',
-                                  numberOfEkubers:
-                                      widget.equb.numberOfEqubers.toString(),
-                                )));
-              }),
+                  ? Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => JoinEkubConfirmation(
+                          termAndCondition:
+                            widget.equb.termAndCondition ?? '',
+                          termAndConditionInAmharic:
+                            widget.equb.termAndConditionInAmharic ??
+                              '',
+                          equbType:
+                            widget.equb.equbType?['name'] ?? '',
+                          ekubDescription:
+                            widget.equb.description ?? '',
+                          ekubId: widget.equb.id ?? '',
+                          ekubAmount: widget.equb.equbAmount.toString(),
+                          ekubName: widget.equb.name ?? '',
+                          ekubRound:
+                            widget.equb.nextRound.toString(),
+                          groupLimit:
+                            widget.equb.groupLimit.toString(),
+                          joinedAmount:
+                            widget.equb.equbers?.length.toString() ??
+                              '',
+                          type:
+                            widget.equb.equbType?['name'] ?? '',
+                          items: items,
+                          expectedAmount: expectedAmount,
+                          startDate: widget.equb.startDate ?? '',
+                          numberOfEkubers:
+                            widget.equb.numberOfEqubers.toString(),
+                        )))
+                  : Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => JoinEkubConfirmation(
+                          termAndCondition:
+                            widget.equb.termAndCondition ?? '',
+                          termAndConditionInAmharic:
+                            widget.equb.termAndConditionInAmharic ??
+                              '',
+                          equbType:
+                            widget.equb.equbType?['name'],
+                          ekubDescription:
+                            widget.equb.description ?? '',
+                          ekubId: widget.equb.id ?? '',
+                          ekubAmount: widget.equb.equbAmount.toString(),
+                          ekubName: widget.equb.name ?? '',
+                          ekubRound:
+                            widget.equb.nextRound.toString(),
+                          groupLimit:
+                            widget.equb.groupLimit.toString(),
+                          joinedAmount:
+                            widget.equb.equbers?.length.toString() ??
+                              '',
+                          type:
+                            widget.equb.equbType?['name'],
+                          items: items,
+                          expectedAmount: expectedAmount,
+                          startDate: widget.equb.startDate ?? '',
+                          numberOfEkubers:
+                            widget.equb.numberOfEqubers.toString(),
+                        )));
+                },
+              )),
         ),
       ),
       appBar: CurvedAppBar(

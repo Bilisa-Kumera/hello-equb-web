@@ -197,6 +197,7 @@ final Map<String, String> enUS = {
   "lbl_confirm_pin": "Confirm PIN",
   "lbl_done": "Done",
   'phone_email': 'Phone or Email',
+  'already_joined': 'You have joined this equb before, please go to payments screen and pay round payments.',
   'lbl_confirm': 'Confirm',
   'enter_beneficiary_phonenumber': 'Enter beneficiary phone number',
   "lbl_welcome_back": "Welcome back!",

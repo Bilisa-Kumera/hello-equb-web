@@ -78,6 +78,7 @@ final Map<String, String> amET = {
   "payment_method_telebirr": "ቴሌብር",
   "payment_method_telebirr_subtitle": "በቴሌብር ይክፈሉ",
   "payment_method_cbebirr": "CBEBirr",
+  "already_joined": "ከዚህ በፊት ተቀላቅለዋል፣ እባክዎ ወደ ክፍያ ገጽ በመሄድ የዙር ክፍያዎችን ይክፈሉ።",
   "payment_method_cbebirr_subtitle": "በCBEBirr ይክፈሉ",
   "payment_success": "ክፍያ ተሳክቷል",
   'phone_email': 'ስልክ ወይም ኢሜይል',

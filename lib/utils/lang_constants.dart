@@ -4,6 +4,7 @@ class AppKeys {
   static const String trackAll = 'track_all';
   static const String lottery = 'lottery';
   static const String paymentInfo = "payment_info";
+  static const String alreadyJoined = 'already_joined';
   static const String completed = "completed";
   static const String youHaveAlreadySubmitted = "you_have_already_submitted";
   static const String waitingForApproval = "waiting_for_approval";

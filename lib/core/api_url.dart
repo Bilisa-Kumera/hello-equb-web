@@ -71,6 +71,7 @@ String get financeAndOtherEqubsUrl =>
 String get cooperateEqubUrl => "$baseUrl/user/cooperate";
 String get validateCooperateUrl =>
     "$baseUrl/user/cooperate/checkValidCoopreateCode";
+String get checkJoinUrl => "$baseUrl/user/equb/check-join";
 
 // Equb history (completed/past equbs per user)
 String get getEqubHistoryUrl => "$baseUrl/user/equb/get-history-equbs";
