@@ -284,6 +284,7 @@ class AppKeys {
   static const String taken = "lbl_taken";
   static const String round = "lbl_round";
   static const String report = "lbl_report";
+  static const String lotteryHistory = "lbl_lottery_history"; 
   static const String home = "lbl_home";
   static const String account = "lbl_account";
   static const String personal = "lbl_personal";

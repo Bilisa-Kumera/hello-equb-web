@@ -41,13 +41,17 @@ class EqubTabbedScreen extends StatefulWidget {
   final List<EqubType> equbTypes;
   final String equbTypeId;
   final String equbType;
+  final String? imageUrl;
+  final String? description;
 
   const EqubTabbedScreen(
       {super.key,
       required this.category,
       required this.equbTypes,
       required this.equbTypeId,
-      required this.equbType});
+      required this.equbType,
+      this.imageUrl,
+      this.description});
 
   @override
   State<EqubTabbedScreen> createState() => _EqubTabbedScreenState();
@@ -125,6 +129,8 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
               category: widget.category,
               equbTypeId: equbType.id ?? '',
               type: equbType.name ?? '',
+              imageUrl: widget.imageUrl,
+              description: widget.description,
             );
           }).toList(),
         ),
@@ -137,12 +143,16 @@ class EqubListByCategory extends StatefulWidget {
   final EqubCategory category;
   final String equbTypeId;
   final String type;
+  final String? imageUrl;
+  final String? description;
 
   const EqubListByCategory(
       {super.key,
       required this.category,
       required this.equbTypeId,
-      required this.type});
+      required this.type,
+      this.imageUrl,
+      this.description});
 
   @override
   State<EqubListByCategory> createState() => _EqubListByCategoryState();
@@ -298,6 +308,9 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
                 equb: equb,
                 equbType: equb.equbType?.entries.first.value ?? '',
                 type: equb.equbType?['name'],
+                imageUrl: widget.imageUrl,
+                image: equb.image,
+                description: widget.description,
               ),
             );
           },
@@ -1116,6 +1129,8 @@ class _HomeScreenState extends State<HomeScreen>
                                                                   MaterialPageRoute(
                                                                     builder: (_) =>
                                                                         EqubTabbedScreen(
+                                                                      imageUrl: category.imageIcon,
+                                                                      description: category.description,
                                                                       equbType:
                                                                           category.name ??
                                                                               '',

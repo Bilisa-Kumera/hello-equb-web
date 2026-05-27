@@ -73,6 +73,7 @@ final Map<String, String> enUS = {
   "enter_details": "Enter Details",
   "enter_email": "Enter email",
   'lbl_report': 'Report',
+  'lbl_lottery_history': 'Lottery History',
   'lbl_guarantor_name': 'Guarantor Name',
   'lbl_guarantor_last_name': 'Guarantor Last Name',
   'lbl_guarantor_phone_number': 'Guarantor Phone Number',

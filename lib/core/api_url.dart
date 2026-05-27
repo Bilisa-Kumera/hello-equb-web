@@ -61,7 +61,7 @@ String get getGuaranteeToBeUrl => "$baseUrl/user/equb/unwon-users";
 String get saveGuaranteeIdUrl => "$baseUrl/user/equb/save-guarantee/";
 String get getGuaranteeRequestUrl =>
     "$baseUrl/user/equb/sendGuarantorNotificaton/";
-
+String get lotteriesListUrl => "$baseUrl/user/equb/getLotteriesAllTime/";
 String get getSavingEqubDetailUrl => "$baseUrl/user/equb/savingMember/";
 String get getEqubReportUrl => "$baseUrl/user/report/";
 String get refreshTokenUrl => "$baseUrl/user/auth/refresh-token";

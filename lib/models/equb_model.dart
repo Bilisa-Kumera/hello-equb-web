@@ -9,6 +9,7 @@ class EqubModel {
   final int? numberOfEqubers;
   final String? termAndCondition;
   final String? termAndConditionInAmharic;
+  final String? image;
   final int? equbAmount;
   final bool isActive;
   final String? status;
@@ -49,6 +50,7 @@ class EqubModel {
     this.numberOfEqubers,
     this.termAndCondition,
     this.termAndConditionInAmharic,
+    this.image,
     this.equbAmount,
     required this.isActive,
     this.status,
@@ -91,6 +93,7 @@ class EqubModel {
       numberOfEqubers: json['numberOfEqubers'] as int?,
       termAndCondition: json['termAndCondition'] ?? '',
       termAndConditionInAmharic: json['termAndConditionInAmharic'] ?? '',
+      image: json['image'] as String?,
       equbAmount: json['equbAmount'] as int?,
       isActive: json['isActive'] as bool? ?? false,
       otherTypeEqub: json['otherTypeEqub'] ?? false,

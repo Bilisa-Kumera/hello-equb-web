@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -248,6 +249,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     final String url =
         (_isPaymentType ? makePaymentUrl : joinEkubUrl) + (widget.ekubId ?? '');
+
+    debugPrint('Payment request url: $url');
+    debugPrint('Payment request body: ${jsonEncode(data)}');
+
     try {
       final Dio dio = Dio();
       final response = await dio.post(
@@ -371,6 +376,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
 
     final String url = makePaymentUrl + (widget.ekubId ?? '');
+
+    debugPrint('Payment request url: $url');
+    debugPrint('Payment request body: ${jsonEncode(data)}');
+
     try {
       final Dio dio = Dio();
       final response = await dio.post(

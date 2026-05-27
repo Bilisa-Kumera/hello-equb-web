@@ -332,8 +332,11 @@ final Map<String, String> amET = {
   "lbl_you_have": "ያሎት",
   "lbl_special_finance": "ልዩ የገንዘብ ",
   "lbl_total_savings": "አጠቃላይ ቁጠባ ",
+    'lbl_report': 'ሪፖርት',
+    'lbl_lottery_history': 'የዕጣ ታሪክ',
+
   "lbl_you_can_claim":
-      " የወጣሎትን እቁብ 'የኔ እቁብ> ሎተሪ በሚለው' ምርጫ ውስጥ በመግባት እቁቡን ለመውሰድ ማመልከት ይችላሉ.",
+      "የወጣሎትን እቁብ 'የኔ እቁብ> ሎተሪ በሚለው' ምርጫ ውስጥ በመግባት እቁቡን ለመውሰድ ማመልከት ይችላሉ.",
   "lbl_selected_bank": "የተመረጠው ባንከ ",
   "lbl_select_bank_account": "የባንክ አካውንት ይምረጡ",
   "lbl_copied_to_clipboard": "ኮፒ ተደርጓል",

@@ -37,6 +37,8 @@ import 'provider/allequb_payment.dart';
 import 'provider/cooperate_equbs_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'provider/lottery_provider.dart';
+
 Future<void> requestCameraAndGalleryPermissions() async {
   if (kIsWeb) return;
   await Permission.camera.request();
@@ -202,6 +204,9 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+           ChangeNotifierProvider(
+      create: (_) => LotteryProvider(),
+    ),
         ChangeNotifierProvider(create: (_) => EqubTypeProvider()),
         ChangeNotifierProvider(create: (_) => EqubCategoryProvider()),
         ChangeNotifierProvider(create: (_) => EqubProvider()),
@@ -229,15 +234,15 @@ Future<void> main() async {
               useMaterial3: true,
             );
 
-            final List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-                const <LocalizationsDelegate<dynamic>>[
+            const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+                <LocalizationsDelegate<dynamic>>[
               AppLocalizationDelegate(),
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ];
 
-            final supportedLocales = const [
+            const supportedLocales = [
               Locale('en', 'US'),
               Locale('am', 'ET'),
               Locale('fr', 'FR'),
