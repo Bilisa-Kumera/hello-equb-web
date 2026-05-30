@@ -1253,37 +1253,100 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   // ── Lotteries Tab ──────────────────────────────────────────────────────────
 
-  Widget _buildLotteriesTab(int days, int hours, int minutes, int seconds) {
-  final provider = context.watch<LotteryProvider>();
- 
-  // Segment numbers from provider — safely cast to int, drop nulls.
-  final wheelNumbers = provider.lotteries
-      .map((e) => e.lotteryNumber)
-      .whereType<int>()
-      .toList();
- 
-  return SingleChildScrollView(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: Column(
-      children: [
-        const SizedBox(height: 8),
-        _buildCountdownRow(days, hours, minutes, seconds),
-        const SizedBox(height: 24),
- 
-        LotteryWheel(
-          lotteryNumbers: wheelNumbers,
-          isTimeUp: remainingTime == Duration.zero,
-          winnerLotteryNumber: _currentWinnerNumber,
-          onSpinComplete: _onWheelSpinComplete,
-        ),
- 
-        const SizedBox(height: 24),
-        _buildLotteryHistoryButton(),
-        const SizedBox(height: 24),
-      ],
-    ),
-  );
-}
+    Widget _buildLotteriesTab(int days, int hours, int minutes, int seconds) {
+    final provider = context.watch<LotteryProvider>();
+
+    final wheelNumbers = provider.lotteries
+        .map((e) => e.lotteryNumber)
+        .whereType<int>()
+        .toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          _buildCountdownRow(days, hours, minutes, seconds),
+          const SizedBox(height: 24),
+
+          // Loading state
+          if (provider.isLoading)
+            const SizedBox(
+              height: 320,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text(
+                      'Loading lottery numbers...',
+                      style: TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+
+          // Empty state with helpful message
+          else if (wheelNumbers.isEmpty)
+            Container(
+              height: 320,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.hourglass_empty_rounded, size: 48, color: Colors.grey),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No lottery numbers loaded',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      provider.error != null
+                          ? 'Error: ${provider.error}'
+                          : 'Waiting for data from server...',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.read<LotteryProvider>().fetchLotteries(widget.ekubId);
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+
+          // Show the animated wheel when we have numbers
+          else
+            LotteryWheel(
+              lotteryNumbers: wheelNumbers,
+              isTimeUp: remainingTime == Duration.zero,
+              winnerLotteryNumber: _currentWinnerNumber,
+              onSpinComplete: _onWheelSpinComplete,
+            ),
+
+          const SizedBox(height: 24),
+          _buildLotteryHistoryButton(),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
 
   Widget _buildCountdownRow(int days, int hours, int minutes, int seconds) {
     return Row(

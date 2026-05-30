@@ -29,14 +29,10 @@ class LotteryModel {
   factory LotteryModel.fromJson(Map<String, dynamic> json) {
     return LotteryModel(
       id: json["id"] ?? '',
-lotteryNumber:
-    int.tryParse(
-      json["lotteryNumber"].toString(),
-    ) ??
-    0,      hasWonEqub: json["hasWonEqub"] ?? false,
+      lotteryNumber: int.tryParse(json["lotteryNumber"].toString()) ?? 0,
+      hasWonEqub: json["hasWonEqub"] ?? false,
       totalPaid: json["totalPaid"] ?? 0,
-      totalEligibilityPoint:
-          json["totalEligibilityPoint"] ?? 0,
+      totalEligibilityPoint: json["totalEligibilityPoint"] ?? 0,
       included: json["included"] ?? false,
       excluded: json["excluded"] ?? false,
       state: json["state"] ?? '',
@@ -49,30 +45,41 @@ class LotteryProvider extends ChangeNotifier {
   final Dio dio = Dio();
 
   bool isLoading = false;
+  String? error;
 
   List<LotteryModel> lotteries = [];
-  
+  List<LotteryModel> winners = [];
+  List<LotteryModel> eligibleMembers = [];
+
   Future<void> fetchLotteries(String equbId) async {
     try {
       isLoading = true;
+      error = null;
       notifyListeners();
 
-      final response = await dio.get(
-        lotteriesListUrl+equbId,
-      );
+      final response = await dio.get(lotteriesListUrl + equbId);
 
-      
-    if (response.statusCode == 200) {
+      if (response.statusCode == 200) {
+        final data = response.data["data"];
 
-      final List data =
-          response.data["data"]["eligibleMembers"];
+        // Winners of the current round
+        final List winnersData = data["currentRoundWinners"] ?? [];
+        winners = winnersData
+            .map((e) => LotteryModel.fromJson(e))
+            .toList();
 
-      lotteries = data
-          .map((e) => LotteryModel.fromJson(e))
-          .toList();
-    }
+        // Main eligible members list (this is what populates the wheel)
+        final List eligibleData = data["equbEligibleMembers"] ?? [];
+        eligibleMembers = eligibleData
+            .map((e) => LotteryModel.fromJson(e))
+            .toList();
+
+        // Combine both so the wheel can show all relevant numbers
+        lotteries = [...winners, ...eligibleMembers];
+      }
     } catch (e) {
-      debugPrint(e.toString());
+      error = e.toString();
+      debugPrint("LotteryProvider Error: $e");
     }
 
     isLoading = false;
