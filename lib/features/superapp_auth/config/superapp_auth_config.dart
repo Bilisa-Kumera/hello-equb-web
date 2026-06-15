@@ -45,7 +45,8 @@ class SuperAppAuthConfig {
     }
 
     final tokenExchangePath = normalizePath(
-      dotenv.env['SUPERAPP_TOKEN_EXCHANGE_PATH'] ?? 'user/auth/token',
+      dotenv.env['SUPERAPP_TOKEN_EXCHANGE_PATH'] ??
+          'user/auth/login-for-miniapp',
     );
     final profilePath = normalizePath(
       dotenv.env['SUPERAPP_PROFILE_PATH'] ?? 'user/profile/me',

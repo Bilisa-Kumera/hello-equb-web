@@ -6,8 +6,13 @@ class AttemptSuperAppAutoLogin {
 
   final SuperAppAuthRepository _repository;
 
-  Future<Session> call({required String merchantAppId}) {
-    return _repository.loginWithSuperApp(merchantAppId: merchantAppId);
+  Future<Session> call({
+    required String appToken,
+    required String phoneNumber,
+  }) {
+    return _repository.loginWithMiniAppToken(
+      appToken: appToken,
+      phoneNumber: phoneNumber,
+    );
   }
 }
-

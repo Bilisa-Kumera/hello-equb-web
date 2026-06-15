@@ -14,9 +14,8 @@ class AppLogger {
 
   static void initFromEnv() {
     final raw = (dotenv.env['SUPERAPP_DEBUG'] ?? '').trim().toLowerCase();
-    if (raw == '1' || raw == 'true' || raw == 'yes' || raw == 'on') {
-      _enabled = true;
-    }
+    if (raw.isEmpty) return;
+    _enabled = raw == '1' || raw == 'true' || raw == 'yes' || raw == 'on';
   }
 
   static void setEnabled(bool enabled) {

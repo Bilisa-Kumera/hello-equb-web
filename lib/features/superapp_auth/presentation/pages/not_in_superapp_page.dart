@@ -48,7 +48,7 @@ class _NotInSuperAppPageState extends State<NotInSuperAppPage> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'To use Hello Equb on the web, please open it inside the Telebirr SuperApp.',
+                  'To use Hello Equb on the web, please open it inside Telebirr SuperApp or CBEBirr Plus.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 14),
                 ),

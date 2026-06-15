@@ -3,8 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
+import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'telebirr_superapp_detector.dart';
 
 class SuperAppDebugOverlay extends StatefulWidget {
   const SuperAppDebugOverlay({
@@ -21,7 +25,7 @@ class SuperAppDebugOverlay extends StatefulWidget {
 class _SuperAppDebugOverlayState extends State<SuperAppDebugOverlay> {
   static const _prefKey = 'superapp_debug_panel_enabled';
 
-  bool _enabled = kIsWeb; // default on for Flutter Web (Telebirr has no console)
+  bool _enabled = _debugEnabledFromEnv();
   bool _collapsed = false;
 
   final ScrollController _scrollController = ScrollController();
@@ -29,7 +33,53 @@ class _SuperAppDebugOverlayState extends State<SuperAppDebugOverlay> {
   @override
   void initState() {
     super.initState();
-    _loadPref();
+    _loadPref().then((_) {
+      if (!mounted) return;
+      checkTelebirrSuperApp();
+    });
+  }
+
+  Future<void> checkTelebirrSuperApp() async {
+    final merchantId = SuperAppAuthConfig.fromEnv().merchantAppId;
+    if (merchantId.isEmpty) {
+      AppLogger.error(
+        'Telebirr merchant ID is missing. Set MERCHANT_APP_ID or SUPERAPP_APP_ID.',
+      );
+      return;
+    }
+
+    AppLogger.log('Checking Telebirr ConsumerApp bridge');
+    final result = await TelebirrSuperAppDetector.detect(
+      merchantId: merchantId,
+    );
+
+    AppLogger.log('Telebirr Detect Result: $result');
+
+    if (result.authSucceeded) {
+      AppLogger.success(
+        'Telebirr detect final | result=auth_success | stage=${result.stage ?? 'unknown'} | location=${result.location ?? 'unknown'}',
+      );
+    } else if (result.hasTelebirrBridge) {
+      AppLogger.warn(
+        'Telebirr detect final | result=bridge_found_auth_failed | stage=${result.stage ?? 'unknown'} | location=${result.location ?? 'unknown'} | reason=${result.error ?? result.message ?? 'callback did not return token'}',
+      );
+    } else {
+      AppLogger.warn(
+        'Telebirr detect final | result=bridge_not_found | stage=${result.stage ?? 'unknown'} | location=${result.location ?? 'unknown'} | reason=${result.error ?? result.message ?? 'bridge requirements not met'}',
+      );
+    }
+
+    if (result.token != null && result.token!.isNotEmpty) {
+      AppLogger.success(
+        'Telebirr detect token success | location=${result.location ?? 'unknown'} | tokenLen=${result.token!.length}',
+      );
+    }
+
+    if (result.error != null) {
+      AppLogger.error(
+        'Telebirr detect error detail | stage=${result.stage ?? 'unknown'} | location=${result.location ?? 'unknown'} | result=${result.result ?? 'failure'} | error=${result.error}',
+      );
+    }
   }
 
   Future<void> _loadPref() async {
@@ -39,18 +89,39 @@ class _SuperAppDebugOverlayState extends State<SuperAppDebugOverlay> {
       forceEnable = Uri.base.queryParameters['superappDebug'] == '1';
     }
 
+    final envOverride = _debugEnvOverride();
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getBool(_prefKey);
-    final next = forceEnable ? true : (stored ?? (kIsWeb ? true : false));
+    final next = forceEnable ? true : (envOverride ?? stored ?? kIsWeb);
 
     if (!mounted) return;
     setState(() => _enabled = next);
+
+    AppLogger.setEnabled(next);
 
     if (forceEnable) {
       await prefs.setBool(_prefKey, true);
       AppLogger.setEnabled(true);
       AppLogger.log('Debug panel force-enabled via ?superappDebug=1');
     }
+  }
+
+  static bool _debugEnabledFromEnv() {
+    return _debugEnvOverride() ?? kIsWeb;
+  }
+
+  static bool? _debugEnvOverride() {
+    final value = (dotenv.env['SUPERAPP_DEBUG'] ?? '').trim();
+    if (value.isEmpty) return null;
+    return _isTruthy(value);
+  }
+
+  static bool _isTruthy(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == '1' ||
+        normalized == 'true' ||
+        normalized == 'yes' ||
+        normalized == 'on';
   }
 
   Future<void> _setEnabled(bool enabled) async {
@@ -83,23 +154,24 @@ class _SuperAppDebugOverlayState extends State<SuperAppDebugOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_enabled) return widget.child;
+    if (!kIsWeb || !_enabled) return widget.child;
 
     return Stack(
       children: [
         widget.child,
-        Positioned(
-          top: 12,
-          left: 12,
-          child: _Panel(
-            collapsed: _collapsed,
-            onToggleCollapsed: () {
-              setState(() => _collapsed = !_collapsed);
-            },
-            onDisable: () => _setEnabled(false),
-            onClear: _clearLogs,
-            onCopy: _copyLogs,
-            scrollController: _scrollController,
+        SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: _Panel(
+              collapsed: _collapsed,
+              onToggleCollapsed: () {
+                setState(() => _collapsed = !_collapsed);
+              },
+              onDisable: () => _setEnabled(false),
+              onClear: _clearLogs,
+              onCopy: _copyLogs,
+              scrollController: _scrollController,
+            ),
           ),
         ),
       ],
@@ -139,125 +211,157 @@ class _Panel extends StatelessWidget {
   }
 
   String _extractLevel(String line) {
-    final match = RegExp(r'^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\]\[([A-Z]+)\]')
-        .firstMatch(line);
+    final match =
+        RegExp(r'^\[[0-9]{2}:[0-9]{2}:[0-9]{2}\]\[([A-Z]+)\]').firstMatch(line);
     return match?.group(1) ?? 'INFO';
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final width = math.min(460.0, math.max(260.0, screenWidth - 24));
+    final media = MediaQuery.of(context);
+    final screenWidth = media.size.width;
+    final width = math.min(720.0, math.max(280.0, screenWidth - 16));
+    final maxHeight = math.max(160.0, media.size.height * 0.38);
 
     return Material(
       color: Colors.transparent,
-      child: Container(
-        width: width,
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.78),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white24),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: ValueListenableBuilder<List<String>>(
-            valueListenable: AppLogger.lines,
-            builder: (context, lines, _) {
-              final text = lines.isEmpty ? '(no logs yet)' : lines.join('\n');
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+        child: Container(
+          width: width,
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.88),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white24),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black38,
+                blurRadius: 18,
+                offset: Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: ValueListenableBuilder<List<String>>(
+              valueListenable: AppLogger.lines,
+              builder: (context, lines, _) {
+                final text = lines.isEmpty ? '(no logs yet)' : lines.join('\n');
 
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!scrollController.hasClients) return;
-                scrollController.jumpTo(scrollController.position.maxScrollExtent);
-              });
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!scrollController.hasClients) return;
+                  scrollController
+                      .jumpTo(scrollController.position.maxScrollExtent);
+                });
 
-              final lastLine = lines.isEmpty ? '(no logs yet)' : lines.last;
+                final lastLine = lines.isEmpty ? '(no logs yet)' : lines.last;
 
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'SuperApp Debug',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'SuperApp Console',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Semantics(
+                          button: true,
+                          label: collapsed ? 'Expand' : 'Collapse',
+                          child: IconButton(
+                            onPressed: onToggleCollapsed,
+                            icon: Icon(
+                              collapsed
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        Semantics(
+                          button: true,
+                          label: 'Clear',
+                          child: IconButton(
+                            onPressed: onClear,
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        Semantics(
+                          button: true,
+                          label: 'Copy',
+                          child: IconButton(
+                            onPressed: () => onCopy(context, text),
+                            icon: const Icon(
+                              Icons.copy,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        Semantics(
+                          button: true,
+                          label: 'Hide console',
+                          child: IconButton(
+                            onPressed: onDisable,
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (collapsed) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        lastLine,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _colorForLine(lastLine, context),
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          height: 1.25,
+                        ),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 8),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: maxHeight),
+                        child: Scrollbar(
+                          controller: scrollController,
+                          thumbVisibility: true,
+                          child: ListView.builder(
+                            controller: scrollController,
+                            itemCount: lines.length,
+                            itemBuilder: (context, index) {
+                              final line = lines[index];
+                              return SelectableText(
+                                line,
+                                style: TextStyle(
+                                  color: _colorForLine(line, context),
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                  height: 1.25,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
-                      TextButton(
-                        onPressed: onToggleCollapsed,
-                        child: Text(
-                          collapsed ? 'Expand' : 'Collapse',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: onClear,
-                        child: const Text(
-                          'Clear',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => onCopy(context, text),
-                        child: const Text(
-                          'Copy',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: onDisable,
-                        child: const Text(
-                          'Disable',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
                     ],
-                  ),
-                  if (collapsed) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      lastLine,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _colorForLine(lastLine, context),
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        height: 1.25,
-                      ),
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 8),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 280),
-                      child: Scrollbar(
-                        controller: scrollController,
-                        child: ListView.builder(
-                          controller: scrollController,
-                          itemCount: lines.length,
-                          itemBuilder: (context, index) {
-                            final line = lines[index];
-                            return Text(
-                              line,
-                              style: TextStyle(
-                                color: _colorForLine(line, context),
-                                fontFamily: 'monospace',
-                                fontSize: 12,
-                                height: 1.25,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
                   ],
-                ],
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),

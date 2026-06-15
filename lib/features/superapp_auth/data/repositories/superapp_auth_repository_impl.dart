@@ -38,11 +38,21 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
   bool get isSuperAppAvailable => _jsDataSource.isAvailable;
 
   @override
-  Future<Session> loginWithSuperApp({required String merchantAppId}) async {
-    AppLogger.log('starting SuperApp login flow');
-    final miniAppToken =
-        await _jsDataSource.getMiniAppToken(merchantAppId: merchantAppId);
-    AppLogger.log('token received; exchanging with backend');
+  Future<String> getMiniAppToken({required String merchantAppId}) {
+    AppLogger.log(
+      'requesting SuperApp mini app token (merchantAppId=$merchantAppId)',
+    );
+    return _jsDataSource.getMiniAppToken(merchantAppId: merchantAppId);
+  }
+
+  @override
+  Future<Session> loginWithMiniAppToken({
+    required String appToken,
+    required String phoneNumber,
+  }) async {
+    AppLogger.log(
+      'starting SuperApp backend login base=$_apiBaseUrl path=$_tokenExchangePath phone=$phoneNumber tokenLen=${appToken.length}',
+    );
 
     final dio = _dioFactory.createPlainDio(baseUrl: _apiBaseUrl);
     if (AppLogger.enabled) {
@@ -54,13 +64,36 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       profilePath: _profilePath,
     );
 
-    final session = await remote.exchangeToken(authToken: miniAppToken);
-    AppLogger.log('exchange success; session token stored');
+    final payload = await remote.loginForMiniApp(
+      phoneNumber: phoneNumber,
+      appToken: appToken,
+    );
+    AppLogger.success('SuperApp backend login response received');
+    final session = remote.sessionFromLoginPayload(payload);
+    AppLogger.log(
+      'miniapp login success; accessTokenLen=${session.accessToken.length} refreshToken=${session.refreshToken == null ? 'absent' : 'present'}',
+    );
 
     // Persist token for the rest of the app.
     await _tokenStorage.writeAccessToken(session.accessToken);
     _dataController.storeData('accessToken', session.accessToken);
+    if (session.refreshToken != null) {
+      _dataController.storeData('refreshToken', session.refreshToken);
+    }
     _dataController.storeData('isLoggedIn', true);
+
+    final user = remote.userFromLoginPayload(payload);
+    if (user != null) {
+      _dataController.storeData('userId', user['id']);
+      _dataController.storeData('fullName', user['fullName']);
+      _dataController.storeData('phoneNumber', user['phoneNumber']);
+      _dataController.storeData('lastName', user['lastName']);
+      _dataController.storeData('firstName', user['firstName']);
+      _dataController.storeData('middleName', user['middleName']);
+      _dataController.storeData('email', user['email']);
+    } else {
+      _dataController.storeData('phoneNumber', phoneNumber);
+    }
 
     // Fetch profile (best-effort; don't fail login if profile request fails).
     try {
@@ -76,7 +109,9 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       final profile = await authedRemote.fetchProfile();
       _dataController.storeData('profile', profile);
       AppLogger.log('profile fetched and cached');
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.warn('profile fetch skipped/failed after login: $e');
+    }
 
     return session;
   }

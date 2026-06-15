@@ -25,6 +25,7 @@ class SuperAppAuthBloc extends Bloc<SuperAppAuthEvent, SuperAppAuthState> {
   ) async {
     AppLogger.log('auth started');
     if (!kIsWeb) {
+      AppLogger.warn('SuperApp auth skipped because platform is not web');
       emit(const SuperAppAuthNotInSuperApp());
       return;
     }
@@ -42,17 +43,29 @@ class SuperAppAuthBloc extends Bloc<SuperAppAuthEvent, SuperAppAuthState> {
       }
     }
 
-    if (event.merchantAppId.trim().isEmpty) {
-      emit(const SuperAppAuthFailure(
-        'Missing merchant app id (set MERCHANT_APP_ID or SUPERAPP_APP_ID in .env).',
-      ));
+    if (event.appToken.trim().isEmpty) {
+      AppLogger.error('SuperApp auth missing Telebirr app token');
+      emit(const SuperAppAuthFailure('Missing Telebirr app token.'));
       return;
     }
 
+    if (event.phoneNumber.trim().isEmpty) {
+      AppLogger.error('SuperApp auth missing phone number');
+      emit(const SuperAppAuthFailure('Please enter your phone number.'));
+      return;
+    }
+
+    AppLogger.log(
+      'SuperApp auth ready; tokenLen=${event.appToken.trim().length}, phone=${event.phoneNumber.trim()}',
+    );
     emit(const SuperAppAuthInProgress());
 
     try {
-      await _attemptAutoLogin(merchantAppId: event.merchantAppId.trim());
+      await _attemptAutoLogin(
+        appToken: event.appToken.trim(),
+        phoneNumber: event.phoneNumber.trim(),
+      );
+      AppLogger.success('SuperApp backend login completed');
       emit(const SuperAppAuthSuccess());
     } catch (e) {
       AppLogger.error('auth failed: $e');

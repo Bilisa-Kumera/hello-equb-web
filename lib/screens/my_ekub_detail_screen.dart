@@ -1,6 +1,5 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use, empty_catches
 
-
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/services.dart';
@@ -40,7 +39,8 @@ class ListItems {
   final String title;
   String subtitle;
   final String userIds;
-  ListItems({required this.title, required this.subtitle, required this.userIds});
+  ListItems(
+      {required this.title, required this.subtitle, required this.userIds});
 }
 
 class ApiResp {
@@ -65,7 +65,9 @@ class Lottery {
   final List<User> users;
   Lottery({required this.users});
   factory Lottery.fromJson(Map<String, dynamic> json) => Lottery(
-        users: (json['users'] as List<dynamic>).map((e) => User.fromJson(e)).toList(),
+        users: (json['users'] as List<dynamic>)
+            .map((e) => User.fromJson(e))
+            .toList(),
       );
 }
 
@@ -105,8 +107,8 @@ class UserStake {
   final int stake;
   final User user;
   UserStake({required this.id, required this.stake, required this.user});
-  factory UserStake.fromJson(Map<String, dynamic> json) =>
-      UserStake(id: json['id'], stake: json['stake'], user: User.fromJson(json['user']));
+  factory UserStake.fromJson(Map<String, dynamic> json) => UserStake(
+      id: json['id'], stake: json['stake'], user: User.fromJson(json['user']));
 }
 
 class EligibleMember {
@@ -132,7 +134,8 @@ class CurrentWinner {
 class ResponseModel {
   final List<EligibleMember> eligibleMembers;
   final List<CurrentWinner> currentRoundWinners;
-  ResponseModel({required this.eligibleMembers, required this.currentRoundWinners});
+  ResponseModel(
+      {required this.eligibleMembers, required this.currentRoundWinners});
   factory ResponseModel.fromJson(Map<String, dynamic> json) => ResponseModel(
         eligibleMembers: (json['eligibleMembers'] as List<dynamic>)
             .map((e) => EligibleMember.fromJson(e as Map<String, dynamic>))
@@ -144,7 +147,11 @@ class ResponseModel {
 }
 
 String _firstAndMiddleName(String? name) {
-  final parts = (name ?? '').trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+  final parts = (name ?? '')
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((p) => p.isNotEmpty)
+      .toList();
   return parts.take(2).join(' ');
 }
 
@@ -152,14 +159,15 @@ class PaymentResponse {
   final String status;
   final int equbRound;
   final List<Payment> payments;
-  PaymentResponse({required this.status, required this.equbRound, required this.payments});
+  PaymentResponse(
+      {required this.status, required this.equbRound, required this.payments});
   factory PaymentResponse.fromJson(Map<String, dynamic> json) {
     final paymentsJson = (json['data']?['payments'] as List?) ?? const [];
     return PaymentResponse(
       status: json['status'],
       equbRound: json['data']['equbRound'],
-      payments: List<Payment>.from(
-          paymentsJson.map((p) => Payment.fromJson(Map<String, dynamic>.from(p as Map)))),
+      payments: List<Payment>.from(paymentsJson
+          .map((p) => Payment.fromJson(Map<String, dynamic>.from(p as Map)))),
     );
   }
 }
@@ -192,15 +200,22 @@ class Payment {
             ? json['totalPaid']
             : int.parse(json['totalPaid'].toString()),
         paidRound: int.tryParse(json['paidRound'].toString()) ?? 0,
-        amountPaid: double.parse(json['amountPaid'].toString()).toStringAsFixed(2) == 'NaN'
+        amountPaid: double.parse(json['amountPaid'].toString())
+                    .toStringAsFixed(2) ==
+                'NaN'
             ? 0.0
-            : double.parse(double.parse(json['amountPaid'].toString()).toStringAsFixed(2)),
-        equbAmount: double.parse(json['equbAmount'].toString()).toStringAsFixed(2) == 'NaN'
+            : double.parse(
+                double.parse(json['amountPaid'].toString()).toStringAsFixed(2)),
+        equbAmount: double.parse(json['equbAmount'].toString())
+                    .toStringAsFixed(2) ==
+                'NaN'
             ? 0.0
-            : double.parse(double.parse(json['equbAmount'].toString()).toStringAsFixed(2)),
+            : double.parse(
+                double.parse(json['equbAmount'].toString()).toStringAsFixed(2)),
         paid: json['paid'] == true,
         isGroup: json['isGroup'] == true,
-        request: json['request'] != null ? Request.fromJson(json['request']) : null,
+        request:
+            json['request'] != null ? Request.fromJson(json['request']) : null,
       );
 }
 
@@ -279,6 +294,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   bool _isLoading = true;
   bool _hasNavigated = false;
+  bool _showNoWinnerState = false;
+  bool _isOpeningLotteryHistory = false;
   bool isRefreshed = false;
   bool isLoading = true;
 
@@ -316,7 +333,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   // Parsed int version of winnersList — populated after getElligbleUsers() returns.
   // The wheel spins one winner at a time; _pendingWinnerNumbers holds the rest.
   List<int> _pendingWinnerNumbers = [];
-  int? _currentWinnerNumber;   // null → wheel stays still; non-null → spin to this number
+  int?
+      _currentWinnerNumber; // null → wheel stays still; non-null → spin to this number
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -382,7 +400,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   /// and kicks off the first spin.
   Future<void> _onCountdownFinished() async {
     debugPrint('Countdown finished. Fetching eligible users and winners...');
-    await getElligbleUsers();   // populates winnersList (List<String>)
+    await getElligbleUsers(); // populates winnersList (List<String>)
 
     if (!mounted) {
       debugPrint('Widget not mounted after fetching winners.');
@@ -390,24 +408,27 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     }
 
     // Parse winnersList → List<int>, drop anything that isn't a valid number.
-    final List<int> parsed = winnersList
-        .map((s) => int.tryParse(s))
-        .whereType<int>()
-        .toList();
+    final List<int> parsed =
+        winnersList.map((s) => int.tryParse(s)).whereType<int>().toList();
 
     debugPrint('Parsed winner numbers: $parsed');
 
     if (parsed.isEmpty) {
       debugPrint('No winner found. Wheel will not spin.');
-      return;  // no winner yet — wheel stays still
+      debugPrint(
+          'Showing no-winner state because parsed winners list is empty.');
+      setState(() => _showNoWinnerState = true);
+      return; // no winner yet — wheel stays still
     }
 
     setState(() {
+      _showNoWinnerState = false;
       _pendingWinnerNumbers = List.from(parsed);
-      _currentWinnerNumber  = _pendingWinnerNumbers.removeAt(0);
+      _currentWinnerNumber = _pendingWinnerNumbers.removeAt(0);
     });
 
-    debugPrint('Set current winner number: $_currentWinnerNumber. Starting wheel spin.');
+    debugPrint(
+        'Set current winner number: $_currentWinnerNumber. Starting wheel spin.');
     // The wheel will react to _currentWinnerNumber becoming non-null
     // because LotteryWheelWidget / _spinToWinner checks it.
     _spinToWinner();
@@ -430,7 +451,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
       setState(() {
         _currentWinnerNumber = _pendingWinnerNumbers.removeAt(0);
       });
-      debugPrint('Next winner number: $_currentWinnerNumber. Spinning wheel again.');
+      debugPrint(
+          'Next winner number: $_currentWinnerNumber. Spinning wheel again.');
       _spinToWinner();
     });
   }
@@ -453,7 +475,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         .whereType<int>()
         .toList();
 
-    final int totalSegments = segmentNumbers.isNotEmpty ? segmentNumbers.length : 1;
+    final int totalSegments =
+        segmentNumbers.isNotEmpty ? segmentNumbers.length : 1;
     final double segAngle = 2 * pi / totalSegments;
 
     // Find the index of the winner in the wheel segment list.
@@ -469,7 +492,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
     _wheelStopAngle = totalAngle;
 
-    debugPrint('Spinning wheel to winner number $_currentWinnerNumber at index $idx, stop angle $_wheelStopAngle');
+    debugPrint(
+        'Spinning wheel to winner number $_currentWinnerNumber at index $idx, stop angle $_wheelStopAngle');
     setState(() => _wheelSpinning = true);
     _wheelController.forward(from: 0);
   }
@@ -529,8 +553,19 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         }
         for (var m in eligibleMembers)
           for (var u in m['users'] as List<dynamic>) {
-            elligibleUsersList.add(_firstAndMiddleName(u['user']['fullName']?.toString()));
+            elligibleUsersList
+                .add(_firstAndMiddleName(u['user']['fullName']?.toString()));
           }
+
+        if (currentWinners.isEmpty) {
+          debugPrint(
+              'getElligbleUsers: currentRoundWinners is empty for equb ${widget.ekubId}.');
+          debugPrint('Showing no-winner state after countdown finished.');
+          if (mounted) setState(() => _showNoWinnerState = true);
+          await Future.delayed(const Duration(seconds: 2));
+          if (mounted) setState(() => _isLoading = false);
+          return;
+        }
 
         int round = currentWinners[0]['winRound'];
         for (var w in currentWinners) {
@@ -538,14 +573,20 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         }
         for (var w in currentWinners)
           for (var u in w['users'] as List<dynamic>) {
-            currentWinnersList.add(_firstAndMiddleName(u['user']['fullName']?.toString()));
+            currentWinnersList
+                .add(_firstAndMiddleName(u['user']['fullName']?.toString()));
             currentWinnersIdList.add(u['user']['id']);
           }
 
-        elligibleUsersLotteryList = Set<String>.from(elligibleUsersLotteryList).toList();
+        elligibleUsersLotteryList =
+            Set<String>.from(elligibleUsersLotteryList).toList();
         winnersList = Set<String>.from(winnersList).toList();
+        debugPrint(
+            'getElligbleUsers: winnersList=$winnersList, eligibleLotteryNumbers=$elligibleUsersLotteryList.');
+        if (mounted) setState(() => _showNoWinnerState = winnersList.isEmpty);
 
-        if (eligibleMembersSocket.isNotEmpty && currentRoundWinnersSocket.isNotEmpty) {
+        if (eligibleMembersSocket.isNotEmpty &&
+            currentRoundWinnersSocket.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && !_hasNavigated) {
               _hasNavigated = true;
@@ -585,9 +626,10 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
       final res = await dio.get(ekubLotteriesUrl + widget.ekubId,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
       if (res.statusCode == 200 || res.statusCode == 201) {
-        List<Lottery> lotteries = (res.data['data']['lotteries'] as List<dynamic>)
-            .map((e) => Lottery.fromJson(e))
-            .toList();
+        List<Lottery> lotteries =
+            (res.data['data']['lotteries'] as List<dynamic>)
+                .map((e) => Lottery.fromJson(e))
+                .toList();
         lotteries.sort((a, b) {
           final aR = a.users.isNotEmpty ? a.users.first.round : 0;
           final bR = b.users.isNotEmpty ? b.users.first.round : 0;
@@ -619,10 +661,11 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         paidPerEachLottery.clear();
         equbUserIds.clear();
 
-        final List<Payment> payments =
-            ((res.data['data']['payments'] as List?) ?? [])
-                .map((e) => Payment.fromJson(Map<String, dynamic>.from(e as Map)))
-                .toList();
+        final List<Payment> payments = ((res.data['data']['payments']
+                    as List?) ??
+                [])
+            .map((e) => Payment.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
         for (var p in payments) {
           lotteryNumbers.add(p.lotteryNumber);
           paidPerEachLottery.add(p.equbAmount);
@@ -656,12 +699,14 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   void _startCountdown() async {
     try {
-      if (_cachedServerTime == null || _timeOffset == null) await fetchServerTime();
+      if (_cachedServerTime == null || _timeOffset == null)
+        await fetchServerTime();
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         final now = DateTime.now().add(_timeOffset!);
         final newRemaining = targetDateTime.difference(now);
         setState(() {
-          remainingTime = newRemaining.isNegative ? Duration.zero : newRemaining;
+          remainingTime =
+              newRemaining.isNegative ? Duration.zero : newRemaining;
           if (newRemaining.isNegative) {
             timer.cancel();
             // ── Countdown just hit zero: fetch winners and spin ──
@@ -697,10 +742,46 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
       getEkubPayments();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("You can't refresh when less than 2 minutes remaining.")),
+        const SnackBar(
+            content:
+                Text("You can't refresh when less than 2 minutes remaining.")),
       );
     }
     await Future.delayed(const Duration(seconds: 2));
+  }
+
+  Future<void> _openLotteryHistory() async {
+    if (_isOpeningLotteryHistory) return;
+
+    setState(() => _isOpeningLotteryHistory = true);
+    await getEkubLotteries();
+    await getListOfFinancialInfo();
+
+    if (!mounted) return;
+
+    setState(() => _isOpeningLotteryHistory = false);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LotteryHistoryScreen(
+          lotteries: _lotteries,
+          remainingTime: remainingTime,
+          ekubId: widget.ekubId,
+          ekubName: widget.ekubName,
+          ekubAmount: widget.ekubAmount,
+          ekubCycle: widget.ekubCycle,
+          ekubRequest: widget.ekubRequest,
+          ekubersNumber: widget.ekubersNumber,
+          nextRoundDate: widget.nextRoundDate,
+          nextRoundLotteryType: widget.nextRoundLotteryType,
+          nextRoundTime: widget.nextRoundTime,
+          serviceCharge: widget.serviceCharge,
+          bankAccounts: bankAccounts,
+          selectedAccount: selectedAccount,
+          userId: userId,
+        ),
+      ),
+    );
   }
 
   void checkTargetDateTime() {
@@ -726,11 +807,16 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
       } catch (_) {}
     });
     socket!.on('equb-eligible', (data) {
-      if (data is Map<String, dynamic> && data['status'] == 'success' && mounted) {
+      if (data is Map<String, dynamic> &&
+          data['status'] == 'success' &&
+          mounted) {
         setState(() {
-          eligibleMembersSocket = data['data']?['eligibleMembers'].toList() ?? '';
-          currentRoundWinnersSocket = data['data']?['currentRoundWinners'].toList() ?? '';
-          equbEligibleMembersSocket = data['data']?['equbEligibleMembers'].toList() ?? '';
+          eligibleMembersSocket =
+              data['data']?['eligibleMembers'].toList() ?? '';
+          currentRoundWinnersSocket =
+              data['data']?['currentRoundWinners'].toList() ?? '';
+          equbEligibleMembersSocket =
+              data['data']?['equbEligibleMembers'].toList() ?? '';
         });
       }
     });
@@ -748,7 +834,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     String equberUserId,
     String serviceCharge,
   ) {
-    ConfettiController cc = ConfettiController(duration: const Duration(seconds: 3));
+    ConfettiController cc =
+        ConfettiController(duration: const Duration(seconds: 3));
     cc.play();
     showDialog(
       context: context,
@@ -762,18 +849,21 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         serviceCharge: serviceCharge,
         bankAccounts: bankAccounts,
         selectedAccount: selectedAccount,
-        onAccountSelected: (BankAccount? a) => setState(() => selectedAccount = a),
+        onAccountSelected: (BankAccount? a) =>
+            setState(() => selectedAccount = a),
       ),
     );
   }
 
   void _showPaymentsBottomSheet(BuildContext context, List<Payment> payments) {
-    final total = payments.fold<double>(0, (s, p) => s + (p.equbAmount * p.paidRound));
+    final total =
+        payments.fold<double>(0, (s, p) => s + (p.equbAmount * p.paidRound));
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _PaymentSummarySheet(payments: payments, total: total, context: context),
+      builder: (_) => _PaymentSummarySheet(
+          payments: payments, total: total, context: context),
     );
   }
 
@@ -784,11 +874,16 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     for (int i = 0; i < lotteryNumbers.length; i++) {
       if (seen.add(lotteryNumbers[i])) {
         listItemss.add(ListItems(
-            title: lotteryNumbers[i], subtitle: paidPerEachLottery[i].toString(), userIds: equbUserIds[i]));
-        listItems.add(ListItem(title: lotteryNumbers[i], subtitle: paidPerEachLottery[i].toString()));
+            title: lotteryNumbers[i],
+            subtitle: paidPerEachLottery[i].toString(),
+            userIds: equbUserIds[i]));
+        listItems.add(ListItem(
+            title: lotteryNumbers[i],
+            subtitle: paidPerEachLottery[i].toString()));
       }
     }
-    double expected = listItemss.fold(0, (s, e) => s + double.parse(e.subtitle));
+    double expected =
+        listItemss.fold(0, (s, e) => s + double.parse(e.subtitle));
     showDialog(
       context: context,
       builder: (_) => PaymentArragement(
@@ -811,8 +906,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   Widget build(BuildContext context) {
     checkTargetDateTime();
 
-    final days    = remainingTime.inDays;
-    final hours   = remainingTime.inHours % 24;
+    final days = remainingTime.inDays;
+    final hours = remainingTime.inHours % 24;
     final minutes = remainingTime.inMinutes % 60;
     final seconds = remainingTime.inSeconds % 60;
 
@@ -862,7 +957,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         ),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
-      padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 12, 12, 20),
+      padding: EdgeInsets.fromLTRB(
+          20, MediaQuery.of(context).padding.top + 12, 12, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -896,8 +992,11 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
               ),
               _HeaderChipButton(
                 label: AppKeys.pendingPayments.tr(context),
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => WaitingEkubsPayment(ekubId: widget.ekubId))),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            WaitingEkubsPayment(ekubId: widget.ekubId))),
               ),
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -926,7 +1025,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
             ekubName: widget.ekubName,
             ekubersNumber: widget.ekubersNumber.toString(),
             cycle: widget.ekubCycle.toString(),
-            total: _payments.fold<double>(0, (s, p) => s + (p.equbAmount * p.paidRound)),
+            total: _payments.fold<double>(
+                0, (s, p) => s + (p.equbAmount * p.paidRound)),
             buttonShow: false,
           ),
         ],
@@ -944,7 +1044,10 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4)),
+          BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 12,
+              offset: const Offset(0, 4)),
         ],
       ),
       child: TabBar(
@@ -955,9 +1058,10 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         ),
         labelColor: Colors.white,
         unselectedLabelColor: AppColors.vibrantGreen,
-        labelStyle: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14),
-        unselectedLabelStyle:
-            const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w500, fontSize: 14),
+        labelStyle: const TextStyle(
+            fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14),
+        unselectedLabelStyle: const TextStyle(
+            fontFamily: 'Poppins', fontWeight: FontWeight.w500, fontSize: 14),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         tabs: [
@@ -990,7 +1094,9 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.all(32),
-              child: Center(child: SpinKitFadingCircle(color: AppColors.primary, size: 48)),
+              child: Center(
+                  child:
+                      SpinKitFadingCircle(color: AppColors.primary, size: 48)),
             )
           else if (_payments.isEmpty)
             _buildEmptyState()
@@ -1042,7 +1148,10 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
               Text(
                 AppKeys.makePayment.tr(context),
                 style: const TextStyle(
-                    color: Colors.white, fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w600),
+                    color: Colors.white,
+                    fontFamily: 'Poppins',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -1063,15 +1172,24 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           onTap: onLeftTap,
           child: Row(
             children: [
-              Container(width: 4, height: 18, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2))),
+              Container(
+                  width: 4,
+                  height: 18,
+                  decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(2))),
               const SizedBox(width: 8),
               Text(
                 left,
                 style: const TextStyle(
-                    fontFamily: 'Poppins', fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary),
+                    fontFamily: 'Poppins',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.open_in_new_rounded, size: 14, color: AppColors.primary),
+              const Icon(Icons.open_in_new_rounded,
+                  size: 14, color: AppColors.primary),
             ],
           ),
         ),
@@ -1084,7 +1202,10 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           child: Text(
             right,
             style: const TextStyle(
-                fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                fontFamily: 'Poppins',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary),
           ),
         ),
       ],
@@ -1098,8 +1219,10 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     return GestureDetector(
       onTap: () => showModalBottomSheet(
         context: context,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        builder: (_) => LotteryDetailBottomSheet(lottery: item.lotteryNumber, round: item.paidRound),
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (_) => LotteryDetailBottomSheet(
+            lottery: item.lotteryNumber, round: item.paidRound),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -1107,10 +1230,15 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3)),
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3)),
           ],
           border: Border.all(
-            color: isPaid ? AppColors.earthySuccessGreen.withOpacity(0.4) : AppColors.crimsonRed.withOpacity(0.3),
+            color: isPaid
+                ? AppColors.earthySuccessGreen.withOpacity(0.4)
+                : AppColors.crimsonRed.withOpacity(0.3),
             width: 1.2,
           ),
         ),
@@ -1134,7 +1262,9 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                       fontFamily: 'Poppins',
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: isPaid ? AppColors.earthySuccessGreen : AppColors.crimsonRed,
+                      color: isPaid
+                          ? AppColors.earthySuccessGreen
+                          : AppColors.crimsonRed,
                     ),
                   ),
                 ),
@@ -1147,18 +1277,29 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                     Text(
                       item.name,
                       style: TextStyle(
-                          fontFamily: 'Poppins', fontSize: 14.sp, fontWeight: FontWeight.w600, color: const Color(0xFF2D2D2D)),
+                          fontFamily: 'Poppins',
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF2D2D2D)),
                     ),
                     const SizedBox(height: 4),
                     RichText(
                       text: TextSpan(
-                        style: TextStyle(fontFamily: 'Poppins', fontSize: 13.sp, color: Colors.grey[600]),
+                        style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13.sp,
+                            color: Colors.grey[600]),
                         children: [
                           TextSpan(
-                              text: numberFormat.format(item.amountPaid < 0 ? 0 : item.amountPaid),
-                              style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D))),
+                              text: numberFormat.format(
+                                  item.amountPaid < 0 ? 0 : item.amountPaid),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2D2D2D))),
                           const TextSpan(text: ' / '),
-                          TextSpan(text: '${numberFormat.format(item.equbAmount)} ETB'),
+                          TextSpan(
+                              text:
+                                  '${numberFormat.format(item.equbAmount)} ETB'),
                         ],
                       ),
                     ),
@@ -1169,7 +1310,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: isPaid
                           ? AppColors.earthySuccessGreen.withOpacity(0.12)
@@ -1180,18 +1322,26 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isPaid ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                          isPaid
+                              ? Icons.check_circle_rounded
+                              : Icons.cancel_rounded,
                           size: 12,
-                          color: isPaid ? AppColors.earthySuccessGreen : AppColors.crimsonRed,
+                          color: isPaid
+                              ? AppColors.earthySuccessGreen
+                              : AppColors.crimsonRed,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          isPaid ? AppKeys.paid.tr(context) : AppKeys.notPaid.tr(context),
+                          isPaid
+                              ? AppKeys.paid.tr(context)
+                              : AppKeys.notPaid.tr(context),
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: isPaid ? AppColors.earthySuccessGreen : AppColors.crimsonRed,
+                            color: isPaid
+                                ? AppColors.earthySuccessGreen
+                                : AppColors.crimsonRed,
                           ),
                         ),
                       ],
@@ -1204,7 +1354,10 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                         AppKeys.viewLastPaid.tr(context).length > 14
                             ? '${AppKeys.viewLastPaid.tr(context).substring(0, 14)}…'
                             : AppKeys.viewLastPaid.tr(context),
-                        style: const TextStyle(color: AppColors.primary, fontSize: 10, fontFamily: 'Poppins'),
+                        style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 10,
+                            fontFamily: 'Poppins'),
                       ),
                     ),
                   if (widget.ekubRequest && !item.isGroup)
@@ -1244,7 +1397,9 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           children: [
             Icon(Icons.inbox_rounded, size: 48, color: Colors.grey[300]),
             const SizedBox(height: 12),
-            Text('No payments yet', style: TextStyle(color: Colors.grey[400], fontFamily: 'Poppins')),
+            Text('No payments yet',
+                style:
+                    TextStyle(color: Colors.grey[400], fontFamily: 'Poppins')),
           ],
         ),
       ),
@@ -1253,7 +1408,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   // ── Lotteries Tab ──────────────────────────────────────────────────────────
 
-    Widget _buildLotteriesTab(int days, int hours, int minutes, int seconds) {
+  Widget _buildLotteriesTab(int days, int hours, int minutes, int seconds) {
     final provider = context.watch<LotteryProvider>();
 
     final wheelNumbers = provider.lotteries
@@ -1281,7 +1436,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                     SizedBox(height: 12),
                     Text(
                       'Loading lottery numbers...',
-                      style: TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
+                      style:
+                          TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
                     ),
                   ],
                 ),
@@ -1289,6 +1445,16 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
             )
 
           // Empty state with helpful message
+          else if (remainingTime == Duration.zero &&
+              (_showNoWinnerState || wheelNumbers.isEmpty) &&
+              _currentWinnerNumber == null)
+            Builder(
+              builder: (_) {
+                debugPrint(
+                    'Rendering no-winner state: timeUp=${remainingTime == Duration.zero}, showNoWinner=$_showNoWinnerState, wheelNumbers=${wheelNumbers.length}, currentWinner=$_currentWinnerNumber');
+                return _buildNoWinnerState();
+              },
+            )
           else if (wheelNumbers.isEmpty)
             Container(
               height: 320,
@@ -1301,7 +1467,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.hourglass_empty_rounded, size: 48, color: Colors.grey),
+                    const Icon(Icons.hourglass_empty_rounded,
+                        size: 48, color: Colors.grey),
                     const SizedBox(height: 12),
                     const Text(
                       'No lottery numbers loaded',
@@ -1317,12 +1484,15 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                           ? 'Error: ${provider.error}'
                           : 'Waiting for data from server...',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
+                      style: const TextStyle(
+                          color: Colors.grey, fontFamily: 'Poppins'),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        context.read<LotteryProvider>().fetchLotteries(widget.ekubId);
+                        context
+                            .read<LotteryProvider>()
+                            .fetchLotteries(widget.ekubId);
                       },
                       child: const Text('Retry'),
                     ),
@@ -1337,12 +1507,90 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
               lotteryNumbers: wheelNumbers,
               isTimeUp: remainingTime == Duration.zero,
               winnerLotteryNumber: _currentWinnerNumber,
+              hasNextWinner: _pendingWinnerNumbers.isNotEmpty,
               onSpinComplete: _onWheelSpinComplete,
             ),
 
           const SizedBox(height: 24),
           _buildLotteryHistoryButton(),
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoWinnerState() {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 320),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.vibrantGreen.withOpacity(0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.vibrantGreen.withOpacity(0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: AppColors.vibrantGreen.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.emoji_events_outlined,
+              color: AppColors.vibrantGreen,
+              size: 40,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'No winner for this round',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF1F2937),
+              fontFamily: 'Poppins',
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'The countdown has ended, but a winner has not been selected yet. Please check again shortly.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontFamily: 'Poppins',
+              fontSize: 14,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: _onCountdownFinished,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Check again'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.vibrantGreen,
+              side: BorderSide(color: AppColors.vibrantGreen.withOpacity(0.45)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              textStyle: const TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1367,28 +1615,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => LotteryHistoryScreen(
-              lotteries: _lotteries,
-              remainingTime: remainingTime,
-              ekubId: widget.ekubId,
-              ekubName: widget.ekubName,
-              ekubAmount: widget.ekubAmount,
-              ekubCycle: widget.ekubCycle,
-              ekubRequest: widget.ekubRequest,
-              ekubersNumber: widget.ekubersNumber,
-              nextRoundDate: widget.nextRoundDate,
-              nextRoundLotteryType: widget.nextRoundLotteryType,
-              nextRoundTime: widget.nextRoundTime,
-              serviceCharge: widget.serviceCharge,
-              bankAccounts: bankAccounts,
-              selectedAccount: selectedAccount,
-              userId: userId,
-            ),
-          ),
-        ),
+        onTap: _isOpeningLotteryHistory ? null : _openLotteryHistory,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1403,12 +1630,29 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.history_rounded, color: Colors.white, size: 20),
+              _isOpeningLotteryHistory
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.history_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
               const SizedBox(width: 10),
               Text(
                 AppKeys.lotteryHistory.tr(context),
                 style: const TextStyle(
-                    color: Colors.white, fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 1),
+                    color: Colors.white,
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1),
               ),
             ],
           ),
@@ -1434,7 +1678,10 @@ class _CountdownBox extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4)),
+          BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -1449,13 +1696,19 @@ class _CountdownBox extends StatelessWidget {
             child: Text(
               value.toString().padLeft(2, '0'),
               style: const TextStyle(
-                  color: Colors.white, fontFamily: 'Poppins', fontSize: 22, fontWeight: FontWeight.w800),
+                  color: Colors.white,
+                  fontFamily: 'Poppins',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(height: 2),
           Text(label,
               style: const TextStyle(
-                  fontFamily: 'Poppins', fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF888888))),
+                  fontFamily: 'Poppins',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF888888))),
         ],
       ),
     );
@@ -1466,7 +1719,8 @@ class _InfoPill extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  const _InfoPill({required this.icon, required this.label, required this.value});
+  const _InfoPill(
+      {required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1476,13 +1730,20 @@ class _InfoPill extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2))
+          ],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(color: AppColors.vibrantGreen.withOpacity(0.12), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                  color: AppColors.vibrantGreen.withOpacity(0.12),
+                  shape: BoxShape.circle),
               child: Icon(icon, color: AppColors.vibrantGreen, size: 16),
             ),
             const SizedBox(width: 10),
@@ -1491,10 +1752,16 @@ class _InfoPill extends StatelessWidget {
               children: [
                 Text(label,
                     style: const TextStyle(
-                        fontFamily: 'Poppins', fontSize: 11, color: Color(0xFF888888), fontWeight: FontWeight.w500)),
+                        fontFamily: 'Poppins',
+                        fontSize: 11,
+                        color: Color(0xFF888888),
+                        fontWeight: FontWeight.w500)),
                 Text(value,
                     style: const TextStyle(
-                        fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1DB954))),
+                        fontFamily: 'Poppins',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1DB954))),
               ],
             ),
           ],
@@ -1523,7 +1790,10 @@ class _HeaderChipButton extends StatelessWidget {
         child: Text(
           label,
           style: const TextStyle(
-              color: Colors.white, fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
+              color: Colors.white,
+              fontFamily: 'Poppins',
+              fontSize: 12,
+              fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -1534,7 +1804,8 @@ class _PaymentSummarySheet extends StatelessWidget {
   final List<Payment> payments;
   final double total;
   final BuildContext context;
-  const _PaymentSummarySheet({required this.payments, required this.total, required this.context});
+  const _PaymentSummarySheet(
+      {required this.payments, required this.total, required this.context});
 
   @override
   Widget build(BuildContext outerCtx) {
@@ -1552,12 +1823,20 @@ class _PaymentSummarySheet extends StatelessWidget {
           return Column(
             children: [
               const SizedBox(height: 10),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(AppKeys.payment.tr(context),
-                    style: const TextStyle(fontFamily: 'Poppins', fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 12),
               Expanded(
@@ -1576,10 +1855,16 @@ class _PaymentSummarySheet extends StatelessWidget {
                         children: [
                           Text(
                             '${AppKeys.lottery.tr(context)} ${p.lotteryNumber} (${p.paidRound} ${AppKeys.round.tr(context)})',
-                            style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500),
                           ),
                           Text('$sub ETB',
-                              style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w700)),
+                              style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700)),
                         ],
                       ),
                     );
@@ -1590,16 +1875,27 @@ class _PaymentSummarySheet extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, -4))],
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 12,
+                        offset: const Offset(0, -4))
+                  ],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(AppKeys.totalAmount.tr(context),
-                        style: const TextStyle(fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold)),
+                        style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
                     Text('$total ETB',
                         style: const TextStyle(
-                            fontFamily: 'Poppins', fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                            fontFamily: 'Poppins',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary)),
                   ],
                 ),
               ),

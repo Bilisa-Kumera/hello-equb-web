@@ -285,6 +285,11 @@ class AppKeys {
   static const String round = "lbl_round";
   static const String report = "lbl_report";
   static const String lotteryHistory = "lbl_lottery_history"; 
+  static const String weHaveAWinner = "lbl_we_have_a_winner";
+  static const String luckyLotteryNumber = "lbl_lucky_lottery_number";
+  static const String winner = "lbl_winner";
+  static const String noWinnersYet = "lbl_no_winners_yet";
+  static const String winnersWillAppearHere = "lbl_winners_will_appear_here";
   static const String home = "lbl_home";
   static const String account = "lbl_account";
   static const String personal = "lbl_personal";

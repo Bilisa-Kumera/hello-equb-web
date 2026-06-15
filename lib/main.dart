@@ -9,7 +9,6 @@ import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter/widgets.dart';
 import 'package:helloequb/screens/splash_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/utils/app_localizations.dart';
@@ -204,9 +203,9 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-           ChangeNotifierProvider(
-      create: (_) => LotteryProvider(),
-    ),
+        ChangeNotifierProvider(
+          create: (_) => LotteryProvider(),
+        ),
         ChangeNotifierProvider(create: (_) => EqubTypeProvider()),
         ChangeNotifierProvider(create: (_) => EqubCategoryProvider()),
         ChangeNotifierProvider(create: (_) => EqubProvider()),
@@ -278,9 +277,6 @@ Future<void> main() async {
               localizationsDelegates: localizationsDelegates,
               supportedLocales: supportedLocales,
               locale: locale,
-              builder: (context, child) {
-                return SuperAppDebugOverlay(child: child ?? const SizedBox());
-              },
             );
           });
         },

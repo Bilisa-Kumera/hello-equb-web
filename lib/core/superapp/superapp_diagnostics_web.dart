@@ -12,6 +12,12 @@ class _SuperAppDiagnosticsWeb implements SuperAppDiagnostics {
         js_util.hasProperty(win, 'isSuperAppWebView').toString();
     out['has.window.getMiniAppToken'] =
         js_util.hasProperty(win, 'getMiniAppToken').toString();
+    out['has.window.myJsChannel'] =
+        js_util.hasProperty(win, 'myJsChannel').toString();
+    out['has.window.CBEBirrPlusBridge'] =
+        js_util.hasProperty(win, 'CBEBirrPlusBridge').toString();
+    out['has.window.__CBEBIRR_PLUS_TOKEN'] =
+        js_util.hasProperty(win, '__CBEBIRR_PLUS_TOKEN').toString();
 
     try {
       if (js_util.hasProperty(win, 'isSuperAppWebView')) {
@@ -39,6 +45,22 @@ class _SuperAppDiagnosticsWeb implements SuperAppDiagnostics {
     }
 
     try {
+      final channel = js_util.getProperty(win, 'myJsChannel');
+      out['has.window.myJsChannel.postMessage'] =
+          (channel != null && js_util.hasProperty(channel, 'postMessage'))
+              .toString();
+      if (channel != null && js_util.hasProperty(channel, 'postMessage')) {
+        final postMessage = js_util.getProperty(channel, 'postMessage');
+        out['type.window.myJsChannel.postMessage'] =
+            js_util.typeofEquals(postMessage, 'function')
+                ? 'function'
+                : 'non-function';
+      }
+    } catch (e) {
+      out['window.myJsChannel.error'] = e.toString();
+    }
+
+    try {
       final navigator = js_util.getProperty(win, 'navigator');
       if (navigator != null) {
         final ua = js_util.getProperty(navigator, 'userAgent');
@@ -50,5 +72,5 @@ class _SuperAppDiagnosticsWeb implements SuperAppDiagnostics {
   }
 }
 
-SuperAppDiagnostics createSuperAppDiagnosticsImpl() => _SuperAppDiagnosticsWeb();
-
+SuperAppDiagnostics createSuperAppDiagnosticsImpl() =>
+    _SuperAppDiagnosticsWeb();

@@ -66,4 +66,3 @@ class SuperAppLogPanel extends StatelessWidget {
     );
   }
 }
-

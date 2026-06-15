@@ -14,15 +14,23 @@ class SuperAppAuthRemoteDataSource {
   final String tokenExchangePath;
   final String profilePath;
 
-  Future<Session> exchangeToken({required String authToken}) async {
+  Future<Map<String, dynamic>> loginForMiniApp({
+    required String phoneNumber,
+    required String appToken,
+  }) async {
     final response = await _dio.post(
       tokenExchangePath,
-      data: {'authToken': authToken},
+      data: {
+        'phoneNumber': phoneNumber,
+        'appToken': appToken,
+      },
       options: Options(contentType: Headers.jsonContentType),
     );
 
-    final payload = _normalizePayload(response.data);
+    return _normalizePayload(response.data);
+  }
 
+  Session sessionFromLoginPayload(Map<String, dynamic> payload) {
     final accessToken = _stringAt(payload, [
           'accessToken',
           'token',
@@ -34,7 +42,8 @@ class SuperAppAuthRemoteDataSource {
         '';
 
     if (accessToken.isEmpty) {
-      throw StateError('Token exchange succeeded but no access token returned.');
+      throw StateError(
+          'Token exchange succeeded but no access token returned.');
     }
 
     final refreshToken = _stringAt(payload, [
@@ -43,6 +52,13 @@ class SuperAppAuthRemoteDataSource {
     ]);
 
     return Session(accessToken: accessToken, refreshToken: refreshToken);
+  }
+
+  Map<String, dynamic>? userFromLoginPayload(Map<String, dynamic> payload) {
+    final user = _getPath(payload, 'user') ?? _getPath(payload, 'data.user');
+    if (user is Map<String, dynamic>) return user;
+    if (user is Map) return Map<String, dynamic>.from(user);
+    return null;
   }
 
   Future<Map<String, dynamic>> fetchProfile() async {
@@ -82,4 +98,3 @@ class SuperAppAuthRemoteDataSource {
     return current;
   }
 }
-

@@ -169,7 +169,8 @@ final Map<String, String> amET = {
   "lbl_ammount": "መጠን",
   "lbl_ekub_detail": "የዕቁብ ዝርዝር",
   "lbl_joined_members": "የተቀላቀለ አባላትን",
-  "lbl_expected_start_date": "የሚጠበቅ መጀመሪያ ቀን",
+  'started': 'የተጀመረ',
+  "lbl_expected_start_date": "መጀመሪያ ቀን",
   "lbl_service_charge": "የአገልግሎት ክፍያ",
   "lbl_your_share": "ዕቁብ",
   "lbl_equivalent_etb": "ተመጣጣኝ ብር",
@@ -333,7 +334,7 @@ final Map<String, String> amET = {
   "lbl_special_finance": "ልዩ የገንዘብ ",
   "lbl_total_savings": "አጠቃላይ ቁጠባ ",
     'lbl_report': 'ሪፖርት',
-    'lbl_lottery_history': 'የዕጣ ታሪክ',
+    'lbl_lottery_history': 'ዕጣ የወጣላቸው',
 
   "lbl_you_can_claim":
       "የወጣሎትን እቁብ 'የኔ እቁብ> ሎተሪ በሚለው' ምርጫ ውስጥ በመግባት እቁቡን ለመውሰድ ማመልከት ይችላሉ.",

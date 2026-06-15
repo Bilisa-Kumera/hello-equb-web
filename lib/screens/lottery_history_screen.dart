@@ -27,6 +27,7 @@ class LotteryWheel extends StatefulWidget {
   final List<int> lotteryNumbers;
   final bool isTimeUp;
   final int? winnerLotteryNumber;
+  final bool hasNextWinner;
 
   /// Called after the winner popup is dismissed so the parent can push
   /// the next winner from the queue (multi-winner support).
@@ -37,6 +38,7 @@ class LotteryWheel extends StatefulWidget {
     required this.lotteryNumbers,
     this.isTimeUp = false,
     this.winnerLotteryNumber,
+    this.hasNextWinner = false,
     this.onSpinComplete,
   });
 
@@ -168,6 +170,7 @@ class _LotteryWheelState extends State<LotteryWheel>
           Positioned.fill(
             child: _WinnerPopup(
               winnerNumber: widget.winnerLotteryNumber!,
+              hasNextWinner: widget.hasNextWinner,
               onClose: _closePopup,
             ),
           ),
@@ -216,7 +219,7 @@ class AnimatedWheelPainter extends CustomPainter {
 
     final seg = 2 * pi / segmentCount;
 
-    final greenPaint = Paint()..color = const Color(0xFF4CAF50);
+    final greenPaint = Paint()..color = const Color.fromARGB(255, 8, 162, 246);
     final whitePaint = Paint()..color = Colors.white;
     final borderPaint = Paint()
       ..color = Colors.black12
@@ -274,7 +277,7 @@ class AnimatedWheelPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(cx, cy),
       40,
-      Paint()..color = const Color(0xFF2E7D32),
+      Paint()..color = const Color.fromARGB(255, 10, 159, 245),
     );
 
     // ── Pointer (always fixed at top) ──
@@ -283,7 +286,8 @@ class AnimatedWheelPainter extends CustomPainter {
       ..lineTo(cx, cy - 58)
       ..lineTo(cx + 14, cy - 22)
       ..close();
-    canvas.drawPath(arrowPath, Paint()..color = const Color(0xFFE53935));
+    canvas.drawPath(
+        arrowPath, Paint()..color = const Color.fromARGB(255, 254, 214, 13));
   }
 
   @override
@@ -299,8 +303,13 @@ class AnimatedWheelPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 class _WinnerPopup extends StatelessWidget {
   final int winnerNumber;
+  final bool hasNextWinner;
   final VoidCallback onClose;
-  const _WinnerPopup({required this.winnerNumber, required this.onClose});
+  const _WinnerPopup({
+    required this.winnerNumber,
+    required this.hasNextWinner,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -371,9 +380,9 @@ class _WinnerPopup extends StatelessWidget {
                   ),
                 ),
                 onPressed: onClose,
-                child: const Text(
-                  'Close',
-                  style: TextStyle(fontSize: 15, fontFamily: 'Poppins'),
+                child: Text(
+                  hasNextWinner ? 'Next' : 'Close',
+                  style: const TextStyle(fontSize: 15, fontFamily: 'Poppins'),
                 ),
               ),
             ],
@@ -420,17 +429,19 @@ class _ConfettiLayerState extends State<_ConfettiLayer>
       ..addListener(() => setState(() {}))
       ..forward();
 
-    _particles = List.generate(160, (_) => _Particle(
-      x: _rng.nextDouble(),
-      y: -0.05 - _rng.nextDouble() * 0.4,
-      vx: (_rng.nextDouble() - 0.5) * 0.008,
-      vy: 0.004 + _rng.nextDouble() * 0.008,
-      w: 6 + _rng.nextDouble() * 8,
-      h: 4 + _rng.nextDouble() * 6,
-      color: _colors[_rng.nextInt(_colors.length)],
-      rot: _rng.nextDouble() * 2 * pi,
-      rspeed: (_rng.nextDouble() - 0.5) * 0.15,
-    ));
+    _particles = List.generate(
+        160,
+        (_) => _Particle(
+              x: _rng.nextDouble(),
+              y: -0.05 - _rng.nextDouble() * 0.4,
+              vx: (_rng.nextDouble() - 0.5) * 0.008,
+              vy: 0.004 + _rng.nextDouble() * 0.008,
+              w: 6 + _rng.nextDouble() * 8,
+              h: 4 + _rng.nextDouble() * 6,
+              color: _colors[_rng.nextInt(_colors.length)],
+              rot: _rng.nextDouble() * 2 * pi,
+              rspeed: (_rng.nextDouble() - 0.5) * 0.15,
+            ));
   }
 
   @override
@@ -452,10 +463,14 @@ class _Particle {
   double x, y, vx, vy, w, h, rot, rspeed;
   final Color color;
   _Particle({
-    required this.x, required this.y,
-    required this.vx, required this.vy,
-    required this.w, required this.h,
-    required this.color, required this.rot,
+    required this.x,
+    required this.y,
+    required this.vx,
+    required this.vy,
+    required this.w,
+    required this.h,
+    required this.color,
+    required this.rot,
     required this.rspeed,
   });
 }
@@ -469,7 +484,8 @@ class _ConfettiPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final p in particles) {
       final px = (p.x + p.vx * t * 60) * size.width;
-      final py = (p.y + p.vy * t * 60 + 0.5 * 0.0003 * t * t * 3600) * size.height;
+      final py =
+          (p.y + p.vy * t * 60 + 0.5 * 0.0003 * t * t * 3600) * size.height;
       if (py > size.height) continue;
 
       final alpha =
@@ -489,7 +505,6 @@ class _ConfettiPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ConfettiPainter old) => old.t != t;
 }
-
 
 // ── Screen ───────────────────────────────────────────────────────
 class LotteryHistoryScreen extends StatefulWidget {
@@ -542,6 +557,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
     super.initState();
     _remaining = widget.remainingTime;
     _selectedAccount = widget.selectedAccount;
+
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() {
@@ -560,8 +576,28 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
     super.dispose();
   }
 
+  List<User> get _claimableWinningUsers {
+    return widget.lotteries
+        .expand((lottery) => lottery.users)
+        .where(
+          (user) =>
+              user.userId == widget.userId &&
+              user.hasGuarantee &&
+              !user.hasClaimed,
+        )
+        .toList(growable: false);
+  }
 
   void _showWinningDialog(BuildContext context, User user) {
+    final claimableUsers = _claimableWinningUsers;
+    final currentIndex = claimableUsers.indexWhere(
+      (item) => item.equberUserId == user.equberUserId,
+    );
+    final safeIndex = currentIndex < 0 ? 0 : currentIndex;
+    final nextUser = safeIndex + 1 < claimableUsers.length
+        ? claimableUsers[safeIndex + 1]
+        : null;
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -575,20 +611,93 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
         bankAccounts: widget.bankAccounts,
         selectedAccount: _selectedAccount,
         onAccountSelected: (acct) => setState(() => _selectedAccount = acct),
+        currentSpin: safeIndex + 1,
+        totalSpins: claimableUsers.isEmpty ? 1 : claimableUsers.length,
+        onNextWinner: nextUser == null
+            ? null
+            : () {
+                if (!mounted) return;
+                _showWinningDialog(context, nextUser);
+              },
       ),
     );
   }
 
+  Future<void> _handleClaim(User user) async {
+    if (user.hasClaimed) return;
+
+    final accessToken = await SecureStorageHelper.getAccessToken() ?? '';
+    final apiService = ApiService();
+
+    final data = await apiService.readAll(
+      getMyProfile,
+      bearerToken: accessToken,
+    );
+
+    if (data == null) return;
+
+    if (user.hasGuarantee && !user.hasClaimed) {
+      _showWinningDialog(context, user);
+      return;
+    }
+
+    final rawCompletion = data['data']?['user']?['profileCompletion'];
+    final double completion = rawCompletion is num
+        ? rawCompletion.toDouble()
+        : double.tryParse(rawCompletion?.toString() ?? '') ?? 0.0;
+
+    if (completion >= 100) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => GuarantorScreen(
+            serviceCharge: widget.serviceCharge,
+            ekubId: widget.ekubId,
+            ekuberUserId: user.equberUserId,
+            ekubAmount: widget.ekubAmount,
+            ekubCycle: widget.ekubCycle,
+            ekubName: widget.ekubName,
+            ekubRequest: widget.ekubRequest,
+            ekubersNumber: widget.ekubersNumber,
+            nextRoundDate: widget.nextRoundDate,
+            nextRoundLotteryType: widget.nextRoundLotteryType,
+            nextRoundTime: widget.nextRoundTime,
+          ),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CompleteProfileScreen(
+            serviceCharge: widget.serviceCharge,
+            ekubId: widget.ekubId,
+            ekubersUserId: user.equberUserId,
+            ekubAmount: widget.ekubAmount,
+            ekubCycle: widget.ekubCycle,
+            ekubName: widget.ekubName,
+            ekubRequest: widget.ekubRequest,
+            ekubersNumber: widget.ekubersNumber,
+            nextRoundDate: widget.nextRoundDate,
+            nextRoundLotteryType: widget.nextRoundLotteryType,
+            nextRoundTime: widget.nextRoundTime,
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-  
+    final allUsers =
+        widget.lotteries.expand((lottery) => lottery.users).toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF7F9F8),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.vibrantGreen),
           onPressed: () => Navigator.pop(context),
@@ -599,247 +708,232 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
           style: const TextStyle(
             color: AppColors.neutralGray,
             fontFamily: 'Poppins',
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          children: [
-         
+      body: allUsers.isEmpty
+          ? _buildNoWinnersYet()
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+              itemCount: allUsers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final user = allUsers[index];
+                final bool isMine = user.userId == widget.userId;
 
+                final Color statusColor = user.hasTakenEqub
+                    ? AppColors.earthySuccessGreen
+                    : user.hasClaimed
+                        ? AppColors.primary
+                        : AppColors.boldSuccessGreen;
 
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: widget.lotteries.length,
-              itemBuilder: (context, lotteryIndex) {
-                final lottery = widget.lotteries[lotteryIndex];
-                return Column(
-                  children: [
-                    for (var user in lottery.users)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                            left: 28.0, right: 24, top: 2, bottom: 10),
-                        child: Container(
-                          height: 69,
-                          decoration: BoxDecoration(
-                            borderRadius:
-                                const BorderRadius.all(Radius.circular(5)),
-                            border: Border.all(
-                              color: user.hasTakenEqub
-                                  ? AppColors.earthySuccessGreen
-                                  : AppColors.crimsonRed,
-                              width: 1,
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                                left: 12.0, right: 12, top: 18, bottom: 10),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        user.lotteryNumber,
-                                        textScaleFactor: 1.0,
-                                        style: const TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.neutralGray,
-                                        ),
-                                      ),
-                                      Text(
-                                        user.hasTakenEqub
-                                            ? 'Taken'
-                                            : user.hasClaimed
-                                                ? 'Claimed'
-                                                : 'Winner',
-                                        textScaleFactor: 1.0,
-                                        style: TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontSize: 13.sp,
-                                          fontWeight: FontWeight.w400,
-                                          color: AppColors.neutralGray,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: 100,
-                                  child: Center(
-                                    child: user.userId == widget.userId
-                                        ? SizedBox(
-                                            height: 26,
-                                            width: 190,
-                                            child: OutlinedButton(
-                                              style: ButtonStyle(
-                                                backgroundColor: user
-                                                        .hasTakenEqub
-                                                    ? WidgetStateProperty.all(
-                                                        AppColors.primary)
-                                                    : user.hasClaimed
-                                                        ? WidgetStateProperty
-                                                            .all(AppColors
-                                                                .lightGrayBorder)
-                                                        : WidgetStateProperty
-                                                            .all(AppColors
-                                                                .boldSuccessGreen),
-                                              ),
-                                              onPressed: () async {
-                                                if (user.hasClaimed) return;
+                final String statusText = user.hasTakenEqub
+                    ? 'Taken'
+                    : user.hasClaimed
+                        ? 'Claimed'
+                        : 'Winner';
 
-                                                final accessToken =
-                                                    await SecureStorageHelper
-                                                            .getAccessToken() ??
-                                                        '';
-                                                final apiService = ApiService();
-                                                final data =
-                                                    await apiService.readAll(
-                                                  getMyProfile,
-                                                  bearerToken: accessToken,
-                                                );
-                                                if (data == null) return;
-
-                                                if (user.hasGuarantee &&
-                                                    !user.hasClaimed) {
-                                                  _showWinningDialog(
-                                                      context, user);
-                                                } else {
-                                                  final rawCompletion =
-                                                      data['data']?['user']
-                                                          ?['profileCompletion'];
-                                                  final double completion =
-                                                      rawCompletion is num
-                                                          ? rawCompletion
-                                                              .toDouble()
-                                                          : double.tryParse(
-                                                                  rawCompletion
-                                                                          ?.toString() ??
-                                                                      '') ??
-                                                              0.0;
-
-                                                  if (completion >= 100) {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            GuarantorScreen(
-                                                          serviceCharge: widget
-                                                              .serviceCharge,
-                                                          ekubId: widget.ekubId,
-                                                          ekuberUserId:
-                                                              user.equberUserId,
-                                                          ekubAmount:
-                                                              widget.ekubAmount,
-                                                          ekubCycle:
-                                                              widget.ekubCycle,
-                                                          ekubName:
-                                                              widget.ekubName,
-                                                          ekubRequest:
-                                                              widget.ekubRequest,
-                                                          ekubersNumber: widget
-                                                              .ekubersNumber,
-                                                          nextRoundDate: widget
-                                                              .nextRoundDate,
-                                                          nextRoundLotteryType:
-                                                              widget
-                                                                  .nextRoundLotteryType,
-                                                          nextRoundTime: widget
-                                                              .nextRoundTime,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  } else {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            CompleteProfileScreen(
-                                                          serviceCharge: widget
-                                                              .serviceCharge,
-                                                          ekubId: widget.ekubId,
-                                                          ekubersUserId:
-                                                              user.equberUserId,
-                                                          ekubAmount:
-                                                              widget.ekubAmount,
-                                                          ekubCycle:
-                                                              widget.ekubCycle,
-                                                          ekubName:
-                                                              widget.ekubName,
-                                                          ekubRequest:
-                                                              widget.ekubRequest,
-                                                          ekubersNumber: widget
-                                                              .ekubersNumber,
-                                                          nextRoundDate: widget
-                                                              .nextRoundDate,
-                                                          nextRoundLotteryType:
-                                                              widget
-                                                                  .nextRoundLotteryType,
-                                                          nextRoundTime: widget
-                                                              .nextRoundTime,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                }
-                                              },
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.all(2.0),
-                                                child: Text(
-                                                  user.hasTakenEqub
-                                                      ? AppKeys.taken
-                                                          .tr(context)
-                                                      : user.hasClaimed
-                                                          ? AppKeys.claimed
-                                                              .tr(context)
-                                                          : AppKeys.claim
-                                                              .tr(context),
-                                                  textScaleFactor: 1.0,
-                                                  style: TextStyle(
-                                                    color: AppColors.white,
-                                                    fontSize: 13.sp,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                        : Text(
-                                            '${AppKeys.round.tr(context)} ${user.round}',
-                                            textScaleFactor: 1.0,
-                                            style: const TextStyle(
-                                              fontFamily: 'Poppins',
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w700,
-                                              color:
-                                                  Color.fromRGBO(91, 92, 92, 1),
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                return Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: statusColor.withOpacity(0.25),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        height: 46,
+                        width: 46,
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          user.hasTakenEqub
+                              ? Icons.check_circle_rounded
+                              : user.hasClaimed
+                                  ? Icons.verified_rounded
+                                  : Icons.emoji_events_rounded,
+                          color: statusColor,
+                          size: 24,
                         ),
                       ),
-                  ],
+                      const SizedBox(width: 13),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.lotteryNumber,
+                              textScaleFactor: 1.0,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.neutralGray,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.10),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                statusText,
+                                textScaleFactor: 1.0,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: statusColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      isMine
+                          ? SizedBox(
+                              height: 34,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 0,
+                                  backgroundColor: user.hasTakenEqub
+                                      ? AppColors.primary
+                                      : user.hasClaimed
+                                          ? AppColors.lightGrayBorder
+                                          : AppColors.boldSuccessGreen,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                  ),
+                                ),
+                                onPressed: user.hasClaimed
+                                    ? null
+                                    : () => _handleClaim(user),
+                                child: Text(
+                                  user.hasTakenEqub
+                                      ? AppKeys.taken.tr(context)
+                                      : user.hasClaimed
+                                          ? AppKeys.claimed.tr(context)
+                                          : AppKeys.claim.tr(context),
+                                  textScaleFactor: 1.0,
+                                  style: TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F4F3),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '${AppKeys.round.tr(context)} ${user.round}',
+                                textScaleFactor: 1.0,
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color.fromRGBO(91, 92, 92, 1),
+                                ),
+                              ),
+                            ),
+                    ],
+                  ),
                 );
               },
             ),
+    );
+  }
 
-            const SizedBox(height: 24),
-          ],
+  Widget _buildNoWinnersYet() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 34),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 72,
+                width: 72,
+                decoration: BoxDecoration(
+                  color: AppColors.vibrantGreen.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.emoji_events_outlined,
+                  color: AppColors.vibrantGreen,
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'No winners yet',
+                textScaleFactor: 1.0,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.neutralGray,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Winners will appear here once the lottery result is available.',
+                textScaleFactor: 1.0,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.neutralGray.withOpacity(0.65),
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

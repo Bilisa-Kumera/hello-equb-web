@@ -12,4 +12,3 @@ class SuperAppJsDataSource {
     return _bridge.getMiniAppToken(appId: merchantAppId);
   }
 }
-

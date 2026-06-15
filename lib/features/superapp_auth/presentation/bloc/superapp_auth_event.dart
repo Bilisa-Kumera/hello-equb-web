@@ -8,10 +8,14 @@ abstract class SuperAppAuthEvent extends Equatable {
 }
 
 class SuperAppAuthStarted extends SuperAppAuthEvent {
-  const SuperAppAuthStarted({required this.merchantAppId});
+  const SuperAppAuthStarted({
+    required this.appToken,
+    required this.phoneNumber,
+  });
 
-  final String merchantAppId;
+  final String appToken;
+  final String phoneNumber;
 
   @override
-  List<Object?> get props => [merchantAppId];
+  List<Object?> get props => [appToken, phoneNumber];
 }

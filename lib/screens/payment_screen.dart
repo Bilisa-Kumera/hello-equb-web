@@ -15,6 +15,7 @@ import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/telebirr_service.dart';
 import 'package:helloequb/utils/secure_storage.dart';
 
@@ -54,12 +55,15 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   int? selectedIndex;
+  String? selectedPaymentMethodId;
   bool _isProcessing = false;
   bool _isSubmitting = false;
+  bool _isInsideCbeBirrPlus = false;
   bool isLoading = false;
   final phoneController = TextEditingController();
 
   late TextEditingController _amountController;
+  late final CbeBirrPlusBridge _cbeBirrPlusBridge;
   final TelebirrService _telebirrService = TelebirrService();
   final DataController dataController = DataController();
   StreamSubscription? _paymentResultSub;
@@ -72,6 +76,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   bool get _isPaymentType =>
       (widget.type ?? '').trim().toLowerCase() == 'payment';
+
+  List<Map<String, dynamic>> get _visiblePaymentOptions {
+    if (!_isInsideCbeBirrPlus) return paymentOptions;
+    return paymentOptions
+        .where((option) => option['id'] != 'telebirr')
+        .toList(growable: false);
+  }
 
   final List<Map<String, dynamic>> paymentOptions = [
     {
@@ -106,6 +117,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void initState() {
     super.initState();
+    _cbeBirrPlusBridge = createCbeBirrPlusBridge();
+    _detectCbeBirrPlus();
     _paymentResultSub = TelebirrService.paymentResultStream.listen((result) {
       final code = result['code'];
       final errMsg = result['errMsg'];
@@ -120,6 +133,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
       text:
           '${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
     );
+  }
+
+  Future<void> _detectCbeBirrPlus() async {
+    final ok = await _cbeBirrPlusBridge.waitUntilAvailable(
+      timeout: const Duration(seconds: 2),
+      pollInterval: const Duration(milliseconds: 140),
+    );
+
+    if (!mounted || !ok) return;
+
+    setState(() {
+      _isInsideCbeBirrPlus = true;
+      if (selectedPaymentMethodId == 'telebirr') {
+        selectedPaymentMethodId = null;
+        selectedIndex = null;
+      } else if (selectedPaymentMethodId != null) {
+        final visibleIndex = _visiblePaymentOptions.indexWhere(
+          (option) => option['id'] == selectedPaymentMethodId,
+        );
+        selectedIndex = visibleIndex >= 0 ? visibleIndex : null;
+      }
+    });
   }
 
   @override
@@ -155,6 +190,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _handleCbe() async {
+    if (_isInsideCbeBirrPlus) {
+      await _handleCbeBirrPlusPayment();
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -164,6 +204,43 @@ class _PaymentScreenState extends State<PaymentScreen> {
         paymentMethodLabel: AppKeys.paymentMethodCbebirr.tr(context),
       ),
     );
+  }
+
+  Future<void> _handleCbeBirrPlusPayment() async {
+    setState(() => _isProcessing = true);
+
+    try {
+      await _getReceiveCode(paymentMethod: 'cbe');
+
+      if (receiveCode.trim().isEmpty) {
+        _showDialog(
+          AppKeys.cannotContinue.tr(context),
+          AppKeys.receiveCodeNotAvailable.tr(context),
+        );
+        return;
+      }
+
+      final sent = await _cbeBirrPlusBridge.sendPaymentToken(receiveCode);
+      if (!mounted) return;
+
+      if (!sent) {
+        _showDialog(
+          AppKeys.cannotContinue.tr(context),
+          AppKeys.errorTryAgain.tr(context),
+        );
+        return;
+      }
+
+      CustomSnackBar.show(
+        context,
+        AppKeys.cbeUssdEnterPinMessage.tr(context),
+        AppColors.primary,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
   }
 
   Future<void> _processPhonePayment({
@@ -205,13 +282,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
       }
     } catch (e) {
-      
     } finally {
       setState(() => _isProcessing = false);
-      
     }
   }
-
 
   Future<void> _getReceiveCode({
     String? phoneNumber,
@@ -264,10 +338,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (response.statusCode == 200) {
         final responseData = response.data['data'];
 
-
-        
         final dynamic orderResult = responseData?['orderResult'];
-        final String rawRequest = (orderResult?['raw_request'] ?? '').toString();
+        final String rawRequest =
+            (orderResult?['raw_request'] ?? '').toString();
 
         String rawParam(String key) {
           if (rawRequest.isEmpty) return '';
@@ -283,21 +356,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
         final String appIdFromRaw = rawParam('appid');
         final String shortCodeFromRaw = rawParam('merch_code');
+        final String cbePaymentToken = (responseData?['token'] ??
+                responseData?['paymentToken'] ??
+                responseData?['processedPaymentToken'] ??
+                responseData?['processedPaymentInfoToken'] ??
+                orderResult?['token'] ??
+                orderResult?['paymentToken'] ??
+                orderResult?['processedPaymentToken'] ??
+                '')
+            .toString();
 
-        final newReceiveCode =
-            (responseData?['receiveCode'] ?? orderResult?['receiveCode'] ?? '')
-                .toString();
+        final newReceiveCode = (responseData?['receiveCode'] ??
+                orderResult?['receiveCode'] ??
+                cbePaymentToken)
+            .toString();
         final newAppId = (appIdFromRaw.isNotEmpty
                 ? appIdFromRaw
                 : (responseData?['appId'] ?? orderResult?['appId'] ?? ''))
             .toString();
-        final newAppSecret = (responseData?['appSecret'] ??
-                orderResult?['appSecret'] ??
-                '')
-            .toString();
+        final newAppSecret =
+            (responseData?['appSecret'] ?? orderResult?['appSecret'] ?? '')
+                .toString();
         final newShortCode = (shortCodeFromRaw.isNotEmpty
                 ? shortCodeFromRaw
-                : (responseData?['shortCode'] ?? orderResult?['shortCode'] ?? ''))
+                : (responseData?['shortCode'] ??
+                    orderResult?['shortCode'] ??
+                    ''))
             .toString();
 
         setState(() {
@@ -306,21 +390,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
           telebirrAppSecret = newAppSecret;
           telebirrShortCode = newShortCode;
         });
-         
-      } else {
-      }
+      } else {}
     } on DioError catch (e) {
       _handleDioError(e);
     }
-
   }
 
   Future<void> _submitJoinRequest({
     String? phoneNumber,
     required String paymentMethod,
   }) async {
-    
-
     try {
       await _getReceiveCode(
           phoneNumber: phoneNumber, paymentMethod: paymentMethod);
@@ -343,22 +422,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
         context,
         MaterialPageRoute(builder: (context) => const WaitingEkubs()),
       );
-    } catch (e) {
-      
-    }
-
+    } catch (e) {}
   }
 
   Future<void> _submitLotteryPayment({
     required String paymentMethod,
     String? phoneNumber,
   }) async {
-    
-
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
 
     List<Map<String, dynamic>> lottery = [];
-   
 
     for (var item in widget.selectedJoinOptions ?? []) {
       lottery.add({
@@ -373,7 +446,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
       "lottery": lottery,
       if (phoneNumber != null) "phoneNumber": phoneNumber,
     };
-
 
     final String url = makePaymentUrl + (widget.ekubId ?? '');
 
@@ -416,7 +488,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             context, AppKeys.errorTryAgain.tr(context), AppColors.red);
       }
     } on DioError catch (e) {
-
       setState(() => isLoading = false);
       if (e.response?.statusCode == 401) {
         Navigator.push(
@@ -429,19 +500,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
             context, AppKeys.errorTryAgain.tr(context), AppColors.red);
       }
     } catch (e, stackTrace) {
-      
       setState(() => isLoading = false);
       CustomSnackBar.show(
           context, AppKeys.errorTryAgain.tr(context), AppColors.red);
     }
-
   }
 
   Future<void> _startTelebirrPayment() async {
     final String shortCode = telebirrShortCode;
     final String appId = telebirrAppId;
     final String appSecret = telebirrAppSecret;
-
 
     await _telebirrService.initiatePayment(
       appId: appId,
@@ -477,7 +545,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _showDialog(String title, String message) {
-    final bool isSuccess = (title == AppKeys.paymentSuccess.tr(context)) || title.toLowerCase().contains("success");
+    final bool isSuccess = (title == AppKeys.paymentSuccess.tr(context)) ||
+        title.toLowerCase().contains("success");
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -535,7 +604,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             ),
             SizedBox(height: 16.h),
-            Text('${AppKeys.confirm.tr(context)} $paymentMethodLabel ${AppKeys.payment.tr(context)}',
+            Text(
+                '${AppKeys.confirm.tr(context)} $paymentMethodLabel ${AppKeys.payment.tr(context)}',
                 style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
             SizedBox(height: 8.h),
             Text(AppKeys.enterBeneficiaryPhoneNumber.tr(context),
@@ -598,7 +668,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
                 onPressed: () {
                   if (phoneController.text.isNotEmpty) {
-
                     _processPhonePayment(
                       phone: phoneNumber,
                       paymentMethod: paymentMethodId,
@@ -618,7 +687,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ),
     );
   }
-  
+
   CompanyBankAccountsResponse? companyBankAccountsResponse;
 
   Future<List<CompanyBankAccount>> getCompanyBanks() async {
@@ -628,7 +697,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final response = await dio.get(companyBankUrl);
 
       if (response.statusCode == 200) {
-        final jsonResponse = response.data; 
+        final jsonResponse = response.data;
         companyBankAccountsResponse =
             CompanyBankAccountsResponse.fromJson(jsonResponse);
         return companyBankAccountsResponse!.data.companyBankAccounts;
@@ -637,137 +706,134 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return [];
   }
 
+  void showBankAccountsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return FutureBuilder<List<CompanyBankAccount>>(
+          future: getCompanyBanks(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-void showBankAccountsBottomSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (context) {
-      return FutureBuilder<List<CompanyBankAccount>>(
-        future: getCompanyBanks(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SizedBox(
-              height: 200,
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return SizedBox(
+                height: 200,
+                child: Center(child: Text(AppKeys.noData.tr(context))),
+              );
+            }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return  SizedBox(
-              height: 200,
-              child: Center(child: Text(AppKeys.noData.tr(context))),
-            );
-          }
+            final banks = snapshot.data!;
 
-          final banks = snapshot.data!;
-
-          return Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-
-                /// HEADER
-                Row(
-                  children: [
-                    const Icon(Icons.account_balance, size: 26),
-                    const SizedBox(width: 10),
-                     Text(
-                      AppKeys.companyBankAccounts.tr(context),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+            return Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  /// HEADER
+                  Row(
+                    children: [
+                      const Icon(Icons.account_balance, size: 26),
+                      const SizedBox(width: 10),
+                      Text(
+                        AppKeys.companyBankAccounts.tr(context),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    )
-                  ],
-                ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      )
+                    ],
+                  ),
 
-                const SizedBox(height: 10),
+                  const SizedBox(height: 10),
 
-                ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: banks.length,
-                  itemBuilder: (context, index) {
-                    final bank = banks[index];
+                  ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: banks.length,
+                    itemBuilder: (context, index) {
+                      final bank = banks[index];
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: Colors.grey.shade50,
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-
-                          /// BANK INFO
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  bank.accountName,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.grey.shade50,
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            /// BANK INFO
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    bank.accountName,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  bank.accountNumber,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    letterSpacing: 1,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    bank.accountNumber,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      letterSpacing: 1,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
 
-                          /// COPY BUTTON
-                          IconButton(
-                            icon: const Icon(Icons.copy),
-                            onPressed: () async {
-                              await Clipboard.setData(
-                                ClipboardData(text: bank.accountNumber),
-                              );
+                            /// COPY BUTTON
+                            IconButton(
+                              icon: const Icon(Icons.copy),
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                  ClipboardData(text: bank.accountNumber),
+                                );
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      AppKeys.copiedToClipBoard.tr(context)),
-                                  duration: const Duration(seconds: 1),
-                                ),
-                              );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        AppKeys.copiedToClipBoard.tr(context)),
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
 
-                              Navigator.pop(context);
-                            },
-                          )
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                                Navigator.pop(context);
+                              },
+                            )
+                          ],
+                        ),
+                      );
+                    },
+                  ),
 
-                const SizedBox(height: 10),
-              ],
-            ),
-          );
-        },
-      );
-    },
-  );
-}
+                  const SizedBox(height: 10),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -824,7 +890,8 @@ void showBankAccountsBottomSheet(BuildContext context) {
                         ],
                       ),
                       SizedBox(height: 16.h),
-                      _buildDetailRow(AppKeys.ekubName.tr(context),
+                      _buildDetailRow(
+                          AppKeys.ekubName.tr(context),
                           widget.ekubName ?? AppKeys.notAvailable.tr(context),
                           Icons.group),
                       SizedBox(height: 12.h),
@@ -846,15 +913,19 @@ void showBankAccountsBottomSheet(BuildContext context) {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: paymentOptions.length,
+                itemCount: _visiblePaymentOptions.length,
                 itemBuilder: (context, index) {
-                  final option = paymentOptions[index];
-                  final isSelected = selectedIndex == index;
+                  final option = _visiblePaymentOptions[index];
+                  final optionId = option['id'] as String;
+                  final isSelected = selectedPaymentMethodId == optionId;
 
                   return GestureDetector(
-                    onTap: (){
-                      setState(() => selectedIndex = index);
-                      if (option['id'] == 'bankTransfer') {
+                    onTap: () {
+                      setState(() {
+                        selectedIndex = index;
+                        selectedPaymentMethodId = optionId;
+                      });
+                      if (optionId == 'bankTransfer') {
                         showBankAccountsBottomSheet(context);
                       }
                     },
@@ -956,21 +1027,22 @@ void showBankAccountsBottomSheet(BuildContext context) {
                         borderRadius: BorderRadius.circular(16)),
                     elevation: 2,
                   ),
-                  onPressed:
-                      (_isSubmitting || _isProcessing || selectedIndex == null)
-                          ? null
-                          : () {
-                              final selectedOption = paymentOptions[selectedIndex!];
-                              final selectedPaymentMethod = selectedOption['id'] as String;
+                  onPressed: (_isSubmitting ||
+                          _isProcessing ||
+                          selectedPaymentMethodId == null)
+                      ? null
+                      : () {
+                          final selectedPaymentMethod =
+                              selectedPaymentMethodId!;
 
-                              if (selectedPaymentMethod == 'bankTransfer') {
-                                _handleBankTransfer();
-                              } else if (selectedPaymentMethod == 'telebirr') {
-                                _handleTelebirr();
-                              } else if (selectedPaymentMethod == 'cbe') {
-                                _handleCbe();
-                              }
-                            },
+                          if (selectedPaymentMethod == 'bankTransfer') {
+                            _handleBankTransfer();
+                          } else if (selectedPaymentMethod == 'telebirr') {
+                            _handleTelebirr();
+                          } else if (selectedPaymentMethod == 'cbe') {
+                            _handleCbe();
+                          }
+                        },
                   child: _isSubmitting || _isProcessing
                       ? const SizedBox(
                           width: 24,
