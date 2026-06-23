@@ -86,8 +86,7 @@ final Map<String, String> amET = {
   "unknown_result": "ያልታወቀ ውጤት",
   "cannot_continue": "መቀጠል አይቻልም",
   "receive_code_not_available": "የመቀበያ ኮድ አልተገኘም።",
-  "cbe_ussd_enter_pin_message":
-      "ክፍያውን በUSSD ለማጠናቀቅ በCBEBirr ውስጥ ፒንዎን ያስገቡ።",
+  "cbe_ussd_enter_pin_message": "ክፍያውን በUSSD ለማጠናቀቅ በCBEBirr ውስጥ ፒንዎን ያስገቡ።",
   "not_available": "የለም",
   "currency_birr": "ብር",
   "currency_etb": "ETB",
@@ -159,7 +158,7 @@ final Map<String, String> amET = {
   "nb_only_one_person_will_be_winner": "ማስታወሻ: _አሸናፊ የሚሆነው አንድ ሰው ብቻ ነው፡",
   "lbl_congratulations_winner_is": "እንኳን ደስ ያለዎት አሸናፊው…",
   "lbl_winners_lottery_number": "የአሸናፊው የዕጣ ቁጥር",
-  "lbl_close": "ቀጥል",
+  "lbl_close": "ዝጋ",
   "lbl_equb_confirmation": "የዕቁብ ማረጋገጫ",
   "lbl_description": "መግለጫ",
   "lbl_total_number_of_shares": "አጠቃላይ የእጣ ብዛት",
@@ -333,9 +332,13 @@ final Map<String, String> amET = {
   "lbl_you_have": "ያሎት",
   "lbl_special_finance": "ልዩ የገንዘብ ",
   "lbl_total_savings": "አጠቃላይ ቁጠባ ",
-    'lbl_report': 'ሪፖርት',
-    'lbl_lottery_history': 'ዕጣ የወጣላቸው',
-
+  'lbl_report': 'ሪፖርት',
+  'lbl_lottery_history': 'ዕጣ የወጣላቸው',
+  'lbl_we_have_a_winner': 'አሸናፊ አለን!',
+  'lbl_lucky_lottery_number': 'የዕድለኛው የሎተሪ ቁጥር',
+  'lbl_winner': 'አሸናፊ',
+  'lbl_no_winners_yet': 'እስካሁን አሸናፊ የለም',
+  'lbl_winners_will_appear_here': 'የሎተሪ ውጤት ሲገኝ አሸናፊዎች እዚህ ይታያሉ።',
   "lbl_you_can_claim":
       "የወጣሎትን እቁብ 'የኔ እቁብ> ሎተሪ በሚለው' ምርጫ ውስጥ በመግባት እቁቡን ለመውሰድ ማመልከት ይችላሉ.",
   "lbl_selected_bank": "የተመረጠው ባንከ ",
@@ -436,7 +439,6 @@ final Map<String, String> amET = {
   'add_new_stake': 'አዲስ ዕቁብ ጨምር',
   "tap_to_view_details": "ዝርዝሩን ለማየት ይንኩ",
   'view_payments': 'ክፍያዎችን ይመልከቱ',
-
   'upload_receipt': 'ደረሰኝ ያስገቡ',
   'registering': 'በመመዝገብ ላይ',
   'lbl_confirm': 'አረጋግጥ',

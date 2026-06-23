@@ -1,8 +1,7 @@
-import 'dart:async';
-import 'dart:convert';
+// ignore_for_file: avoid_web_libraries_in_flutter
+
 import 'dart:js' as js;
 
-import 'package:flutter/foundation.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 
 import 'telebirr_superapp_detector.dart';
@@ -11,8 +10,6 @@ Future<TelebirrDetectResult> detectTelebirrSuperApp({
   required String merchantId,
 }) async {
   const location = 'lib/core/logging/telebirr_superapp_detector_web.dart';
-  const callbackName = 'handleAuthCallback';
-  final completer = Completer<TelebirrDetectResult>();
 
   try {
     AppLogger.log(
@@ -80,76 +77,16 @@ Future<TelebirrDetectResult> detectTelebirrSuperApp({
     AppLogger.success(
       'Telebirr detect step=bridge.evaluate.lookup | location=$location | result=window.consumerapp.evaluate found',
     );
-    AppLogger.log(
-      'Telebirr detect step=callback.register | location=$location | callback=$callbackName',
-    );
 
-    js.context[callbackName] = js.JsFunction.withThis(
-      (dynamic self, dynamic res, dynamic message, [dynamic data]) {
-        debugPrint("TELEBIRR AUTH CALLBACK TOKEN: $res");
-        debugPrint("TELEBIRR AUTH CALLBACK MESSAGE: $message");
-        debugPrint("TELEBIRR AUTH CALLBACK DATA: $data");
-        final tokenLen = res?.toString().length ?? 0;
-        AppLogger.success(
-          'Telebirr detect callback received | stage=callback.receive | location=$location | callback=$callbackName | tokenLen=$tokenLen | message=${message ?? '(none)'}',
-        );
-        AppLogger.log(
-          'Telebirr detect callback data | stage=callback.receive | result=${data ?? '(no data)'}',
-        );
-
-        if (!completer.isCompleted) {
-          completer.complete(
-            TelebirrDetectResult(
-              isWeb: true,
-              hasConsumerApp: true,
-              hasEvaluateFunction: true,
-              authCalled: true,
-              stage: 'callback.receive',
-              location: location,
-              result: tokenLen > 0
-                  ? 'success.token_received'
-                  : 'success.callback_without_token',
-              token: res?.toString(),
-              message: message?.toString(),
-            ),
-          );
-        }
-      },
-    );
-
-    final payload = jsonEncode({
-      "functionName": "js_fun_h5GetAccessToken",
-      "params": {
-        "appid": merchantId,
-        "functionCallBackName": callbackName,
-      },
-    });
-
-    AppLogger.log(
-      'Telebirr detect step=auth.call | location=$location | method=window.consumerapp.evaluate | functionName=js_fun_h5GetAccessToken | callback=$callbackName | payload=$payload',
-    );
-    consumerApp.callMethod('evaluate', [payload]);
-    AppLogger.success(
-      'Telebirr detect step=auth.call | location=$location | result=evaluate invoked, waiting for callback up to 8s',
-    );
-
-    return completer.future.timeout(
-      const Duration(seconds: 8),
-      onTimeout: () {
-        AppLogger.warn(
-          'Telebirr detect timeout | stage=callback.wait | location=$location | callback=$callbackName | waited=8s | result=no callback received after evaluate call',
-        );
-        return const TelebirrDetectResult(
-          isWeb: true,
-          hasConsumerApp: true,
-          hasEvaluateFunction: true,
-          authCalled: true,
-          stage: 'callback.wait',
-          location: location,
-          result: 'failure.timeout',
-          error: "Telebirr callback timeout",
-        );
-      },
+    return const TelebirrDetectResult(
+      isWeb: true,
+      hasConsumerApp: true,
+      hasEvaluateFunction: true,
+      authCalled: false,
+      stage: 'bridge.evaluate.lookup',
+      location: location,
+      result: 'success.bridge_found',
+      message: 'Telebirr bridge found. Token request is handled by token gate.',
     );
   } catch (e, st) {
     AppLogger.error(

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:helloequb/core/network/dio_error_formatter.dart';
 import 'package:helloequb/features/superapp_auth/domain/entities/session.dart';
 
 class SuperAppAuthRemoteDataSource {
@@ -14,6 +15,24 @@ class SuperAppAuthRemoteDataSource {
   final String tokenExchangePath;
   final String profilePath;
 
+  /// Exchanges a mini-app token with Telebirr's H5 gateway (auth/token).
+  Future<Map<String, dynamic>> exchangeTelebirrAuthToken({
+    required String gatewayUrl,
+    required String authToken,
+  }) async {
+    try {
+      final response = await _dio.post(
+        gatewayUrl,
+        data: {'authToken': authToken},
+        options: Options(contentType: Headers.jsonContentType),
+      );
+
+      return _normalizePayload(response.data);
+    } on DioException catch (e) {
+      throw StateError(formatTelebirrGatewayError(e, gatewayUrl: gatewayUrl));
+    }
+  }
+
   Future<Map<String, dynamic>> loginForMiniApp({
     required String phoneNumber,
     required String appToken,
@@ -21,8 +40,11 @@ class SuperAppAuthRemoteDataSource {
     final response = await _dio.post(
       tokenExchangePath,
       data: {
-        'phoneNumber': phoneNumber,
-        'appToken': appToken,
+        // Some backends expect `authToken`, others expect `token`.
+        // Send both for maximum compatibility.
+        'authToken': appToken,
+        'token': appToken,
+        if (phoneNumber.trim().isNotEmpty) 'phoneNumber': phoneNumber.trim(),
       },
       options: Options(contentType: Headers.jsonContentType),
     );
@@ -58,6 +80,30 @@ class SuperAppAuthRemoteDataSource {
     final user = _getPath(payload, 'user') ?? _getPath(payload, 'data.user');
     if (user is Map<String, dynamic>) return user;
     if (user is Map) return Map<String, dynamic>.from(user);
+
+    final openId = _stringAt(payload, [
+      'open_id',
+      'openId',
+      'data.open_id',
+      'data.openId',
+      'biz_content.open_id',
+      'biz_content.openId',
+    ]);
+    final identityId = _stringAt(payload, [
+      'identityId',
+      'identity_id',
+      'data.identityId',
+      'data.identity_id',
+      'biz_content.identityId',
+      'biz_content.identity_id',
+    ]);
+    if (openId != null || identityId != null) {
+      return <String, dynamic>{
+        if (openId != null) 'open_id': openId,
+        if (identityId != null) 'identityId': identityId,
+      };
+    }
+
     return null;
   }
 

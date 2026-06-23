@@ -45,6 +45,19 @@ class _SuperAppDiagnosticsWeb implements SuperAppDiagnostics {
     }
 
     try {
+      final consumerApp = js_util.getProperty(win, 'consumerapp');
+      out['has.window.consumerapp'] = (consumerApp != null).toString();
+      if (consumerApp != null) {
+        final evaluate = js_util.getProperty(consumerApp, 'evaluate');
+        out['has.window.consumerapp.evaluate'] =
+            (evaluate != null && js_util.typeofEquals(evaluate, 'function'))
+                .toString();
+      }
+    } catch (e) {
+      out['window.consumerapp.error'] = e.toString();
+    }
+
+    try {
       final channel = js_util.getProperty(win, 'myJsChannel');
       out['has.window.myJsChannel.postMessage'] =
           (channel != null && js_util.hasProperty(channel, 'postMessage'))

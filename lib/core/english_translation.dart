@@ -204,7 +204,8 @@ final Map<String, String> enUS = {
   "lbl_confirm_pin": "Confirm PIN",
   "lbl_done": "Done",
   'phone_email': 'Phone or Email',
-  'already_joined': 'You have joined this equb before, please go to payments screen and pay round payments.',
+  'already_joined':
+      'You have joined this equb before, please go to payments screen and pay round payments.',
   'lbl_confirm': 'Confirm',
   'enter_beneficiary_phonenumber': 'Enter beneficiary phone number',
   "lbl_welcome_back": "Welcome back!",
@@ -444,8 +445,6 @@ By using the Hello Equb app, you confirm that you have read, understood, and agr
   'add_new_stake': 'Add New Stake',
   'tap_to_view_details': 'Tap to view details',
   'view_payments': 'View Payments',
-
-
   'upload_receipt': 'Upload Receipt',
-  'registering' : 'Registering',
+  'registering': 'Registering',
 };

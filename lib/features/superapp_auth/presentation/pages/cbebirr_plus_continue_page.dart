@@ -33,7 +33,7 @@ class _CbeBirrPlusContinuePageState extends State<CbeBirrPlusContinuePage> {
 
     if (!ok) {
       AppLogger.warn('CBEBirr Plus continue page opened without bridge');
-      context.go('/not-superapp');
+      context.go('/login');
       return;
     }
 

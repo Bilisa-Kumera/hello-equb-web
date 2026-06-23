@@ -55,23 +55,13 @@ class _SuperAppDebugOverlayState extends State<SuperAppDebugOverlay> {
 
     AppLogger.log('Telebirr Detect Result: $result');
 
-    if (result.authSucceeded) {
+    if (result.hasTelebirrBridge) {
       AppLogger.success(
-        'Telebirr detect final | result=auth_success | stage=${result.stage ?? 'unknown'} | location=${result.location ?? 'unknown'}',
-      );
-    } else if (result.hasTelebirrBridge) {
-      AppLogger.warn(
-        'Telebirr detect final | result=bridge_found_auth_failed | stage=${result.stage ?? 'unknown'} | location=${result.location ?? 'unknown'} | reason=${result.error ?? result.message ?? 'callback did not return token'}',
+        'Telebirr detect final | result=bridge_found | stage=${result.stage ?? 'unknown'} | location=${result.location ?? 'unknown'}',
       );
     } else {
       AppLogger.warn(
         'Telebirr detect final | result=bridge_not_found | stage=${result.stage ?? 'unknown'} | location=${result.location ?? 'unknown'} | reason=${result.error ?? result.message ?? 'bridge requirements not met'}',
-      );
-    }
-
-    if (result.token != null && result.token!.isNotEmpty) {
-      AppLogger.success(
-        'Telebirr detect token success | location=${result.location ?? 'unknown'} | tokenLen=${result.token!.length}',
       );
     }
 

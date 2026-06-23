@@ -291,12 +291,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
     String? phoneNumber,
     required String paymentMethod,
   }) async {
+    final useCbeBirrPlusJoinEndpoint =
+        !_isPaymentType && paymentMethod == 'cbe' && _isInsideCbeBirrPlus;
+    final miniAppPhoneNumber = phoneNumber ??
+        dataController.retrieveData<String>('phoneNumber')?.trim();
+    final miniAppToken = _cbeBirrPlusBridge.launchToken?.trim();
+
     final data = <String, dynamic>{
       "paidAmount":
           double.tryParse((widget.ekubAmount ?? '0.0').replaceAll(',', '')) ??
               0,
-      "paymentMethod": paymentMethod,
+      "paymentMethod": useCbeBirrPlusJoinEndpoint ? 'telebirr' : paymentMethod,
       if (phoneNumber != null) "phoneNumber": phoneNumber,
+      if (useCbeBirrPlusJoinEndpoint &&
+          miniAppPhoneNumber != null &&
+          miniAppPhoneNumber.isNotEmpty)
+        "phoneNumber": miniAppPhoneNumber,
+      if (useCbeBirrPlusJoinEndpoint &&
+          miniAppToken != null &&
+          miniAppToken.isNotEmpty)
+        "token": miniAppToken,
     };
 
     if (_isPaymentType) {
@@ -321,8 +335,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
 
-    final String url =
-        (_isPaymentType ? makePaymentUrl : joinEkubUrl) + (widget.ekubId ?? '');
+    final String url = (_isPaymentType
+            ? makePaymentUrl
+            : useCbeBirrPlusJoinEndpoint
+                ? joinMiniAppEkubUrl
+                : joinEkubUrl) +
+        (widget.ekubId ?? '');
 
     debugPrint('Payment request url: $url');
     debugPrint('Payment request body: ${jsonEncode(data)}');

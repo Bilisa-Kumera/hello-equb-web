@@ -337,9 +337,9 @@ class _WinnerPopup extends StatelessWidget {
             children: [
               const Text('🏆', style: TextStyle(fontSize: 52)),
               const SizedBox(height: 8),
-              const Text(
-                'We have a winner!',
-                style: TextStyle(
+              Text(
+                AppKeys.weHaveAWinner.tr(context),
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1B5E20),
@@ -347,9 +347,9 @@ class _WinnerPopup extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'The lucky lottery number is',
-                style: TextStyle(
+              Text(
+                AppKeys.luckyLotteryNumber.tr(context),
+                style: const TextStyle(
                   fontSize: 14,
                   color: Colors.black54,
                   fontFamily: 'Poppins',
@@ -381,7 +381,9 @@ class _WinnerPopup extends StatelessWidget {
                 ),
                 onPressed: onClose,
                 child: Text(
-                  hasNextWinner ? 'Next' : 'Close',
+                  hasNextWinner
+                      ? AppKeys.next.tr(context)
+                      : AppKeys.close.tr(context),
                   style: const TextStyle(fontSize: 15, fontFamily: 'Poppins'),
                 ),
               ),
@@ -730,10 +732,10 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                         : AppColors.boldSuccessGreen;
 
                 final String statusText = user.hasTakenEqub
-                    ? 'Taken'
+                    ? AppKeys.taken.tr(context)
                     : user.hasClaimed
-                        ? 'Claimed'
-                        : 'Winner';
+                        ? AppKeys.claimed.tr(context)
+                        : AppKeys.winner.tr(context);
 
                 return Container(
                   padding: const EdgeInsets.all(14),
@@ -908,11 +910,11 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
-                'No winners yet',
+              Text(
+                AppKeys.noWinnersYet.tr(context),
                 textScaleFactor: 1.0,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -921,7 +923,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Winners will appear here once the lottery result is available.',
+                AppKeys.winnersWillAppearHere.tr(context),
                 textScaleFactor: 1.0,
                 textAlign: TextAlign.center,
                 style: TextStyle(

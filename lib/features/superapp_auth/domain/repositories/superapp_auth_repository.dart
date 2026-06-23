@@ -9,4 +9,9 @@ abstract class SuperAppAuthRepository {
     required String appToken,
     required String phoneNumber,
   });
+
+  /// Calls Telebirr gateway auth/token and returns parsed user identity fields.
+  Future<Map<String, dynamic>> exchangeAppTokenWithTelebirrGateway({
+    required String appToken,
+  });
 }

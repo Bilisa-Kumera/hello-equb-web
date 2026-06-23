@@ -6,12 +6,16 @@ class SuperAppAuthConfig {
     this.apiBaseUrlOverride,
     required this.tokenExchangePath,
     required this.profilePath,
+    required this.telebirrGatewayAuthTokenUrl,
   });
 
   final String merchantAppId;
   final String? apiBaseUrlOverride;
   final String tokenExchangePath;
   final String profilePath;
+
+  /// Telebirr H5 gateway used to exchange mini-app token for user identity.
+  final String telebirrGatewayAuthTokenUrl;
 
   static SuperAppAuthConfig fromEnv() {
     final merchantAppId =
@@ -52,11 +56,20 @@ class SuperAppAuthConfig {
       dotenv.env['SUPERAPP_PROFILE_PATH'] ?? 'user/profile/me',
     );
 
+    const defaultGatewayAuthTokenUrl =
+        'https://api.hello-equb.com/api/v1/user/auth/auto-login-telebirr-miniapp';
+    final gatewayRaw =
+        (dotenv.env['TELEBIRR_GATEWAY_AUTH_TOKEN_URL'] ?? '').trim();
+    final telebirrGatewayAuthTokenUrl = gatewayRaw.isNotEmpty
+        ? gatewayRaw
+        : defaultGatewayAuthTokenUrl;
+
     return SuperAppAuthConfig(
       merchantAppId: merchantAppId,
       apiBaseUrlOverride: apiBaseUrlOverride,
       tokenExchangePath: tokenExchangePath,
       profilePath: profilePath,
+      telebirrGatewayAuthTokenUrl: telebirrGatewayAuthTokenUrl,
     );
   }
 }

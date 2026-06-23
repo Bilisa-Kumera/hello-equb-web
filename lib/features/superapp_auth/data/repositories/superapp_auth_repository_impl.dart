@@ -1,9 +1,11 @@
 import 'package:helloequb/core/network/dio_factory.dart';
 import 'package:helloequb/core/network/dio_debug_interceptor.dart';
+import 'package:helloequb/core/network/dio_error_formatter.dart';
 import 'package:helloequb/core/storage/secure_token_storage.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/features/superapp_auth/data/datasources/superapp_auth_remote_data_source.dart';
 import 'package:helloequb/features/superapp_auth/data/datasources/superapp_js_data_source.dart';
+import 'package:helloequb/features/superapp_auth/data/datasources/telebirr_gateway_js_exchange.dart';
 import 'package:helloequb/features/superapp_auth/domain/entities/session.dart';
 import 'package:helloequb/features/superapp_auth/domain/repositories/superapp_auth_repository.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
@@ -13,6 +15,7 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
     required String apiBaseUrl,
     required String tokenExchangePath,
     required String profilePath,
+    required String telebirrGatewayAuthTokenUrl,
     SuperAppJsDataSource? jsDataSource,
     SecureTokenStorage? tokenStorage,
     DioFactory? dioFactory,
@@ -23,7 +26,8 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
         _dataController = dataController ?? DataController(),
         _apiBaseUrl = apiBaseUrl,
         _tokenExchangePath = tokenExchangePath,
-        _profilePath = profilePath;
+        _profilePath = profilePath,
+        _telebirrGatewayAuthTokenUrl = telebirrGatewayAuthTokenUrl;
 
   final SuperAppJsDataSource _jsDataSource;
   final SecureTokenStorage _tokenStorage;
@@ -33,6 +37,7 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
   final String _apiBaseUrl;
   final String _tokenExchangePath;
   final String _profilePath;
+  final String _telebirrGatewayAuthTokenUrl;
 
   @override
   bool get isSuperAppAvailable => _jsDataSource.isAvailable;
@@ -43,6 +48,72 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       'requesting SuperApp mini app token (merchantAppId=$merchantAppId)',
     );
     return _jsDataSource.getMiniAppToken(merchantAppId: merchantAppId);
+  }
+
+  @override
+  Future<Map<String, dynamic>> exchangeAppTokenWithTelebirrGateway({
+    required String appToken,
+  }) async {
+    AppLogger.log(
+      'exchanging app token with Telebirr gateway url=$_telebirrGatewayAuthTokenUrl tokenLen=${appToken.length}',
+    );
+
+    final remote = SuperAppAuthRemoteDataSource(
+      dio: _dioFactory.createPlainDio(baseUrl: ''),
+      tokenExchangePath: _tokenExchangePath,
+      profilePath: _profilePath,
+    );
+
+    Map<String, dynamic>? payload;
+
+    try {
+      payload = await exchangeTelebirrAuthTokenViaJs(
+        gatewayUrl: _telebirrGatewayAuthTokenUrl,
+        authToken: appToken,
+      );
+      if (payload != null) {
+        AppLogger.success('Telebirr gateway auth/token via JS fetch');
+      }
+    } catch (e) {
+      AppLogger.warn('Telebirr gateway JS fetch failed: $e');
+    }
+
+    if (payload == null) {
+      AppLogger.log('falling back to Dio for Telebirr gateway auth/token');
+      final dio = _dioFactory.createPlainDio(baseUrl: '');
+      if (AppLogger.enabled) {
+        dio.interceptors.add(DioDebugInterceptor(tag: 'TelebirrGateway'));
+      }
+      final dioRemote = SuperAppAuthRemoteDataSource(
+        dio: dio,
+        tokenExchangePath: _tokenExchangePath,
+        profilePath: _profilePath,
+      );
+      try {
+        payload = await dioRemote.exchangeTelebirrAuthToken(
+          gatewayUrl: _telebirrGatewayAuthTokenUrl,
+          authToken: appToken,
+        );
+        AppLogger.success('Telebirr gateway auth/token via Dio');
+      } catch (e) {
+        AppLogger.error(
+          'Telebirr gateway Dio error: ${formatTelebirrGatewayError(e, gatewayUrl: _telebirrGatewayAuthTokenUrl)}',
+        );
+        rethrow;
+      }
+    }
+
+    final user = remote.userFromLoginPayload(payload);
+    final openId = user?['open_id'] ?? user?['openId'];
+    final identityId = user?['identityId'];
+    AppLogger.log('Telebirr user openId=$openId identityId=$identityId');
+
+    return <String, dynamic>{
+      'gatewayPayload': payload,
+      if (openId != null) 'openId': openId,
+      if (identityId != null) 'identityId': identityId,
+      if (user != null) 'user': user,
+    };
   }
 
   @override
@@ -85,6 +156,8 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
     final user = remote.userFromLoginPayload(payload);
     if (user != null) {
       _dataController.storeData('userId', user['id']);
+      _dataController.storeData('open_id', user['open_id'] ?? user['openId']);
+      _dataController.storeData('identityId', user['identityId']);
       _dataController.storeData('fullName', user['fullName']);
       _dataController.storeData('phoneNumber', user['phoneNumber']);
       _dataController.storeData('lastName', user['lastName']);

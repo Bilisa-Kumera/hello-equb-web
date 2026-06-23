@@ -82,6 +82,7 @@ class _SplashScreenState extends State<SplashScreen> {
           );
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
+            _hasScheduledNavigation = true;
             context.go('/cbebirr-plus');
           });
           return;
@@ -89,7 +90,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          context.go('/not-superapp');
+          _hasScheduledNavigation = true;
+          AppLogger.log('No SuperApp bridge detected; redirecting to login');
+          context.go('/login');
         });
         return;
       }
@@ -99,6 +102,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (dataController.retrieveData<bool>('isLoggedIn') != true) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
+          _hasScheduledNavigation = true;
           context.go('/telebirr');
         });
         return;

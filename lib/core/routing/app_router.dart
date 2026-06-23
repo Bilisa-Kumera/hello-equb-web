@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helloequb/features/superapp_auth/presentation/pages/cbebirr_plus_continue_page.dart';
-import 'package:helloequb/features/superapp_auth/presentation/pages/not_in_superapp_page.dart';
 import 'package:helloequb/features/superapp_auth/presentation/pages/telebirr_continue_page.dart';
 import 'package:helloequb/screens/LoginScreenWithPin.dart';
 import 'package:helloequb/screens/home_screen.dart';
@@ -19,7 +18,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/not-superapp',
-          builder: (context, state) => const NotInSuperAppPage(),
+          redirect: (context, state) => '/login',
         ),
         GoRoute(
           path: '/telebirr',
