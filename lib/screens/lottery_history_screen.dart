@@ -578,9 +578,32 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
     super.dispose();
   }
 
+  List<User> get _allUsers =>
+      widget.lotteries.expand((lottery) => lottery.users).toList();
+
+  int? get _latestRound {
+    final users = _allUsers;
+    if (users.isEmpty) return null;
+    return users.map((u) => u.round).reduce((a, b) => a > b ? a : b);
+  }
+
+  /// Backend may return current-round winners during the final minute; keep them
+  /// hidden until the draw countdown finishes.
+  bool get _shouldHideCurrentRoundWinner =>
+      _remaining > Duration.zero && _remaining <= const Duration(minutes: 1);
+
+  List<User> get _visibleUsers {
+    final users = _allUsers;
+    if (!_shouldHideCurrentRoundWinner) return users;
+
+    final latestRound = _latestRound;
+    if (latestRound == null) return users;
+
+    return users.where((user) => user.round != latestRound).toList();
+  }
+
   List<User> get _claimableWinningUsers {
-    return widget.lotteries
-        .expand((lottery) => lottery.users)
+    return _visibleUsers
         .where(
           (user) =>
               user.userId == widget.userId &&
@@ -691,8 +714,9 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allUsers =
-        widget.lotteries.expand((lottery) => lottery.users).toList();
+    final visibleUsers = _visibleUsers;
+    final hasHiddenCurrentRoundWinner =
+        _shouldHideCurrentRoundWinner && visibleUsers.length < _allUsers.length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9F8),
@@ -715,14 +739,22 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
           ),
         ),
       ),
-      body: allUsers.isEmpty
-          ? _buildNoWinnersYet()
+      body: visibleUsers.isEmpty
+          ? hasHiddenCurrentRoundWinner
+              ? _buildWinnerRevealPending()
+              : _buildNoWinnersYet()
           : ListView.separated(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-              itemCount: allUsers.length,
+              itemCount: visibleUsers.length + (hasHiddenCurrentRoundWinner ? 1 : 0),
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final user = allUsers[index];
+                if (hasHiddenCurrentRoundWinner && index == 0) {
+                  return _buildWinnerRevealPending(compact: true);
+                }
+
+                final userIndex =
+                    hasHiddenCurrentRoundWinner ? index - 1 : index;
+                final user = visibleUsers[userIndex];
                 final bool isMine = user.userId == widget.userId;
 
                 final Color statusColor = user.hasTakenEqub
@@ -872,6 +904,80 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildWinnerRevealPending({bool compact = false}) {
+    final minutes = _remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.hourglass_top_rounded,
+          color: AppColors.vibrantGreen.withOpacity(compact ? 0.9 : 1),
+          size: compact ? 28 : 36,
+        ),
+        SizedBox(height: compact ? 10 : 18),
+        Text(
+          AppKeys.winnersWillAppearHere.tr(context),
+          textScaleFactor: 1.0,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: compact ? 14 : 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.neutralGray,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '$minutes:$seconds',
+          textScaleFactor: 1.0,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: compact ? 20 : 28,
+            fontWeight: FontWeight.w800,
+            color: AppColors.vibrantGreen,
+          ),
+        ),
+      ],
+    );
+
+    if (compact) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.vibrantGreen.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.vibrantGreen.withOpacity(0.18)),
+        ),
+        child: content,
+      );
+    }
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 34),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: content,
+        ),
+      ),
     );
   }
 

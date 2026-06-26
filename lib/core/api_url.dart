@@ -1,7 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 
-const String _defaultBaseUrl = 'https://api.hello-equb.com/';
+const String _defaultBaseUrl = 'http://localhost:8000/';
 
 String _normalizeBaseUrl(String raw) {
   final trimmed = raw.trim();
