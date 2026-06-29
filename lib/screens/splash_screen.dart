@@ -10,6 +10,7 @@ import 'package:helloequb/screens/LoginScreenWithPin.dart';
 import 'package:helloequb/screens/home_screen.dart';
 import 'package:helloequb/screens/language_screen.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
+import 'package:helloequb/core/telebirr/telebirr.dart';
 import 'package:helloequb/core/superapp/superapp_bridge.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -61,7 +62,40 @@ class _SplashScreenState extends State<SplashScreen> {
     if (kIsWeb) {
       final bridge = createSuperAppBridge();
       final cbeBirrPlusBridge = createCbeBirrPlusBridge();
+      final telebirrDetector = createTelebirrMiniAppDetector();
       AppLogger.log('App started (web)');
+
+      final telebirrDetected = await _waitForTelebirrMiniApp(
+        telebirrDetector,
+      );
+      if (telebirrDetected) {
+        AppLogger.success('Telebirr mini app detected first');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _hasScheduledNavigation = true;
+          context.go('/telebirr');
+        });
+        return;
+      }
+
+      // Prefer CBEBirr Plus when its channel is available.
+      final cbeOk = await cbeBirrPlusBridge.waitUntilAvailable(
+        timeout: const Duration(seconds: 4),
+        pollInterval: const Duration(milliseconds: 140),
+      );
+
+      if (cbeOk) {
+        final hasLaunchToken = cbeBirrPlusBridge.launchToken != null;
+        AppLogger.success(
+          'CBEBirr Plus channel detected (launchToken=$hasLaunchToken)',
+        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _hasScheduledNavigation = true;
+          context.go('/cbebirr-plus');
+        });
+        return;
+      }
 
       // Some SuperApp webviews inject the bridge after Flutter starts rendering.
       final ok = await bridge.waitUntilAvailable(
@@ -70,24 +104,6 @@ class _SplashScreenState extends State<SplashScreen> {
       );
 
       if (!ok) {
-        final cbeOk = await cbeBirrPlusBridge.waitUntilAvailable(
-          timeout: const Duration(seconds: 4),
-          pollInterval: const Duration(milliseconds: 140),
-        );
-
-        if (cbeOk) {
-          final hasLaunchToken = cbeBirrPlusBridge.launchToken != null;
-          AppLogger.success(
-            'CBEBirr Plus channel detected (launchToken=$hasLaunchToken)',
-          );
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _hasScheduledNavigation = true;
-            context.go('/cbebirr-plus');
-          });
-          return;
-        }
-
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _hasScheduledNavigation = true;
@@ -98,7 +114,6 @@ class _SplashScreenState extends State<SplashScreen> {
       }
 
       AppLogger.success('Telebirr bridge detected');
-
       if (dataController.retrieveData<bool>('isLoggedIn') != true) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -108,6 +123,19 @@ class _SplashScreenState extends State<SplashScreen> {
         return;
       }
     }
+  }
+
+  Future<bool> _waitForTelebirrMiniApp(
+    TelebirrMiniAppDetector detector,
+  ) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 12));
+    while (DateTime.now().isBefore(deadline)) {
+      if (detector.isTelebirrMiniApp()) {
+        return true;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    return detector.isTelebirrMiniApp();
   }
 
   void _onUpdateStateChanged() {

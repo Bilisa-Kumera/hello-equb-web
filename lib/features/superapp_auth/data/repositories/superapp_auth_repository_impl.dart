@@ -16,6 +16,7 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
     required String tokenExchangePath,
     required String profilePath,
     required String telebirrGatewayAuthTokenUrl,
+    String cbeBirrPlusAutoLoginUrl = '',
     SuperAppJsDataSource? jsDataSource,
     SecureTokenStorage? tokenStorage,
     DioFactory? dioFactory,
@@ -27,7 +28,8 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
         _apiBaseUrl = apiBaseUrl,
         _tokenExchangePath = tokenExchangePath,
         _profilePath = profilePath,
-        _telebirrGatewayAuthTokenUrl = telebirrGatewayAuthTokenUrl;
+        _telebirrGatewayAuthTokenUrl = telebirrGatewayAuthTokenUrl,
+        _cbeBirrPlusAutoLoginUrl = cbeBirrPlusAutoLoginUrl;
 
   final SuperAppJsDataSource _jsDataSource;
   final SecureTokenStorage _tokenStorage;
@@ -38,6 +40,7 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
   final String _tokenExchangePath;
   final String _profilePath;
   final String _telebirrGatewayAuthTokenUrl;
+  final String _cbeBirrPlusAutoLoginUrl;
 
   @override
   bool get isSuperAppAvailable => _jsDataSource.isAvailable;
@@ -140,12 +143,82 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       appToken: appToken,
     );
     AppLogger.success('SuperApp backend login response received');
-    final session = remote.sessionFromLoginPayload(payload);
+    return _persistSessionFromPayload(remote, payload, phoneNumber: phoneNumber);
+  }
+
+  /// POSTs `{"token": appToken}` to the Telebirr auto-login endpoint and
+  /// persists the returned session. This is the single-step auto-login path.
+  ///
+  /// [onResponse] is called with the raw response payload before session
+  /// persistence, allowing callers to display debug info without changing the
+  /// return type.
+  Future<Session> autoLoginTelebirrMiniApp({
+    required String appToken,
+    void Function(String url, Map<String, dynamic> requestBody,
+            Map<String, dynamic> responsePayload)?
+        onResponse,
+  }) async {
     AppLogger.log(
-      'miniapp login success; accessTokenLen=${session.accessToken.length} refreshToken=${session.refreshToken == null ? 'absent' : 'present'}',
+      'Telebirr auto-login → $_telebirrGatewayAuthTokenUrl (tokenLen=${appToken.length})',
     );
 
-    // Persist token for the rest of the app.
+    final dio = _dioFactory.createPlainDio(baseUrl: _apiBaseUrl);
+    if (AppLogger.enabled) {
+      dio.interceptors.add(DioDebugInterceptor(tag: 'TelebirrAutoLogin'));
+    }
+    final remote = SuperAppAuthRemoteDataSource(
+      dio: dio,
+      tokenExchangePath: _tokenExchangePath,
+      profilePath: _profilePath,
+    );
+
+    final requestBody = <String, dynamic>{'token': appToken};
+    final payload = await remote.autoLoginMiniApp(
+      url: _telebirrGatewayAuthTokenUrl,
+      token: appToken,
+    );
+    AppLogger.success('Telebirr auto-login response received');
+    onResponse?.call(_telebirrGatewayAuthTokenUrl, requestBody, payload);
+    return _persistSessionFromPayload(remote, payload);
+  }
+
+  /// POSTs `{"token": launchToken}` to the CBEBirr Plus auto-login endpoint.
+  Future<Session> autoLoginCbeBirrPlusMiniApp({required String launchToken}) async {
+    final url = _cbeBirrPlusAutoLoginUrl.isNotEmpty
+        ? _cbeBirrPlusAutoLoginUrl
+        : '$_apiBaseUrl/user/auth/auto-login-cbebirr-miniapp';
+    AppLogger.log(
+      'CBEBirr Plus auto-login → $url (tokenLen=${launchToken.length})',
+    );
+
+    final dio = _dioFactory.createPlainDio(baseUrl: _apiBaseUrl);
+    if (AppLogger.enabled) {
+      dio.interceptors.add(DioDebugInterceptor(tag: 'CbeBirrAutoLogin'));
+    }
+    final remote = SuperAppAuthRemoteDataSource(
+      dio: dio,
+      tokenExchangePath: _tokenExchangePath,
+      profilePath: _profilePath,
+    );
+
+    final payload = await remote.autoLoginMiniApp(
+      url: url,
+      token: launchToken,
+    );
+    AppLogger.success('CBEBirr Plus auto-login response received');
+    return _persistSessionFromPayload(remote, payload);
+  }
+
+  Future<Session> _persistSessionFromPayload(
+    SuperAppAuthRemoteDataSource remote,
+    Map<String, dynamic> payload, {
+    String? phoneNumber,
+  }) async {
+    final session = remote.sessionFromLoginPayload(payload);
+    AppLogger.log(
+      'session parsed; accessTokenLen=${session.accessToken.length} refreshToken=${session.refreshToken == null ? 'absent' : 'present'}',
+    );
+
     await _tokenStorage.writeAccessToken(session.accessToken);
     _dataController.storeData('accessToken', session.accessToken);
     if (session.refreshToken != null) {
@@ -164,11 +237,10 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       _dataController.storeData('firstName', user['firstName']);
       _dataController.storeData('middleName', user['middleName']);
       _dataController.storeData('email', user['email']);
-    } else {
+    } else if (phoneNumber != null && phoneNumber.isNotEmpty) {
       _dataController.storeData('phoneNumber', phoneNumber);
     }
 
-    // Fetch profile (best-effort; don't fail login if profile request fails).
     try {
       final authedDio = _dioFactory.createAuthedDio(baseUrl: _apiBaseUrl);
       if (AppLogger.enabled) {

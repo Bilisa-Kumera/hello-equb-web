@@ -13,6 +13,9 @@ final Map<String, String> tgET = {
   "receive_code_not_available": "ኮድ መቐበሊ ኣይተረኽበን።",
   "cbe_ussd_enter_pin_message":
       "ክፍሊት ብUSSD ንምውዳእ ኣብ CBEBirr ፒንካ ኣእቱ።",
+  "cbe_birr_plus_token_label": "Token CBEBirr Plus",
+  "cbe_birr_plus_token_unavailable":
+      "Token CBEBirr Plus ኣይተረኽበን። Hello Equb ካብ CBEBirr Plus ደጊምካ ክፈት።",
   "not_available": "የለን",
   "currency_birr": "Birr",
   "currency_etb": "ETB",

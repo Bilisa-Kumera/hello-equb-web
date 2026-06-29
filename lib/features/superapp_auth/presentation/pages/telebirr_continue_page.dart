@@ -4,9 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
+import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/superapp/superapp_bridge.dart';
 import 'package:helloequb/core/superapp/superapp_diagnostics.dart';
-import 'package:helloequb/core/network/dio_error_formatter.dart';
 import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dart';
 import 'package:helloequb/features/superapp_auth/data/repositories/superapp_auth_repository_impl.dart';
 import 'package:helloequb/features/superapp_auth/domain/usecases/attempt_superapp_auto_login.dart';
@@ -16,6 +16,7 @@ import 'package:helloequb/features/superapp_auth/presentation/bloc/superapp_auth
 import 'package:helloequb/features/superapp_auth/presentation/widgets/superapp_log_panel.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:flutter/services.dart';
 
 SuperAppAuthRepositoryImpl _createSuperAppRepo(SuperAppAuthConfig cfg) {
   final apiBase = cfg.apiBaseUrlOverride ?? '$baseUrl/';
@@ -24,8 +25,22 @@ SuperAppAuthRepositoryImpl _createSuperAppRepo(SuperAppAuthConfig cfg) {
     tokenExchangePath: cfg.tokenExchangePath,
     profilePath: cfg.profilePath,
     telebirrGatewayAuthTokenUrl: cfg.telebirrGatewayAuthTokenUrl,
+    cbeBirrPlusAutoLoginUrl: cfg.cbeBirrPlusAutoLoginUrl,
   );
 }
+
+// ─── Step types ──────────────────────────────────────────────────────────────
+
+enum _StepStatus { idle, loading, success, error }
+
+class _LogStep {
+  _LogStep(this.label);
+  final String label;
+  _StepStatus status = _StepStatus.idle;
+  String? detail;
+}
+
+// ─── Token gate page ─────────────────────────────────────────────────────────
 
 class TelebirrContinuePage extends StatelessWidget {
   const TelebirrContinuePage({super.key});
@@ -41,10 +56,7 @@ class TelebirrContinuePage extends StatelessWidget {
 }
 
 class _TelebirrTokenGateView extends StatefulWidget {
-  const _TelebirrTokenGateView({
-    required this.cfg,
-    required this.repo,
-  });
+  const _TelebirrTokenGateView({required this.cfg, required this.repo});
 
   final SuperAppAuthConfig cfg;
   final SuperAppAuthRepositoryImpl repo;
@@ -54,169 +66,147 @@ class _TelebirrTokenGateView extends StatefulWidget {
 }
 
 class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
-  String? _error;
+  final List<_LogStep> _steps = [];
   String? _appToken;
-  String? _openId;
-  String? _identityId;
-  String? _gatewayRawResponse;
-  bool _continuingToApp = false;
-  bool _bridgeReady = false;
-  bool _isLoading = false;
+  String? _error;
+  bool _canRetry = false;
+  bool _isFromCbeBirr = false;
+
+  String? _authApiUrl;
+  Map<String, dynamic>? _authRequestBody;
+  Map<String, dynamic>? _authResponseBody;
 
   @override
+
+
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _prepareBridge());
+    _steps.addAll([
+      _LogStep('Connecting to Telebirr bridge'),
+      _LogStep('Getting app token from Telebirr'),
+      _LogStep('Authenticating with Hello Equb'),
+      _LogStep('Redirecting to app'),
+    ]);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runAutoLogin());
   }
 
-  String _maskToken(String token) {
-    if (token.length <= 16) return token;
-    return '${token.substring(0, 8)}...${token.substring(token.length - 6)}';
+  void _updateStep(int index, _StepStatus status, {String? detail}) {
+    if (!mounted) return;
+    setState(() {
+      _steps[index].status = status;
+      if (detail != null) _steps[index].detail = detail;
+    });
   }
 
-  Future<void> _prepareBridge() async {
-    AppLogger.log('Telebirr token gate preparing bridge');
+  Future<void> _runAutoLogin() async {
+    if (!mounted) return;
+    setState(() {
+      _error = null;
+      _canRetry = false;
+      _appToken = null;
+      _isFromCbeBirr = false;
+      _authApiUrl = null;
+      _authRequestBody = null;
+      _authResponseBody = null;
+      for (final s in _steps) {
+        s.status = _StepStatus.idle;
+        s.detail = null;
+      }
+    });
 
-    if (widget.cfg.merchantAppId.trim().isEmpty) {
-      setState(() {
-        _error =
-            'Missing merchant app id (set MERCHANT_APP_ID or SUPERAPP_APP_ID in .env).';
-      });
+    // ── CBE Birr Plus early check ─────────────────────────────────────────────
+    final cbeBridge = createCbeBirrPlusBridge();
+    if (cbeBridge.isAvailable) {
+      AppLogger.log('CBEBirr Plus detected on Telebirr page');
+      if (mounted) setState(() => _isFromCbeBirr = true);
       return;
     }
 
+    if (widget.cfg.merchantAppId.trim().isEmpty) {
+      setState(() => _error =
+          'Missing merchant app id (set MERCHANT_APP_ID or SUPERAPP_APP_ID in .env).');
+      return;
+    }
+
+    // ── Step 0: wait for bridge ───────────────────────────────────────────────
+    _updateStep(0, _StepStatus.loading);
+    AppLogger.log('Telebirr: waiting for bridge');
     final bridge = createSuperAppBridge();
-    AppLogger.log('Waiting for Telebirr bridge');
-    final ok = await bridge.waitUntilAvailable(
+    final bridgeOk = await bridge.waitUntilAvailable(
       timeout: const Duration(seconds: 30),
       pollInterval: const Duration(milliseconds: 140),
     );
-    AppLogger.log('Telebirr bridge wait result=$ok');
-
     if (!mounted) return;
-    if (!ok) {
-      AppLogger.warn('Telebirr bridge unavailable; redirecting to /login');
-      context.go('/login');
-      return;
-    }
-
-    setState(() => _bridgeReady = true);
-  }
-
-  Future<void> _loadAppToken() async {
-    if (!_bridgeReady || _isLoading) return;
-
-    AppLogger.log('Telebirr auto-login tapped (user gesture)');
-    setState(() {
-      _isLoading = true;
-      _error = null;
-      _appToken = null;
-      _openId = null;
-      _identityId = null;
-      _gatewayRawResponse = null;
-    });
-
-    if (widget.cfg.merchantAppId.trim().isEmpty) {
+    if (!bridgeOk) {
+      _updateStep(0, _StepStatus.error, detail: 'Bridge not found after 30 s');
       setState(() {
-        _isLoading = false;
-        _error =
-            'Missing merchant app id (set MERCHANT_APP_ID or SUPERAPP_APP_ID in .env).';
+        _error = 'Not running inside Telebirr super app.';
+        _canRetry = true;
       });
       return;
     }
+    _updateStep(0, _StepStatus.success, detail: 'Bridge connected');
 
+    // ── Step 1: get app token ─────────────────────────────────────────────────
+    _updateStep(1, _StepStatus.loading);
+    AppLogger.log('Telebirr: requesting app token');
+    String appToken;
     try {
-      AppLogger.log('Requesting Telebirr app token');
-      final appToken = await widget.repo.getMiniAppToken(
+      appToken = await widget.repo.getMiniAppToken(
         merchantAppId: widget.cfg.merchantAppId.trim(),
       );
+      if (!mounted) return;
+      appToken = appToken.replaceFirst(RegExp(r'^InApp:'), '');
+      setState(() => _appToken = appToken);
+      _updateStep(1, _StepStatus.success,
+          detail: 'Received ${appToken.length} chars');
       AppLogger.success('Telebirr app token received (len=${appToken.length})');
-
-      String? openId;
-      String? identityId;
-      String? rawPayload;
-      String? gatewayWarning;
-
-      try {
-        AppLogger.log('Calling Telebirr gateway auth/token');
-        final gatewayResult =
-            await widget.repo.exchangeAppTokenWithTelebirrGateway(
-          appToken: appToken,
-        );
-        openId = gatewayResult['openId']?.toString();
-        identityId = gatewayResult['identityId']?.toString();
-        rawPayload = gatewayResult['gatewayPayload']?.toString();
-        AppLogger.success(
-          'Telebirr gateway user info openId=$openId identityId=$identityId',
-        );
-      } catch (e) {
-        final gatewayUrl = widget.cfg.telebirrGatewayAuthTokenUrl;
-        gatewayWarning =
-            '${formatTelebirrGatewayError(e, gatewayUrl: gatewayUrl)} '
-            'App token was received — tap Continue to log in via Hello Equb.';
-        AppLogger.warn('Telebirr gateway exchange failed (non-fatal): $e');
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _appToken = appToken;
-        _openId = openId;
-        _identityId = identityId;
-        _gatewayRawResponse = gatewayWarning ?? rawPayload;
-        if (gatewayWarning != null) _error = null;
-      });
-      // Automatically continue to app login immediately after obtaining the app token.
-      // This posts the token to the backend (auto-login) without requiring user tap.
-      if (mounted && _appToken != null && _appToken!.isNotEmpty) {
-        await _continueToApp();
-      }
     } catch (e) {
-      AppLogger.error('Telebirr app token failed: $e');
+      AppLogger.error('Telebirr get token failed: $e');
       if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _updateStep(1, _StepStatus.error, detail: e.toString());
+      setState(() {
+        _error = 'Failed to get Telebirr token.\n$e';
+        _canRetry = true;
+      });
+      return;
     }
-  }
 
-  Future<void> _continueToApp() async {
-    final appToken = _appToken;
-    if (appToken == null || appToken.isEmpty) return;
-
+    // ── Step 2: backend auto-login ────────────────────────────────────────────
+    _updateStep(2, _StepStatus.loading);
+    AppLogger.log('Telebirr: sending token to Hello Equb backend');
     setState(() {
-      _continuingToApp = true;
-      _error = null;
+      _authApiUrl = widget.cfg.telebirrGatewayAuthTokenUrl;
+      _authRequestBody = {'token': appToken};
     });
-
     try {
-      AppLogger.log('Exchanging Telebirr app token with backend');
-      if (_openId != null) {
-        DataController().storeData('open_id', _openId);
-      }
-      if (_identityId != null) {
-        DataController().storeData('identityId', _identityId);
-      }
-      await widget.repo.loginWithMiniAppToken(
+      await widget.repo.autoLoginTelebirrMiniApp(
         appToken: appToken,
-        phoneNumber: '',
+        onResponse: (url, reqBody, resPayload) {
+          if (mounted) setState(() => _authResponseBody = resPayload);
+        },
       );
       if (!mounted) return;
-      AppLogger.success('Telebirr backend auth completed');
-      context.go('/home');
+      _updateStep(2, _StepStatus.success, detail: 'Login successful');
+      AppLogger.success('Telebirr backend auto-login completed');
     } catch (e) {
       AppLogger.error('Telebirr backend login failed: $e');
       if (!mounted) return;
+      _updateStep(2, _StepStatus.error, detail: e.toString());
       setState(() {
-        _continuingToApp = false;
-        _error = e.toString();
+        _error = 'Login failed.\n$e';
+        _canRetry = true;
       });
+      return;
     }
+
+    // ── Step 3: navigate ──────────────────────────────────────────────────────
+    _updateStep(3, _StepStatus.success, detail: 'Ready to continue');
   }
 
   @override
   Widget build(BuildContext context) {
     final diag = createSuperAppDiagnostics().snapshot();
-    final hasUserInfo = _appToken != null;
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -224,14 +214,14 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 420.w),
           child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 24.h),
+            padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 32.h),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _TelebirrLogo(),
                 SizedBox(height: 18.h),
                 Text(
-                  'Telebirr',
+                  'Telebirr Super App',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 22.sp,
@@ -239,100 +229,113 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                     color: AppColors.deepForestGreen,
                   ),
                 ),
-                SizedBox(height: 10.h),
+                SizedBox(height: 6.h),
                 Text(
-                  hasUserInfo
-                      ? 'Telebirr login data received'
-                      : _bridgeReady
-                          ? 'Tap Auto Login to get your Telebirr token.'
-                          : 'Preparing Telebirr bridge...',
+                  'Setting up your Hello Equb session…',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14.sp),
+                  style: TextStyle(fontSize: 13.sp, color: Colors.black54),
                 ),
-                SizedBox(height: 16.h),
-                if (!_bridgeReady)
-                  const CircularProgressIndicator()
-                else if (_isLoading)
-                  const CircularProgressIndicator()
-                else if (hasUserInfo) ...[
-                  _ResultPanel(
-                    title: 'App token',
-                    value: _maskToken(_appToken!),
-                    subtitle: 'Length: ${_appToken!.length}',
-                  ),
-                  SizedBox(height: 10.h),
-                  _ResultPanel(
-                    title: 'openId',
-                    value: _openId ?? '(not returned)',
-                    highlight: _openId != null,
-                  ),
-                  SizedBox(height: 10.h),
-                  _ResultPanel(
-                    title: 'identityId',
-                    value: _identityId ?? '(not returned)',
-                    highlight: _identityId != null,
-                  ),
-                  if (_gatewayRawResponse != null) ...[
-                    SizedBox(height: 10.h),
-                    _ResultPanel(
-                      title: _openId == null && _identityId == null
-                          ? 'Gateway note'
-                          : 'Gateway response',
-                      value: _gatewayRawResponse!,
-                      monospace: true,
-                    ),
-                  ],
-                  SizedBox(height: 16.h),
-                  SizedBox(
+                SizedBox(height: 20.h),
+                if (_isFromCbeBirr) ...[
+                  Container(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _continuingToApp ? null : _continueToApp,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        child: _continuingToApp
-                            ? SizedBox(
-                                height: 18.h,
-                                width: 18.h,
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Continue to app'),
-                      ),
+                    padding: EdgeInsets.all(16.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8E1),
+                      border: Border.all(color: const Color(0xFFFFB300)),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
-                  ),
-                  SizedBox(height: 8.h),
-                  TextButton(
-                    onPressed: _continuingToApp ? null : _loadAppToken,
-                    child: const Text('Refresh token'),
+                    child: Column(
+                      children: [
+                        Icon(Icons.account_balance_wallet_rounded,
+                            size: 36.sp, color: const Color(0xFFFFB300)),
+                        SizedBox(height: 8.h),
+                        Text(
+                          'This is rendering from CBE Birr Plus',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF7B5800),
+                          ),
+                        ),
+                        SizedBox(height: 14.h),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => context.go('/cbebirr'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.deepForestGreen,
+                              foregroundColor: AppColors.white,
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            ),
+                            child: const Text('Navigate to CBE Birr'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ] else ...[
-                  if (_error != null)
-                    Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        color: Colors.red.shade700,
-                      ),
-                    ),
-                  SizedBox(height: 12.h),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _loadAppToken,
-                      child: const Text('Auto Login'),
-                    ),
-                  ),
-                  if (_error != null) ...[
-                    SizedBox(height: 8.h),
-                    TextButton(
-                      onPressed: _loadAppToken,
-                      child: const Text('Try again'),
+                  _StepLogPanel(steps: _steps),
+                  if (_authApiUrl != null) ...[
+                    SizedBox(height: 14.h),
+                    _AuthCallPanel(
+                      apiUrl: _authApiUrl!,
+                      requestBody: _authRequestBody ?? const {},
+                      responseBody: _authResponseBody,
                     ),
                   ],
+                  if (_appToken != null) ...[
+                    SizedBox(height: 14.h),
+                    _TokenPanel(
+                      title: 'App Token',
+                      token: _appToken!,
+                    ),
+                  ],
+                  if (_error != null) ...[
+                    SizedBox(height: 14.h),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        border: Border.all(color: Colors.red.shade200),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: Colors.red.shade700,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                    if (_canRetry) ...[
+                      SizedBox(height: 10.h),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _runAutoLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.deepForestGreen,
+                            foregroundColor: AppColors.white,
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
-                SizedBox(height: 12.h),
+                SizedBox(height: 20.h),
                 _DiagnosticsPanel(diag: diag),
                 SizedBox(height: 12.h),
                 const SuperAppLogPanel(title: 'Telebirr logs'),
@@ -344,6 +347,8 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
     );
   }
 }
+
+// ─── Telebirr Mini-App Login Page (phone-confirmation flow) ──────────────────
 
 class TelebirrMiniAppLoginPage extends StatelessWidget {
   const TelebirrMiniAppLoginPage({super.key, required this.appToken});
@@ -507,26 +512,18 @@ class _TelebirrMiniAppLoginViewState extends State<_TelebirrMiniAppLoginView> {
   }
 }
 
-class _ResultPanel extends StatelessWidget {
-  const _ResultPanel({
-    required this.title,
-    required this.value,
-    this.subtitle,
-    this.highlight = false,
-    this.monospace = false,
-  });
+// ─── Shared widgets ───────────────────────────────────────────────────────────
 
-  final String title;
-  final String value;
-  final String? subtitle;
-  final bool highlight;
-  final bool monospace;
+class _StepLogPanel extends StatelessWidget {
+  const _StepLogPanel({required this.steps});
+
+  final List<_LogStep> steps;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(12.w),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black12),
         borderRadius: BorderRadius.circular(8.r),
@@ -534,33 +531,177 @@ class _ResultPanel extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        children: steps.map((s) => _StepRow(step: s)).toList(),
+      ),
+    );
+  }
+}
+
+class _StepRow extends StatelessWidget {
+  const _StepRow({required this.step});
+
+  final _LogStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget leading;
+    final Color labelColor;
+
+    switch (step.status) {
+      case _StepStatus.loading:
+        leading = SizedBox(
+          width: 16.sp,
+          height: 16.sp,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.deepForestGreen,
+          ),
+        );
+        labelColor = AppColors.deepForestGreen;
+        break;
+      case _StepStatus.success:
+        leading = Icon(Icons.check_circle_rounded,
+            size: 16.sp, color: Colors.green.shade600);
+        labelColor = Colors.green.shade700;
+        break;
+      case _StepStatus.error:
+        leading =
+            Icon(Icons.error_rounded, size: 16.sp, color: Colors.red.shade600);
+        labelColor = Colors.red.shade700;
+        break;
+      case _StepStatus.idle:
+      default:
+        leading = Icon(Icons.radio_button_unchecked_rounded,
+            size: 16.sp, color: Colors.black26);
+        labelColor = Colors.black38;
+        break;
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 5.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.black54,
+          SizedBox(
+              width: 20.w, child: Center(heightFactor: 1, child: leading)),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  step.label,
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w500,
+                    color: labelColor,
+                  ),
+                ),
+                if (step.detail != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: 2.h),
+                    child: Text(
+                      step.detail!,
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: labelColor.withOpacity(0.75),
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Displays a token value with a copy-to-clipboard button.
+class _TokenPanel extends StatelessWidget {
+  const _TokenPanel({required this.title, required this.token});
+
+  final String title;
+  final String token;
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: token));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Token copied to clipboard'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.deepForestGreen.withOpacity(0.35)),
+        borderRadius: BorderRadius.circular(8.r),
+        color: AppColors.deepForestGreen.withOpacity(0.04),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _copy(context),
+                child: Padding(
+                  padding: EdgeInsets.all(4.w),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.copy_rounded,
+                          size: 16.sp, color: AppColors.deepForestGreen),
+                      SizedBox(width: 4.w),
+                      Text(
+                        'Copy',
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: AppColors.deepForestGreen,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 6.h),
           SelectableText(
-            value,
+            token,
             style: TextStyle(
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
-              color: highlight ? Colors.red.shade700 : AppColors.deepForestGreen,
-              fontFamily: monospace ? 'monospace' : null,
-              height: 1.3,
+              fontSize: 12.sp,
+              fontFamily: 'monospace',
+              color: AppColors.deepForestGreen,
+              height: 1.35,
             ),
           ),
-          if (subtitle != null) ...[
-            SizedBox(height: 4.h),
-            Text(
-              subtitle!,
-              style: TextStyle(fontSize: 11.sp, color: Colors.black45),
-            ),
-          ],
+          SizedBox(height: 4.h),
+          Text(
+            '${token.length} chars',
+            style: TextStyle(fontSize: 10.sp, color: Colors.black38),
+          ),
         ],
       ),
     );
@@ -607,5 +748,163 @@ class _DiagnosticsPanel extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ─── Auth call inspector panel ────────────────────────────────────────────────
+
+class _AuthCallPanel extends StatelessWidget {
+  const _AuthCallPanel({
+    required this.apiUrl,
+    required this.requestBody,
+    this.responseBody,
+  });
+
+  final String apiUrl;
+  final Map<String, dynamic> requestBody;
+  final Map<String, dynamic>? responseBody;
+
+  static const _headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+
+  String _prettyJson(Map<String, dynamic> map) {
+    final buffer = StringBuffer('{\n');
+    final entries = map.entries.toList();
+    for (var i = 0; i < entries.length; i++) {
+      final key = entries[i].key;
+      var value = entries[i].value;
+      if (value is String && value.length > 60) {
+        value = '${value.substring(0, 60)}…';
+      }
+      final comma = i < entries.length - 1 ? ',' : '';
+      buffer.writeln('  "$key": "$value"$comma');
+    }
+    buffer.write('}');
+    return buffer.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.deepForestGreen.withOpacity(0.25)),
+        borderRadius: BorderRadius.circular(8.r),
+        color: const Color(0xFFF2F8F4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(label: 'API', value: 'POST'),
+          _MonoBlock(text: apiUrl),
+          const _Divider(),
+          const _SectionHeader(label: 'Headers', value: ''),
+          _MonoBlock(
+            text: _headers.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
+          ),
+          const _Divider(),
+          const _SectionHeader(label: 'Request body', value: ''),
+          _MonoBlock(text: _prettyJson(requestBody)),
+          const _Divider(),
+          _SectionHeader(
+            label: 'Response',
+            value: responseBody == null ? 'pending…' : '200 OK',
+            valueColor: responseBody == null
+                ? Colors.black38
+                : Colors.green.shade700,
+          ),
+          if (responseBody != null)
+            _MonoBlock(text: _prettyJson(responseBody!)),
+          if (responseBody == null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+              child: SizedBox(
+                height: 12.h,
+                width: 12.h,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: AppColors.deepForestGreen,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 2.h),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColors.deepForestGreen,
+              letterSpacing: 0.5,
+            ),
+          ),
+          if (value.isNotEmpty) ...[
+            SizedBox(width: 6.w),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w600,
+                color: valueColor ?? Colors.black54,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MonoBlock extends StatelessWidget {
+  const _MonoBlock({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12.w, 2.h, 12.w, 8.h),
+      child: SelectableText(
+        text,
+        style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 10.sp,
+          color: Colors.black87,
+          height: 1.45,
+        ),
+      ),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Divider(height: 1, thickness: 1, color: Colors.black.withOpacity(0.06));
   }
 }

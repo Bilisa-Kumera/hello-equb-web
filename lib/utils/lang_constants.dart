@@ -267,6 +267,9 @@ class AppKeys {
   static const String cannotContinue = "cannot_continue";
   static const String receiveCodeNotAvailable = "receive_code_not_available";
   static const String cbeUssdEnterPinMessage = "cbe_ussd_enter_pin_message";
+  static const String cbeBirrPlusTokenLabel = "cbe_birr_plus_token_label";
+  static const String cbeBirrPlusTokenUnavailable =
+      "cbe_birr_plus_token_unavailable";
   static const String notAvailable = "not_available";
   static const String currencyBirr = "currency_birr";
   static const String currencyEtb = "currency_etb";

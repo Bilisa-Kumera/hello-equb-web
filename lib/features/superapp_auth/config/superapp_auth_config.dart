@@ -7,6 +7,7 @@ class SuperAppAuthConfig {
     required this.tokenExchangePath,
     required this.profilePath,
     required this.telebirrGatewayAuthTokenUrl,
+    required this.cbeBirrPlusAutoLoginUrl,
   });
 
   final String merchantAppId;
@@ -14,12 +15,15 @@ class SuperAppAuthConfig {
   final String tokenExchangePath;
   final String profilePath;
 
-  /// Telebirr H5 gateway used to exchange mini-app token for user identity.
+  /// Posts `{"token": ...}` to complete Telebirr mini-app auto-login.
   final String telebirrGatewayAuthTokenUrl;
+
+  /// Posts `{"token": ...}` to complete CBEBirr Plus mini-app auto-login.
+  final String cbeBirrPlusAutoLoginUrl;
 
   static SuperAppAuthConfig fromEnv() {
     final merchantAppId =
-        (dotenv.env['SUPERAPP_APP_ID'] ?? dotenv.env['MERCHANT_APP_ID'] ?? '')
+        (dotenv.env['MERCHANT_APP_ID'] ?? '')
             .trim();
 
     String? normalizeBaseUrlOverride(String raw) {
@@ -56,13 +60,21 @@ class SuperAppAuthConfig {
       dotenv.env['SUPERAPP_PROFILE_PATH'] ?? 'user/profile/me',
     );
 
-    const defaultGatewayAuthTokenUrl =
+    const defaultTelebirrAutoLoginUrl =
         'https://api.hello-equb.com/api/v1/user/auth/auto-login-telebirr-miniapp';
-    final gatewayRaw =
+    final telebirrRaw =
         (dotenv.env['TELEBIRR_GATEWAY_AUTH_TOKEN_URL'] ?? '').trim();
-    final telebirrGatewayAuthTokenUrl = gatewayRaw.isNotEmpty
-        ? gatewayRaw
-        : defaultGatewayAuthTokenUrl;
+    final telebirrGatewayAuthTokenUrl = telebirrRaw.isNotEmpty
+        ? telebirrRaw
+        : defaultTelebirrAutoLoginUrl;
+
+    const defaultCbeBirrPlusAutoLoginUrl =
+        'https://api.hello-equb.com/api/v1/user/auth/auto-login-cbebirr-miniapp';
+    final cbeRaw =
+        (dotenv.env['CBEBIRR_PLUS_AUTO_LOGIN_URL'] ?? '').trim();
+    final cbeBirrPlusAutoLoginUrl = cbeRaw.isNotEmpty
+        ? cbeRaw
+        : defaultCbeBirrPlusAutoLoginUrl;
 
     return SuperAppAuthConfig(
       merchantAppId: merchantAppId,
@@ -70,6 +82,7 @@ class SuperAppAuthConfig {
       tokenExchangePath: tokenExchangePath,
       profilePath: profilePath,
       telebirrGatewayAuthTokenUrl: telebirrGatewayAuthTokenUrl,
+      cbeBirrPlusAutoLoginUrl: cbeBirrPlusAutoLoginUrl,
     );
   }
 }

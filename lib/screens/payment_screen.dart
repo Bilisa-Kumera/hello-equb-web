@@ -70,12 +70,101 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   String phoneNumber = '';
   String receiveCode = '';
+  String _cbeBirrPlusDisplayToken = '';
   String telebirrAppId = '';
   String telebirrAppSecret = '';
   String telebirrShortCode = '';
 
   bool get _isPaymentType =>
       (widget.type ?? '').trim().toLowerCase() == 'payment';
+
+  bool get _showCbeBirrPlusToken =>
+      _isInsideCbeBirrPlus && selectedPaymentMethodId == 'cbe';
+
+  String _resolveCbeBirrPlusLaunchToken() =>
+      _cbeBirrPlusBridge.launchToken?.trim() ?? '';
+
+  void _refreshCbeBirrPlusDisplayToken() {
+    _cbeBirrPlusDisplayToken = _resolveCbeBirrPlusLaunchToken();
+  }
+
+  Future<void> _copyCbeBirrPlusToken(String token) async {
+    await Clipboard.setData(ClipboardData(text: token));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppKeys.copiedToClipBoard.tr(context)),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  Widget _buildCbeBirrPlusTokenCard() {
+    final token = _cbeBirrPlusDisplayToken.trim();
+    final hasToken = token.isNotEmpty;
+
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppKeys.cbeBirrPlusTokenLabel.tr(context),
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 12.h),
+            if (hasToken)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: SelectableText(
+                        token,
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          height: 1.4,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: AppKeys.copiedToClipBoard.tr(context),
+                      icon: const Icon(Icons.copy),
+                      onPressed: () => _copyCbeBirrPlusToken(token),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Text(
+                AppKeys.cbeBirrPlusTokenUnavailable.tr(context),
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  color: Colors.red.shade700,
+                  height: 1.35,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   List<Map<String, dynamic>> get _visiblePaymentOptions {
     if (!_isInsideCbeBirrPlus) return paymentOptions;
@@ -119,6 +208,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.initState();
     _cbeBirrPlusBridge = createCbeBirrPlusBridge();
     _detectCbeBirrPlus();
+    _amountController = TextEditingController(
+      text:
+          '${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
+    );
+  }
+
+  void _subscribeToTelebirrPaymentResults() {
     _paymentResultSub = TelebirrService.paymentResultStream.listen((result) {
       final code = result['code'];
       final errMsg = result['errMsg'];
@@ -129,10 +225,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         errMsg != null ? errMsg.toString() : AppKeys.unknownResult.tr(context),
       );
     });
-    _amountController = TextEditingController(
-      text:
-          '${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
-    );
   }
 
   Future<void> _detectCbeBirrPlus() async {
@@ -141,20 +233,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
       pollInterval: const Duration(milliseconds: 140),
     );
 
-    if (!mounted || !ok) return;
+    if (!mounted) return;
 
-    setState(() {
-      _isInsideCbeBirrPlus = true;
-      if (selectedPaymentMethodId == 'telebirr') {
-        selectedPaymentMethodId = null;
-        selectedIndex = null;
-      } else if (selectedPaymentMethodId != null) {
-        final visibleIndex = _visiblePaymentOptions.indexWhere(
-          (option) => option['id'] == selectedPaymentMethodId,
-        );
-        selectedIndex = visibleIndex >= 0 ? visibleIndex : null;
-      }
-    });
+    if (ok) {
+      setState(() {
+        _isInsideCbeBirrPlus = true;
+        if (selectedPaymentMethodId == 'telebirr') {
+          selectedPaymentMethodId = null;
+          selectedIndex = null;
+        } else if (selectedPaymentMethodId != null) {
+          final visibleIndex = _visiblePaymentOptions.indexWhere(
+            (option) => option['id'] == selectedPaymentMethodId,
+          );
+          selectedIndex = visibleIndex >= 0 ? visibleIndex : null;
+        }
+      });
+      return;
+    }
+
+    _subscribeToTelebirrPaymentResults();
   }
 
   @override
@@ -210,17 +307,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      await _getReceiveCode(paymentMethod: 'cbe');
+      _refreshCbeBirrPlusDisplayToken();
+      final launchToken = _cbeBirrPlusDisplayToken.trim();
 
-      if (receiveCode.trim().isEmpty) {
-        _showDialog(
-          AppKeys.cannotContinue.tr(context),
-          AppKeys.receiveCodeNotAvailable.tr(context),
-        );
+      if (launchToken.isEmpty) {
+        if (mounted) {
+          setState(() {});
+          _showDialog(
+            AppKeys.cannotContinue.tr(context),
+            AppKeys.cbeBirrPlusTokenUnavailable.tr(context),
+          );
+        }
         return;
       }
 
-      final sent = await _cbeBirrPlusBridge.sendPaymentToken(receiveCode);
+      await _getReceiveCode(paymentMethod: 'cbe');
+
+      final paymentToken =
+          receiveCode.trim().isNotEmpty ? receiveCode.trim() : launchToken;
+
+      if (mounted && paymentToken != _cbeBirrPlusDisplayToken) {
+        setState(() => _cbeBirrPlusDisplayToken = paymentToken);
+      }
+
+      final sent = await _cbeBirrPlusBridge.sendPaymentToken(paymentToken);
       if (!mounted) return;
 
       if (!sent) {
@@ -301,7 +411,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       "paidAmount":
           double.tryParse((widget.ekubAmount ?? '0.0').replaceAll(',', '')) ??
               0,
-      "paymentMethod": useCbeBirrPlusJoinEndpoint ? 'telebirr' : paymentMethod,
+      "paymentMethod": paymentMethod,
       if (phoneNumber != null) "phoneNumber": phoneNumber,
       if (useCbeBirrPlusJoinEndpoint &&
           miniAppPhoneNumber != null &&
@@ -942,6 +1052,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       setState(() {
                         selectedIndex = index;
                         selectedPaymentMethodId = optionId;
+                        if (optionId == 'cbe' && _isInsideCbeBirrPlus) {
+                          _refreshCbeBirrPlusDisplayToken();
+                        }
                       });
                       if (optionId == 'bankTransfer') {
                         showBankAccountsBottomSheet(context);
@@ -1034,6 +1147,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   );
                 },
               ),
+              if (_showCbeBirrPlusToken) ...[
+                SizedBox(height: 16.h),
+                _buildCbeBirrPlusTokenCard(),
+              ],
               SizedBox(height: 32.h),
               SizedBox(
                 width: double.infinity,
@@ -1047,7 +1164,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                   onPressed: (_isSubmitting ||
                           _isProcessing ||
-                          selectedPaymentMethodId == null)
+                          selectedPaymentMethodId == null ||
+                          (_showCbeBirrPlusToken &&
+                              _cbeBirrPlusDisplayToken.trim().isEmpty))
                       ? null
                       : () {
                           final selectedPaymentMethod =

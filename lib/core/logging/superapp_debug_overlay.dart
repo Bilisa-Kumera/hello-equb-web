@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,8 +36,21 @@ class _SuperAppDebugOverlayState extends State<SuperAppDebugOverlay> {
     super.initState();
     _loadPref().then((_) {
       if (!mounted) return;
-      checkTelebirrSuperApp();
+      _checkSuperAppEnvironment();
     });
+  }
+
+  Future<void> _checkSuperAppEnvironment() async {
+    final cbeBridge = createCbeBirrPlusBridge();
+    if (cbeBridge.isAvailable) return;
+
+    final cbeOk = await cbeBridge.waitUntilAvailable(
+      timeout: const Duration(seconds: 2),
+      pollInterval: const Duration(milliseconds: 140),
+    );
+    if (cbeOk) return;
+
+    await checkTelebirrSuperApp();
   }
 
   Future<void> checkTelebirrSuperApp() async {

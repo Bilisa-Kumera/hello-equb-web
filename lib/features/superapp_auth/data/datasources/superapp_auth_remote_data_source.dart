@@ -33,6 +33,20 @@ class SuperAppAuthRemoteDataSource {
     }
   }
 
+  /// Posts `{"token": token}` to [url] and returns the raw response payload.
+  /// Used by both Telebirr and CBEBirr Plus auto-login endpoints.
+  Future<Map<String, dynamic>> autoLoginMiniApp({
+    required String url,
+    required String token,
+  }) async {
+    final response = await _dio.post(
+      url,
+      data: {'token': token},
+      options: Options(contentType: Headers.jsonContentType),
+    );
+    return _normalizePayload(response.data);
+  }
+
   Future<Map<String, dynamic>> loginForMiniApp({
     required String phoneNumber,
     required String appToken,

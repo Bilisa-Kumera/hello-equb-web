@@ -111,6 +111,9 @@ final Map<String, String> enUS = {
   "receive_code_not_available": "Receive code is not available.",
   "cbe_ussd_enter_pin_message":
       "Please enter your PIN in CBEBirr to finish payment via USSD.",
+  "cbe_birr_plus_token_label": "CBEBirr Plus session token",
+  "cbe_birr_plus_token_unavailable":
+      "CBEBirr Plus token is not available. Reopen Hello Equb from CBEBirr Plus.",
   "not_available": "N/A",
   "currency_birr": "Birr",
   "currency_etb": "ETB",

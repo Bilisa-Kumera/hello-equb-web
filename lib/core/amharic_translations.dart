@@ -87,6 +87,9 @@ final Map<String, String> amET = {
   "cannot_continue": "መቀጠል አይቻልም",
   "receive_code_not_available": "የመቀበያ ኮድ አልተገኘም።",
   "cbe_ussd_enter_pin_message": "ክፍያውን በUSSD ለማጠናቀቅ በCBEBirr ውስጥ ፒንዎን ያስገቡ።",
+  "cbe_birr_plus_token_label": "የCBEBirr Plus የክፍያ ቶከን",
+  "cbe_birr_plus_token_unavailable":
+      "የCBEBirr Plus ቶከን አልተገኘም። Hello Equb ን ከCBEBirr Plus እንደገና ይክፈቱ።",
   "not_available": "የለም",
   "currency_birr": "ብር",
   "currency_etb": "ETB",
