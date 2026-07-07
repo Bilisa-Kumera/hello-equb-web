@@ -85,14 +85,17 @@ class _SplashScreenState extends State<SplashScreen> {
       );
 
       if (cbeOk) {
-        final hasLaunchToken = cbeBirrPlusBridge.launchToken != null;
-        AppLogger.success(
-          'CBEBirr Plus channel detected (launchToken=$hasLaunchToken)',
-        );
+        AppLogger.success('CBEBirr Plus channel detected');
+        dataController.storeData('isCbeBirr', true);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _hasScheduledNavigation = true;
-          context.go('/cbebirr-plus');
+          // Navigate to home if logged in, otherwise to login
+          if (dataController.retrieveData<bool>('isLoggedIn') == true) {
+            context.go('/home');
+          } else {
+            context.go('/login');
+          }
         });
         return;
       }

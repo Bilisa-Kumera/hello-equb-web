@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
-import 'package:helloequb/features/superapp_auth/presentation/pages/cbebirr_page.dart';
 import 'package:helloequb/features/superapp_auth/presentation/pages/cbebirr_plus_continue_page.dart';
 import 'package:helloequb/features/superapp_auth/presentation/pages/telebirr_continue_page.dart';
 import 'package:helloequb/screens/LoginScreenWithPin.dart';
@@ -19,7 +18,6 @@ class AppRouter {
         if (location == '/' ||
             location == '/telebirr' ||
             location == '/cbebirr-plus' ||
-            location == '/cbebirr' ||
             location == '/login' ||
             location == '/language' ||
             location == '/home' ||
@@ -45,10 +43,6 @@ class AppRouter {
         GoRoute(
           path: '/cbebirr-plus',
           builder: (context, state) => const CbeBirrPlusContinuePage(),
-        ),
-        GoRoute(
-          path: '/cbebirr',
-          builder: (context, state) => const CbeBirrPage(),
         ),
         GoRoute(
           path: '/telebirr-login',

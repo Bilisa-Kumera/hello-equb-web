@@ -1,14 +1,9 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/core/superapp/superapp_diagnostics.dart';
-import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dart';
-import 'package:helloequb/features/superapp_auth/data/repositories/superapp_auth_repository_impl.dart';
 import 'package:helloequb/features/superapp_auth/presentation/widgets/superapp_log_panel.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 
@@ -35,10 +30,8 @@ class CbeBirrPlusContinuePage extends StatefulWidget {
 
 class _CbeBirrPlusContinuePageState extends State<CbeBirrPlusContinuePage> {
   late final CbeBirrPlusBridge _bridge;
-  late final SuperAppAuthRepositoryImpl _repo;
 
   final List<_LogStep> _steps = [];
-  String? _launchToken;
   String? _error;
   bool _canRetry = false;
 
@@ -47,20 +40,9 @@ class _CbeBirrPlusContinuePageState extends State<CbeBirrPlusContinuePage> {
     super.initState();
     _bridge = createCbeBirrPlusBridge();
 
-    final cfg = SuperAppAuthConfig.fromEnv();
-    final apiBase = cfg.apiBaseUrlOverride ?? '$baseUrl/';
-    _repo = SuperAppAuthRepositoryImpl(
-      apiBaseUrl: apiBase,
-      tokenExchangePath: cfg.tokenExchangePath,
-      profilePath: cfg.profilePath,
-      telebirrGatewayAuthTokenUrl: cfg.telebirrGatewayAuthTokenUrl,
-      cbeBirrPlusAutoLoginUrl: cfg.cbeBirrPlusAutoLoginUrl,
-    );
-
     _steps.addAll([
       _LogStep('Connecting to CBEBirr Plus channel'),
-      _LogStep('Reading launch token'),
-      _LogStep('Authenticating with Hello Equb'),
+      _LogStep('Confirming CBEBirr Plus'),
       _LogStep('Redirecting to app'),
     ]);
 
@@ -80,7 +62,6 @@ class _CbeBirrPlusContinuePageState extends State<CbeBirrPlusContinuePage> {
     setState(() {
       _error = null;
       _canRetry = false;
-      _launchToken = null;
       for (final s in _steps) {
         s.status = _StepStatus.idle;
         s.detail = null;
@@ -108,74 +89,17 @@ class _CbeBirrPlusContinuePageState extends State<CbeBirrPlusContinuePage> {
     }
     _updateStep(0, _StepStatus.success, detail: 'Channel connected');
 
-    // ── Step 1: read launch token ─────────────────────────────────────────────
+    // ── Step 1: confirm CBEBirr Plus ──────────────────────────────────────────
     _updateStep(1, _StepStatus.loading);
-    AppLogger.log('CBEBirr Plus: reading launch token');
-    final token = _bridge.launchToken;
-    if (token == null || token.trim().isEmpty) {
-      _updateStep(1, _StepStatus.error, detail: 'No launch token provided');
-      setState(() {
-        _error =
-            'CBEBirr Plus channel is connected but did not supply a token.\nPlease re-open via CBEBirr Plus.';
-        _canRetry = true;
-      });
-      AppLogger.warn('CBEBirr Plus: launchToken is null/empty');
-      return;
-    }
-    setState(() => _launchToken = token);
-    _updateStep(1, _StepStatus.success,
-        detail: 'Received ${token.length} chars');
-    AppLogger.success('CBEBirr Plus launch token received (len=${token.length})');
+    AppLogger.log('CBEBirr Plus: channel available');
+    _updateStep(1, _StepStatus.success, detail: 'CBEBirr Plus detected');
 
-    // ── Step 2: backend auto-login ────────────────────────────────────────────
+    // ── Step 2: redirect ─────────────────────────────────────────────────────
     _updateStep(2, _StepStatus.loading);
-    AppLogger.log('CBEBirr Plus: sending token to Hello Equb backend');
-   try {
-  await _repo.autoLoginCbeBirrPlusMiniApp(launchToken: token);
+    AppLogger.log('CBEBirr Plus: continuing to app');
+    _updateStep(2, _StepStatus.success, detail: 'Redirecting');
 
-  if (!mounted) return;
-
-  _updateStep(2, _StepStatus.success, detail: 'Login successful');
-  AppLogger.success('CBEBirr Plus backend auto-login completed');
-} on DioException catch (e) {
-  String errorMessage;
-
-  if (e.response != null) {
-    errorMessage = '''
-Status: ${e.response?.statusCode}
-
-${e.response?.data}
-''';
-  } else {
-    errorMessage = e.message ?? 'Unknown network error';
-  }
-
-  AppLogger.error('CBEBirr Plus backend login failed:\n$errorMessage');
-
-  if (!mounted) return;
-
-  _updateStep(2, _StepStatus.error, detail: errorMessage);
-
-  setState(() {
-    _error = errorMessage;
-    _canRetry = true;
-  });
-} catch (e, stackTrace) {
-  AppLogger.error('Unexpected login error: $e\n$stackTrace');
-
-  if (!mounted) return;
-
-  _updateStep(2, _StepStatus.error, detail: e.toString());
-
-  setState(() {
-    _error = e.toString();
-    _canRetry = true;
-  });
-}
-
-    // ── Step 3: navigate ──────────────────────────────────────────────────────
-    _updateStep(3, _StepStatus.loading);
-    if (mounted) context.go('/home');
+    if (mounted) context.go('/login');
   }
 
   @override
@@ -212,13 +136,6 @@ ${e.response?.data}
                   ),
                   SizedBox(height: 20.h),
                   _StepLogPanel(steps: _steps),
-                  if (_launchToken != null) ...[
-                    SizedBox(height: 14.h),
-                    _TokenPanel(
-                      title: 'Launch Token',
-                      token: _launchToken!,
-                    ),
-                  ],
                   if (_error != null) ...[
                     SizedBox(height: 14.h),
                     Container(
@@ -397,95 +314,6 @@ class _StepRow extends StatelessWidget {
   }
 }
 
-class _TokenPanel extends StatelessWidget {
-  const _TokenPanel({required this.title, required this.token});
-
-  final String title;
-  final String token;
-
-  Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: token));
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Token copied to clipboard'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        border:
-            Border.all(color: AppColors.deepForestGreen.withOpacity(0.35)),
-        borderRadius: BorderRadius.circular(8.r),
-        color: AppColors.deepForestGreen.withOpacity(0.04),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black54,
-                  ),
-                ),
-              ),
-              InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => _copy(context),
-                child: Padding(
-                  padding: EdgeInsets.all(4.w),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.copy_rounded,
-                          size: 16.sp, color: AppColors.deepForestGreen),
-                      SizedBox(width: 4.w),
-                      Text(
-                        'Copy',
-                        style: TextStyle(
-                          fontSize: 11.sp,
-                          color: AppColors.deepForestGreen,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 6.h),
-          SelectableText(
-            token,
-            style: TextStyle(
-              fontSize: 12.sp,
-              fontFamily: 'monospace',
-              color: AppColors.deepForestGreen,
-              height: 1.35,
-            ),
-          ),
-          SizedBox(height: 4.h),
-          Text(
-            '${token.length} chars',
-            style: TextStyle(fontSize: 10.sp, color: Colors.black38),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _DiagnosticsPanel extends StatelessWidget {
   const _DiagnosticsPanel({required this.diag});

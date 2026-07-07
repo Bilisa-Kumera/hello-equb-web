@@ -15,8 +15,8 @@ import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
-import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/telebirr_service.dart';
+import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/utils/secure_storage.dart';
 
 import 'package:helloequb/screens/join_ekub_detail.dart';
@@ -63,108 +63,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final phoneController = TextEditingController();
 
   late TextEditingController _amountController;
-  late final CbeBirrPlusBridge _cbeBirrPlusBridge;
   final TelebirrService _telebirrService = TelebirrService();
   final DataController dataController = DataController();
   StreamSubscription? _paymentResultSub;
 
   String phoneNumber = '';
   String receiveCode = '';
-  String _cbeBirrPlusDisplayToken = '';
   String telebirrAppId = '';
   String telebirrAppSecret = '';
   String telebirrShortCode = '';
+  // Debug info for request/response display
+  String _debugRequestUrl = '';
+  String _debugRequestHeaders = '';
+  String _debugResponse = '';
+  String _debugCbeMiniAppStatus = '';
 
   bool get _isPaymentType =>
       (widget.type ?? '').trim().toLowerCase() == 'payment';
-
-  bool get _showCbeBirrPlusToken =>
-      _isInsideCbeBirrPlus && selectedPaymentMethodId == 'cbe';
-
-  String _resolveCbeBirrPlusLaunchToken() =>
-      _cbeBirrPlusBridge.launchToken?.trim() ?? '';
-
-  void _refreshCbeBirrPlusDisplayToken() {
-    _cbeBirrPlusDisplayToken = _resolveCbeBirrPlusLaunchToken();
-  }
-
-  Future<void> _copyCbeBirrPlusToken(String token) async {
-    await Clipboard.setData(ClipboardData(text: token));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(AppKeys.copiedToClipBoard.tr(context)),
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
-
-  Widget _buildCbeBirrPlusTokenCard() {
-    final token = _cbeBirrPlusDisplayToken.trim();
-    final hasToken = token.isNotEmpty;
-
-    return Card(
-      elevation: 2,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              AppKeys.cbeBirrPlusTokenLabel.tr(context),
-              style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            SizedBox(height: 12.h),
-            if (hasToken)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: SelectableText(
-                        token,
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          height: 1.4,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: AppKeys.copiedToClipBoard.tr(context),
-                      icon: const Icon(Icons.copy),
-                      onPressed: () => _copyCbeBirrPlusToken(token),
-                    ),
-                  ],
-                ),
-              )
-            else
-              Text(
-                AppKeys.cbeBirrPlusTokenUnavailable.tr(context),
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  color: Colors.red.shade700,
-                  height: 1.35,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 
   List<Map<String, dynamic>> get _visiblePaymentOptions {
     if (!_isInsideCbeBirrPlus) return paymentOptions;
@@ -206,12 +121,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void initState() {
     super.initState();
-    _cbeBirrPlusBridge = createCbeBirrPlusBridge();
-    _detectCbeBirrPlus();
+    _isInsideCbeBirrPlus =
+        dataController.retrieveData<bool>('isCbeBirr') ?? false;
+    // Ensure runtime detection when possible (e.g., when navigated directly to payment)
+    _detectCbeBirrBridge();
     _amountController = TextEditingController(
       text:
           '${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
     );
+    _subscribeToTelebirrPaymentResults();
+  }
+
+  Future<void> _detectCbeBirrBridge() async {
+    try {
+      final bridge = createCbeBirrPlusBridge();
+      // Quick check first
+      if (bridge.isAvailable) {
+        dataController.storeData('isCbeBirr', true);
+        if (!_isInsideCbeBirrPlus) setState(() => _isInsideCbeBirrPlus = true);
+        return;
+      }
+
+      // Wait a short time for bridge to become available
+      final ok =
+          await bridge.waitUntilAvailable(timeout: const Duration(seconds: 6));
+      dataController.storeData('isCbeBirr', ok);
+      if (ok && !_isInsideCbeBirrPlus)
+        setState(() => _isInsideCbeBirrPlus = true);
+    } catch (_) {
+      // ignore errors; leave flag as-is
+    }
   }
 
   void _subscribeToTelebirrPaymentResults() {
@@ -225,33 +164,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         errMsg != null ? errMsg.toString() : AppKeys.unknownResult.tr(context),
       );
     });
-  }
-
-  Future<void> _detectCbeBirrPlus() async {
-    final ok = await _cbeBirrPlusBridge.waitUntilAvailable(
-      timeout: const Duration(seconds: 2),
-      pollInterval: const Duration(milliseconds: 140),
-    );
-
-    if (!mounted) return;
-
-    if (ok) {
-      setState(() {
-        _isInsideCbeBirrPlus = true;
-        if (selectedPaymentMethodId == 'telebirr') {
-          selectedPaymentMethodId = null;
-          selectedIndex = null;
-        } else if (selectedPaymentMethodId != null) {
-          final visibleIndex = _visiblePaymentOptions.indexWhere(
-            (option) => option['id'] == selectedPaymentMethodId,
-          );
-          selectedIndex = visibleIndex >= 0 ? visibleIndex : null;
-        }
-      });
-      return;
-    }
-
-    _subscribeToTelebirrPaymentResults();
   }
 
   @override
@@ -287,11 +199,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _handleCbe() async {
-    if (_isInsideCbeBirrPlus) {
-      await _handleCbeBirrPlusPayment();
-      return;
-    }
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -301,56 +208,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         paymentMethodLabel: AppKeys.paymentMethodCbebirr.tr(context),
       ),
     );
-  }
-
-  Future<void> _handleCbeBirrPlusPayment() async {
-    setState(() => _isProcessing = true);
-
-    try {
-      _refreshCbeBirrPlusDisplayToken();
-      final launchToken = _cbeBirrPlusDisplayToken.trim();
-
-      if (launchToken.isEmpty) {
-        if (mounted) {
-          setState(() {});
-          _showDialog(
-            AppKeys.cannotContinue.tr(context),
-            AppKeys.cbeBirrPlusTokenUnavailable.tr(context),
-          );
-        }
-        return;
-      }
-
-      await _getReceiveCode(paymentMethod: 'cbe');
-
-      final paymentToken =
-          receiveCode.trim().isNotEmpty ? receiveCode.trim() : launchToken;
-
-      if (mounted && paymentToken != _cbeBirrPlusDisplayToken) {
-        setState(() => _cbeBirrPlusDisplayToken = paymentToken);
-      }
-
-      final sent = await _cbeBirrPlusBridge.sendPaymentToken(paymentToken);
-      if (!mounted) return;
-
-      if (!sent) {
-        _showDialog(
-          AppKeys.cannotContinue.tr(context),
-          AppKeys.errorTryAgain.tr(context),
-        );
-        return;
-      }
-
-      CustomSnackBar.show(
-        context,
-        AppKeys.cbeUssdEnterPinMessage.tr(context),
-        AppColors.primary,
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
-    }
   }
 
   Future<void> _processPhonePayment({
@@ -401,26 +258,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
     String? phoneNumber,
     required String paymentMethod,
   }) async {
-    final useCbeBirrPlusJoinEndpoint =
-        !_isPaymentType && paymentMethod == 'cbe' && _isInsideCbeBirrPlus;
+    final useMiniAppEndpoint = paymentMethod == 'cbe' && _isInsideCbeBirrPlus;
     final miniAppPhoneNumber = phoneNumber ??
         dataController.retrieveData<String>('phoneNumber')?.trim();
-    final miniAppToken = _cbeBirrPlusBridge.launchToken?.trim();
-
     final data = <String, dynamic>{
       "paidAmount":
           double.tryParse((widget.ekubAmount ?? '0.0').replaceAll(',', '')) ??
               0,
       "paymentMethod": paymentMethod,
       if (phoneNumber != null) "phoneNumber": phoneNumber,
-      if (useCbeBirrPlusJoinEndpoint &&
+      if (useMiniAppEndpoint &&
           miniAppPhoneNumber != null &&
           miniAppPhoneNumber.isNotEmpty)
         "phoneNumber": miniAppPhoneNumber,
-      if (useCbeBirrPlusJoinEndpoint &&
-          miniAppToken != null &&
-          miniAppToken.isNotEmpty)
-        "token": miniAppToken,
     };
 
     if (_isPaymentType) {
@@ -445,15 +295,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
 
-    final String url = (_isPaymentType
-            ? makePaymentUrl
-            : useCbeBirrPlusJoinEndpoint
-                ? joinMiniAppEkubUrl
-                : joinEkubUrl) +
+    final String url = (useMiniAppEndpoint
+            ? joinMiniAppEkubUrl
+            : (_isPaymentType ? makePaymentUrl : joinEkubUrl)) +
         (widget.ekubId ?? '');
 
     debugPrint('Payment request url: $url');
     debugPrint('Payment request body: ${jsonEncode(data)}');
+    setState(() {
+      _debugRequestUrl = url;
+      _debugRequestHeaders =
+          jsonEncode({"Authorization": "Bearer $bearerToken", "body": data});
+      _debugResponse = '';
+      _debugCbeMiniAppStatus = useMiniAppEndpoint
+          ? 'Waiting for joinMiniAppEkubUrl response...'
+          : '';
+    });
 
     try {
       final Dio dio = Dio();
@@ -465,6 +322,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'];
+        setState(() {
+          _debugResponse = jsonEncode(response.data);
+        });
 
         final dynamic orderResult = responseData?['orderResult'];
         final String rawRequest =
@@ -484,15 +344,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
         final String appIdFromRaw = rawParam('appid');
         final String shortCodeFromRaw = rawParam('merch_code');
-        final String cbePaymentToken = (responseData?['token'] ??
-                responseData?['paymentToken'] ??
-                responseData?['processedPaymentToken'] ??
-                responseData?['processedPaymentInfoToken'] ??
-                orderResult?['token'] ??
-                orderResult?['paymentToken'] ??
-                orderResult?['processedPaymentToken'] ??
-                '')
-            .toString();
+        final String cbePaymentToken =
+            _extractProcessedPaymentToken(responseData);
+
+        if (useMiniAppEndpoint && cbePaymentToken.isNotEmpty) {
+          await _sendCbeMiniAppPaymentToken(cbePaymentToken);
+        } else if (useMiniAppEndpoint) {
+          setState(() {
+            _debugCbeMiniAppStatus =
+                'processedPaymentToken not found in joinMiniAppEkubUrl response.';
+          });
+        }
 
         final newReceiveCode = (responseData?['receiveCode'] ??
                 orderResult?['receiveCode'] ??
@@ -520,8 +382,49 @@ class _PaymentScreenState extends State<PaymentScreen> {
         });
       } else {}
     } on DioError catch (e) {
+      setState(() {
+        _debugResponse =
+            (e.response != null ? jsonEncode(e.response?.data) : e.message)!;
+        if (useMiniAppEndpoint) {
+          _debugCbeMiniAppStatus =
+              'Error before postMessage: ${e.response != null ? jsonEncode(e.response?.data) : e.message}';
+        }
+      });
       _handleDioError(e);
     }
+  }
+
+  String _extractProcessedPaymentToken(dynamic responseData) {
+    if (responseData is! Map) return '';
+
+    return responseData['processedPaymentToken']?.toString().trim() ?? '';
+  }
+
+  Future<void> _sendCbeMiniAppPaymentToken(String token) async {
+    final tokenLength = token.trim().length;
+    setState(() {
+      _debugCbeMiniAppStatus =
+          'processedPaymentToken received (length: $tokenLength). Initiating window.myJsChannel.postMessage(data)...';
+    });
+
+    final bridge = createCbeBirrPlusBridge();
+    final sent = await bridge.sendPaymentToken(token);
+    if (!mounted) return;
+
+    if (!sent) {
+      setState(() {
+        _debugCbeMiniAppStatus =
+            'Error: window.myJsChannel.postMessage(data) was not completed. myJsChannel may be unavailable.';
+      });
+      debugPrint(
+          'CBEBirr Plus payment token could not be sent to myJsChannel.');
+      return;
+    }
+
+    setState(() {
+      _debugCbeMiniAppStatus =
+          'Success: window.myJsChannel.postMessage(data) initiated with processedPaymentToken.';
+    });
   }
 
   Future<void> _submitJoinRequest({
@@ -575,7 +478,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (phoneNumber != null) "phoneNumber": phoneNumber,
     };
 
-    final String url = makePaymentUrl + (widget.ekubId ?? '');
+    final bool useMiniAppEndpoint =
+        paymentMethod == 'cbe' && _isInsideCbeBirrPlus;
+    final String url =
+        (useMiniAppEndpoint ? joinMiniAppEkubUrl : makePaymentUrl) +
+            (widget.ekubId ?? '');
 
     debugPrint('Payment request url: $url');
     debugPrint('Payment request body: ${jsonEncode(data)}');
@@ -589,6 +496,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
       );
       if (response.statusCode == 200) {
         if (paymentMethod == 'cbe') {
+          final responseData = response.data['data'];
+          final String cbePaymentToken =
+              _extractProcessedPaymentToken(responseData);
+
+          if (useMiniAppEndpoint && cbePaymentToken.isNotEmpty) {
+            await _sendCbeMiniAppPaymentToken(cbePaymentToken);
+          } else if (useMiniAppEndpoint) {
+            setState(() {
+              _debugCbeMiniAppStatus =
+                  'processedPaymentToken not found in joinMiniAppEkubUrl response.';
+            });
+          }
+
           CustomSnackBar.show(
             context,
             AppKeys.cbeUssdEnterPinMessage.tr(context),
@@ -627,7 +547,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         CustomSnackBar.show(
             context, AppKeys.errorTryAgain.tr(context), AppColors.red);
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       setState(() => isLoading = false);
       CustomSnackBar.show(
           context, AppKeys.errorTryAgain.tr(context), AppColors.red);
@@ -807,6 +727,109 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         fontSize: 16.sp,
                         fontWeight: FontWeight.w600,
                         color: Colors.white)),
+              ),
+            ),
+            // Debug: show last request URL, headers and response with copy buttons
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.only(top: 12.h),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('Request URL',
+                          style: TextStyle(
+                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: _debugRequestUrl));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Copied')));
+                        },
+                      )
+                    ],
+                  ),
+                  SelectableText(
+                      _debugRequestUrl.isNotEmpty ? _debugRequestUrl : '-',
+                      style: TextStyle(fontSize: 12.sp)),
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      Text('Headers',
+                          style: TextStyle(
+                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: _debugRequestHeaders));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Copied')));
+                        },
+                      )
+                    ],
+                  ),
+                  SelectableText(
+                      _debugRequestHeaders.isNotEmpty
+                          ? _debugRequestHeaders
+                          : '-',
+                      style: TextStyle(fontSize: 12.sp)),
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      Text('Response',
+                          style: TextStyle(
+                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: _debugResponse));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Copied')));
+                        },
+                      )
+                    ],
+                  ),
+                  SelectableText(
+                      _debugResponse.isNotEmpty ? _debugResponse : '-',
+                      style: TextStyle(fontSize: 12.sp)),
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      Text('CBEBirr MiniApp',
+                          style: TextStyle(
+                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: _debugCbeMiniAppStatus));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Copied')));
+                        },
+                      )
+                    ],
+                  ),
+                  SelectableText(
+                      _debugCbeMiniAppStatus.isNotEmpty
+                          ? _debugCbeMiniAppStatus
+                          : '-',
+                      style: TextStyle(fontSize: 12.sp)),
+                ],
               ),
             ),
             SizedBox(height: 12.h),
@@ -1052,9 +1075,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       setState(() {
                         selectedIndex = index;
                         selectedPaymentMethodId = optionId;
-                        if (optionId == 'cbe' && _isInsideCbeBirrPlus) {
-                          _refreshCbeBirrPlusDisplayToken();
-                        }
                       });
                       if (optionId == 'bankTransfer') {
                         showBankAccountsBottomSheet(context);
@@ -1147,10 +1167,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   );
                 },
               ),
-              if (_showCbeBirrPlusToken) ...[
-                SizedBox(height: 16.h),
-                _buildCbeBirrPlusTokenCard(),
-              ],
               SizedBox(height: 32.h),
               SizedBox(
                 width: double.infinity,
@@ -1164,9 +1180,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                   onPressed: (_isSubmitting ||
                           _isProcessing ||
-                          selectedPaymentMethodId == null ||
-                          (_showCbeBirrPlusToken &&
-                              _cbeBirrPlusDisplayToken.trim().isEmpty))
+                          selectedPaymentMethodId == null)
                       ? null
                       : () {
                           final selectedPaymentMethod =
@@ -1442,14 +1456,11 @@ class _InfoPopupState extends State<InfoPopup> {
     getCompanyBanks();
   }
 
-  bool _isSubmitting = false;
   final DataController dataController = DataController();
 
   Future<void> submit(List<ListItem> percentage, double paidAmount,
       String paymentMethod, String type) async {
-    setState(() {
-      _isSubmitting = true;
-    });
+    setState(() {});
 
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
 
@@ -1557,9 +1568,7 @@ class _InfoPopupState extends State<InfoPopup> {
                 Text(textScaleFactor: 1.0, AppKeys.errorTryAgain.tr(context))),
       );
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      setState(() {});
     }
   }
 
@@ -1667,9 +1676,7 @@ class _InfoPopupState extends State<InfoPopup> {
                 Text(textScaleFactor: 1.0, AppKeys.errorTryAgain.tr(context))),
       );
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      setState(() {});
     }
   }
 

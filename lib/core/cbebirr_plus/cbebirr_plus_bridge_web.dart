@@ -34,36 +34,37 @@ class _CbeBirrPlusBridgeWeb implements CbeBirrPlusBridge {
   String? get launchToken {
     final win = js_util.globalThis;
 
+    final bridgeToken = _readTokenFromCbeBridge(win);
+    if (bridgeToken != null) return bridgeToken;
+
     for (final key in const <String>[
       '__CBEBIRR_PLUS_TOKEN',
       'CBEBIRR_PLUS_TOKEN',
       'cbebirrPlusToken',
+      'cbebirrToken',
+      'cbeBirrToken',
+      'cbe_token',
+      'appToken',
+      'apptoken',
+      'authorization',
+      'Authorization',
     ]) {
       try {
         if (!js_util.hasProperty(win, key)) continue;
         final value = js_util.getProperty(win, key);
-        if (value is String && value.trim().isNotEmpty) {
-          return _stripBearerPrefix(value);
-        }
+        final token = _readToken(value);
+        if (token != null) return token;
       } catch (_) {}
     }
 
-    try {
-      final location = js_util.getProperty(win, 'location');
-      final search = js_util.getProperty(location, 'search')?.toString() ?? '';
-      final query = search.startsWith('?') ? search.substring(1) : search;
-      final queryParameters = Uri.splitQueryString(query);
-      for (final key in const <String>[
-        'cbebirrToken',
-        'cbeBirrToken',
-        'cbe_token',
-      ]) {
-        final value = queryParameters[key];
-        if (value != null && value.trim().isNotEmpty) {
-          return _stripBearerPrefix(value);
-        }
-      }
-    } catch (_) {}
+    final urlToken = _readTokenFromUrl(win);
+    if (urlToken != null) return urlToken;
+
+    final storageToken = _readTokenFromBrowserStorage(win);
+    if (storageToken != null) return storageToken;
+
+    final cookieToken = _readTokenFromCookies(win);
+    if (cookieToken != null) return cookieToken;
 
     return null;
   }
@@ -133,6 +134,175 @@ class _CbeBirrPlusBridgeWeb implements CbeBirrPlusBridge {
     } catch (_) {
       return false;
     }
+  }
+
+  String? _readTokenFromCbeBridge(Object win) {
+    try {
+      if (!js_util.hasProperty(win, 'CBEBirrPlusBridge')) return null;
+      final bridge = js_util.getProperty(win, 'CBEBirrPlusBridge');
+      if (bridge == null) return null;
+
+      for (final property in const <String>[
+        'authorization',
+        'Authorization',
+        'appToken',
+        'apptoken',
+        'token',
+        'launchToken',
+      ]) {
+        if (!js_util.hasProperty(bridge, property)) continue;
+        final token = _readToken(js_util.getProperty(bridge, property));
+        if (token != null) return token;
+      }
+
+      for (final method in const <String>[
+        'getAuthorization',
+        'getAppToken',
+        'getToken',
+        'getLaunchToken',
+      ]) {
+        if (!js_util.hasProperty(bridge, method)) continue;
+        final fn = js_util.getProperty(bridge, method);
+        if (fn == null || !js_util.typeofEquals(fn, 'function')) continue;
+        final token = _readToken(js_util.callMethod(bridge, method, const []));
+        if (token != null) return token;
+      }
+    } catch (e) {
+      AppLogger.warn('CBEBirr Plus bridge token read failed: $e');
+    }
+    return null;
+  }
+
+  String? _readTokenFromUrl(Object win) {
+    try {
+      final location = js_util.getProperty(win, 'location');
+      final search = js_util.getProperty(location, 'search')?.toString() ?? '';
+      final hash = js_util.getProperty(location, 'hash')?.toString() ?? '';
+      final queryToken = _readTokenFromQuery(search);
+      if (queryToken != null) return queryToken;
+      return _readTokenFromQuery(hash);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _readTokenFromQuery(String rawQuery) {
+    final cleanQuery = rawQuery
+        .replaceFirst(RegExp(r'^[?#]'), '')
+        .replaceFirst(RegExp(r'^/[^?]*\?'), '');
+    if (cleanQuery.trim().isEmpty) return null;
+
+    try {
+      final queryParameters = Uri.splitQueryString(cleanQuery);
+      for (final key in const <String>[
+        'authorization',
+        'Authorization',
+        'appToken',
+        'apptoken',
+        'token',
+        'cbebirrToken',
+        'cbeBirrToken',
+        'cbe_token',
+      ]) {
+        final token = _readToken(queryParameters[key]);
+        if (token != null) return token;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String? _readTokenFromBrowserStorage(Object win) {
+    for (final storageName in const <String>[
+      'sessionStorage',
+      'localStorage'
+    ]) {
+      try {
+        if (!js_util.hasProperty(win, storageName)) continue;
+        final storage = js_util.getProperty(win, storageName);
+        if (storage == null || !js_util.hasProperty(storage, 'getItem')) {
+          continue;
+        }
+        for (final key in const <String>[
+          'authorization',
+          'Authorization',
+          'appToken',
+          'apptoken',
+          'token',
+          'cbebirrToken',
+          'cbeBirrToken',
+          'cbe_token',
+          'CBEBIRR_PLUS_TOKEN',
+        ]) {
+          final token =
+              _readToken(js_util.callMethod(storage, 'getItem', [key]));
+          if (token != null) return token;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  String? _readTokenFromCookies(Object win) {
+    try {
+      if (!js_util.hasProperty(win, 'document')) return null;
+      final document = js_util.getProperty(win, 'document');
+      final cookie = js_util.getProperty(document, 'cookie')?.toString() ?? '';
+      if (cookie.trim().isEmpty) return null;
+
+      for (final entry in cookie.split(';')) {
+        final index = entry.indexOf('=');
+        if (index <= 0) continue;
+        final key = Uri.decodeComponent(entry.substring(0, index).trim());
+        if (!const <String>{
+          'authorization',
+          'Authorization',
+          'appToken',
+          'apptoken',
+          'token',
+          'cbebirrToken',
+          'cbeBirrToken',
+          'cbe_token',
+        }.contains(key)) {
+          continue;
+        }
+        final value = Uri.decodeComponent(entry.substring(index + 1).trim());
+        final token = _readToken(value);
+        if (token != null) return token;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String? _readToken(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return null;
+      return _stripBearerPrefix(trimmed);
+    }
+
+    try {
+      for (final key in const <String>[
+        'authorization',
+        'Authorization',
+        'appToken',
+        'apptoken',
+        'token',
+        'accessToken',
+        'launchToken',
+      ]) {
+        if (!js_util.hasProperty(value, key)) continue;
+        final token = _readToken(js_util.getProperty(value, key));
+        if (token != null) return token;
+      }
+
+      if (js_util.hasProperty(value, 'data')) {
+        return _readToken(js_util.getProperty(value, 'data'));
+      }
+    } catch (_) {}
+
+    return null;
   }
 
   String _stripBearerPrefix(String value) {

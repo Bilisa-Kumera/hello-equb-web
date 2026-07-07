@@ -118,7 +118,13 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
     final cbeBridge = createCbeBirrPlusBridge();
     if (cbeBridge.isAvailable) {
       AppLogger.log('CBEBirr Plus detected on Telebirr page');
-      if (mounted) setState(() => _isFromCbeBirr = true);
+      final loggedIn = DataController().retrieveData<bool>('isLoggedIn') == true;
+      if (!mounted) return;
+      if (loggedIn) {
+        context.go('/home');
+      } else {
+        context.go('/login');
+      }
       return;
     }
 
