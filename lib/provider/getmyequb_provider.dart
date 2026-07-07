@@ -1,5 +1,5 @@
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/main.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/main.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 

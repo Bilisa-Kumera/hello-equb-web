@@ -73,6 +73,13 @@ final Map<String, String> enUS = {
   "enter_details": "Enter Details",
   "enter_email": "Enter email",
   'lbl_report': 'Report',
+  'lbl_lottery_history': 'Winners History',
+  'lbl_we_have_a_winner': 'We have a winner!',
+  'lbl_lucky_lottery_number': 'The lucky lottery number is',
+  'lbl_winner': 'Winner',
+  'lbl_no_winners_yet': 'No winners yet',
+  'lbl_winners_will_appear_here':
+      'Winners will appear here once the lottery result is available.',
   'lbl_guarantor_name': 'Guarantor Name',
   'lbl_guarantor_last_name': 'Guarantor Last Name',
   'lbl_guarantor_phone_number': 'Guarantor Phone Number',
@@ -104,6 +111,9 @@ final Map<String, String> enUS = {
   "receive_code_not_available": "Receive code is not available.",
   "cbe_ussd_enter_pin_message":
       "Please enter your PIN in CBEBirr to finish payment via USSD.",
+  "cbe_birr_plus_token_label": "CBEBirr Plus session token",
+  "cbe_birr_plus_token_unavailable":
+      "CBEBirr Plus token is not available. Reopen Hello Equb from CBEBirr Plus.",
   "not_available": "N/A",
   "currency_birr": "Birr",
   "currency_etb": "ETB",
@@ -197,6 +207,8 @@ final Map<String, String> enUS = {
   "lbl_confirm_pin": "Confirm PIN",
   "lbl_done": "Done",
   'phone_email': 'Phone or Email',
+  'already_joined':
+      'You have joined this equb before, please go to payments screen and pay round payments.',
   'lbl_confirm': 'Confirm',
   'enter_beneficiary_phonenumber': 'Enter beneficiary phone number',
   "lbl_welcome_back": "Welcome back!",
@@ -251,7 +263,8 @@ final Map<String, String> enUS = {
   "lbl_ammount": "Ammount",
   "lbl_ekub_detail": "Equb Detail",
   "lbl_joined_members": "Joined Members",
-  "lbl_expected_start_date": "Expected Start Date",
+  'started': 'Started',
+  "lbl_expected_start_date": "Start Date",
   "lbl_service_charge": "Service Charge",
   "lbl_your_share": "Equb",
   "lbl_equivalent_etb": "Equivalent ETB",
@@ -435,8 +448,6 @@ By using the Hello Equb app, you confirm that you have read, understood, and agr
   'add_new_stake': 'Add New Stake',
   'tap_to_view_details': 'Tap to view details',
   'view_payments': 'View Payments',
-
-
   'upload_receipt': 'Upload Receipt',
-  'registering' : 'Registering',
+  'registering': 'Registering',
 };

@@ -1,9 +1,9 @@
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/provider/allequb_payment.dart';
-import 'package:ekubee/screens/join_ekub_detail.dart';
-import 'package:ekubee/screens/my_ekub_detail_screen.dart';
-import 'package:ekubee/screens/payment_arrangement_screen.dart';
-import 'package:ekubee/utils/app_localizations.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/provider/allequb_payment.dart';
+import 'package:helloequb/screens/join_ekub_detail.dart';
+import 'package:helloequb/screens/my_ekub_detail_screen.dart';
+import 'package:helloequb/screens/payment_arrangement_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';

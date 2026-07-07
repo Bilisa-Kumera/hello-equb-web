@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:ekubee/core/api_url.dart';
+import 'package:helloequb/core/api_url.dart';
 
 class ApiService {
   final Dio _dio = Dio();

@@ -1,14 +1,14 @@
 import 'package:dio/dio.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/screens/notification_screen.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/notification_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 
 import '../utils/secure_storage.dart';
 

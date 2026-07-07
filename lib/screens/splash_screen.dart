@@ -1,14 +1,20 @@
 import 'dart:async';
-import 'package:ekubee/features/app_update/presentation/providers/update_provider.dart';
-import 'package:ekubee/features/app_update/presentation/providers/update_state.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/features/app_update/presentation/providers/update_provider.dart';
+import 'package:helloequb/features/app_update/presentation/providers/update_state.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/core/logging/app_logger.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/screens/LoginScreenWithPin.dart';
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/screens/language_screen.dart';
+import 'package:helloequb/screens/LoginScreenWithPin.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/language_screen.dart';
+import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
+import 'package:helloequb/core/telebirr/telebirr.dart';
+import 'package:helloequb/core/superapp/superapp_bridge.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -51,6 +57,88 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
     _hasTriggeredUpdateCheck = true;
     unawaited(_updateProvider.checkForUpdateOnStartup());
+
+    // Web is only supported inside the SuperApp webview.
+    if (kIsWeb) {
+      final bridge = createSuperAppBridge();
+      final cbeBirrPlusBridge = createCbeBirrPlusBridge();
+      final telebirrDetector = createTelebirrMiniAppDetector();
+      AppLogger.log('App started (web)');
+
+      final telebirrDetected = await _waitForTelebirrMiniApp(
+        telebirrDetector,
+      );
+      if (telebirrDetected) {
+        AppLogger.success('Telebirr mini app detected first');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _hasScheduledNavigation = true;
+          context.go('/telebirr');
+        });
+        return;
+      }
+
+      // Prefer CBEBirr Plus when its channel is available.
+      final cbeOk = await cbeBirrPlusBridge.waitUntilAvailable(
+        timeout: const Duration(seconds: 4),
+        pollInterval: const Duration(milliseconds: 140),
+      );
+
+      if (cbeOk) {
+        AppLogger.success('CBEBirr Plus channel detected');
+        dataController.storeData('isCbeBirr', true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _hasScheduledNavigation = true;
+          // Navigate to home if logged in, otherwise to login
+          if (dataController.retrieveData<bool>('isLoggedIn') == true) {
+            context.go('/home');
+          } else {
+            context.go('/login');
+          }
+        });
+        return;
+      }
+
+      // Some SuperApp webviews inject the bridge after Flutter starts rendering.
+      final ok = await bridge.waitUntilAvailable(
+        timeout: const Duration(seconds: 12),
+        pollInterval: const Duration(milliseconds: 140),
+      );
+
+      if (!ok) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _hasScheduledNavigation = true;
+          AppLogger.log('No SuperApp bridge detected; redirecting to login');
+          context.go('/login');
+        });
+        return;
+      }
+
+      AppLogger.success('Telebirr bridge detected');
+      if (dataController.retrieveData<bool>('isLoggedIn') != true) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _hasScheduledNavigation = true;
+          context.go('/telebirr');
+        });
+        return;
+      }
+    }
+  }
+
+  Future<bool> _waitForTelebirrMiniApp(
+    TelebirrMiniAppDetector detector,
+  ) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 12));
+    while (DateTime.now().isBefore(deadline)) {
+      if (detector.isTelebirrMiniApp()) {
+        return true;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    return detector.isTelebirrMiniApp();
   }
 
   void _onUpdateStateChanged() {
@@ -93,25 +181,26 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (dataController.retrieveData<bool>('isLoggedIn') == true) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      _go('/home', fallback: const HomeScreen());
       return;
     }
 
     if (dataController.retrieveData<bool>('isFirstTime') == false) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => LoginScreenWithPin(
-            phoneNumber: '',
-          ),
-        ),
-      );
+      _go('/login', fallback: const LoginScreenWithPin(phoneNumber: ''));
       return;
     }
 
+    _go('/language', fallback: const LanguageSelection());
+  }
+
+  void _go(String location, {required Widget fallback}) {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      context.go(location);
+      return;
+    }
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const LanguageSelection()),
+      MaterialPageRoute(builder: (context) => fallback),
     );
   }
 

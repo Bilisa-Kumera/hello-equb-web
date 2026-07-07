@@ -1,22 +1,22 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:ekubee/screens/payment_screen.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/screens/payment_screen.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/main.dart';
-import 'package:ekubee/models/ekub_category_model.dart';
-import 'package:ekubee/screens/LoginScreenWithPin.dart';
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/screens/my_other_ekubs.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/main.dart';
+import 'package:helloequb/models/ekub_category_model.dart';
+import 'package:helloequb/screens/LoginScreenWithPin.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/my_other_ekubs.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
@@ -41,7 +41,8 @@ class _MyDialogState extends State<MyDialog> {
   TextEditingController referenceController = TextEditingController();
 
   XFile? _image;
-  bool _isSubmitting = false; 
+  Uint8List? _imageBytes;
+  bool _isSubmitting = false;
   int getPercentage(String joinOption) {
     if (joinOption.contains('/')) {
       return int.parse(joinOption.split('/')[1]);
@@ -55,8 +56,11 @@ class _MyDialogState extends State<MyDialog> {
     percentage = getPercentage(widget.joinOption);
     final ImagePicker picker = ImagePicker();
     final XFile? pickedImage = await picker.pickImage(source: source);
+    final pickedBytes =
+        pickedImage == null ? null : await pickedImage.readAsBytes();
     setState(() {
       _image = pickedImage;
+      _imageBytes = pickedBytes;
     });
   }
 
@@ -89,13 +93,22 @@ class _MyDialogState extends State<MyDialog> {
       );
       return;
     }
+    if (_imageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                textScaleFactor: 1.0, 'Unable to read the selected image')),
+      );
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
     });
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
-    final fileExtension = _image!.path.split('.').last.toLowerCase();
-    final mimeType = lookupMimeType(_image!.path) ?? 'application/octet-stream';
+    final fileName = _image!.name.isNotEmpty ? _image!.name : _image!.path;
+    final fileExtension = fileName.split('.').last.toLowerCase();
+    final mimeType = lookupMimeType(fileName) ?? 'application/octet-stream';
 
     if (!(fileExtension == 'png' ||
         fileExtension == 'jpg' ||
@@ -125,9 +138,9 @@ class _MyDialogState extends State<MyDialog> {
         data['dividedBy'] = percentage;
       }
 
-      data['picture'] = await MultipartFile.fromFile(
-        _image!.path,
-        filename: '1.jpg',
+      data['picture'] = MultipartFile.fromBytes(
+        _imageBytes!,
+        filename: _image!.name.isNotEmpty ? _image!.name : '1.$fileExtension',
         contentType: MediaType.parse(mimeType),
       );
 
@@ -365,16 +378,16 @@ class _MyDialogState extends State<MyDialog> {
                     ),
                   ],
                 ),
-                child: _image != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(10.0),
-                        child: Image.file(
-                          File(_image!.path),
-                          fit: BoxFit.cover,
-                          height: 100,
-                          width: 100,
-                        ),
-                      )
+                      child: _imageBytes != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(10.0),
+                              child: Image.memory(
+                                _imageBytes!,
+                                fit: BoxFit.cover,
+                                height: 100,
+                                width: 100,
+                              ),
+                            )
                     :  Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:ekubee/core/api_service_elper.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/models/cooperate_models.dart';
+import 'package:helloequb/core/api_service_elper.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/models/cooperate_models.dart';
 
 import '../utils/getx_storage_custom.dart';
 import '../utils/secure_storage.dart';

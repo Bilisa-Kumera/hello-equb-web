@@ -1,14 +1,15 @@
-import 'dart:io';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'dart:typed_data';
+
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/main.dart';
-import 'package:ekubee/screens/create_new_password_screen.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_button.dart';
-import 'package:ekubee/utils/custom_text_field.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/main.dart';
+import 'package:helloequb/screens/create_new_password_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_button.dart';
+import 'package:helloequb/utils/custom_text_field.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 import 'package:image_picker/image_picker.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -50,7 +51,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  File? _profileImage;
+  XFile? _profileImage;
+  Uint8List? _profileImageBytes;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -58,8 +60,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final pickedFile = await _picker.pickImage(source: source);
 
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
       setState(() {
-        _profileImage = File(pickedFile.path);
+        _profileImage = pickedFile;
+        _profileImageBytes = bytes;
       });
     }
   }
@@ -114,8 +118,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: CircleAvatar(
                   radius: 60,
                   backgroundColor: AppColors.lightBlueGray,
-                  backgroundImage:
-                      _profileImage != null ? FileImage(_profileImage!) : null,
+                  backgroundImage: _profileImageBytes != null
+                      ? MemoryImage(_profileImageBytes!)
+                      : null,
                   child: _profileImage == null
                       ? const Icon(Icons.camera_alt,
                           size: 50, color: AppColors.grey)
@@ -278,36 +283,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 onPressed: () {
                   if (firstNameController.text.isNotEmpty &&
                       lastNameController.text.isNotEmpty) {
-                    _profileImage != null
-                        ? Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CreateNewPasswordScreen(
-                                firstName: firstNameController.text,
-                                profilePicture: _profileImage!,
-                                lastName: lastNameController.text,
-                                middleName: middleNameController.text,
-                                email: emailController.text,
-                                phoneNumber: phoneNumberController.text,
-                                referalCode: referalController.text
-                              ),
-                            ),
-                          )
-                        : Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CreateNewPasswordScreen(
-                                firstName: firstNameController.text,
-                                //  profilePicture: _profileImage!,
-                                lastName: lastNameController.text,
-                                middleName: middleNameController.text,
-                                email: emailController.text,
-                                phoneNumber: phoneNumberController.text,
-                                referalCode: referalController.text
-
-                              ),
-                            ),
-                          );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CreateNewPasswordScreen(
+                          firstName: firstNameController.text,
+                          profilePicture: _profileImage,
+                          profilePictureBytes: _profileImageBytes,
+                          lastName: lastNameController.text,
+                          middleName: middleNameController.text,
+                          email: emailController.text,
+                          phoneNumber: phoneNumberController.text,
+                          referalCode: referalController.text,
+                        ),
+                      ),
+                    );
                   }
                 },
                 textColor: AppColors.white,

@@ -1,8 +1,8 @@
-import 'package:ekubee/core/api_url.dart';
+import 'package:helloequb/core/api_url.dart';
 import 'package:flutter/material.dart';
-import 'package:ekubee/core/api_service_elper.dart';
-import 'package:ekubee/models/equb_model.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
+import 'package:helloequb/core/api_service_elper.dart';
+import 'package:helloequb/models/equb_model.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
 
 import '../utils/secure_storage.dart';
 

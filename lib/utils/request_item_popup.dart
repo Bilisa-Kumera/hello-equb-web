@@ -1,10 +1,10 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:dio/dio.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
 
 import 'secure_storage.dart';
 

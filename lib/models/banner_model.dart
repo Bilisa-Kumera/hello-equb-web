@@ -1,4 +1,4 @@
-import 'package:ekubee/core/api_url.dart';
+import 'package:helloequb/core/api_url.dart';
 
 class BannerModel {
   final String id;

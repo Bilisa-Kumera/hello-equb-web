@@ -1,4 +1,4 @@
-package com.hello.ekubee
+package com.hello.helloequb
 
 import io.flutter.embedding.android.FlutterActivity
 

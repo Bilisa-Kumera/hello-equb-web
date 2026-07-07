@@ -1,4 +1,4 @@
-import 'package:ekubee/features/app_update/domain/entities/update_check_info.dart';
+import 'package:helloequb/features/app_update/domain/entities/update_check_info.dart';
 
 abstract class UpdateState {
   const UpdateState();

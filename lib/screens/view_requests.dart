@@ -1,7 +1,7 @@
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:ekubee/core/api_url.dart';
+import 'package:helloequb/core/api_url.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 class ViewRequests extends StatefulWidget {

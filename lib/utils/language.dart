@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ekubee/utils/app_localizations.dart';
+import 'package:helloequb/utils/app_localizations.dart';
 
 class LanguageProvider extends ChangeNotifier {
   Locale? _currentLocale = const Locale('en', '');

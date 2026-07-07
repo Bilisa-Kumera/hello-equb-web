@@ -4,6 +4,7 @@ class AppKeys {
   static const String trackAll = 'track_all';
   static const String lottery = 'lottery';
   static const String paymentInfo = "payment_info";
+  static const String alreadyJoined = 'already_joined';
   static const String completed = "completed";
   static const String youHaveAlreadySubmitted = "you_have_already_submitted";
   static const String waitingForApproval = "waiting_for_approval";
@@ -91,12 +92,12 @@ class AppKeys {
   static const String referralCodeCopied = 'referral_code_copied';
   static const String shareAndInvite = 'share_and_invite';
   static const String copiedToClipboard = 'copied_to_clipboard';
-  
 
   static const String otherEqubType = 'other_equb_type';
   static const String joinEqubsToday = 'join_equbs_today';
   static const String inviteFriendsEarn = 'invite_friends_earn';
-  static const String useMyCodeToJoinAndGetRewards = 'use_my_code_to_join_and_get_rewards';
+  static const String useMyCodeToJoinAndGetRewards =
+      'use_my_code_to_join_and_get_rewards';
   static const String shareText = 'share_text';
 
   static const String validationSuccessMessage = 'validationSuccessMessage';
@@ -138,7 +139,8 @@ class AppKeys {
   static const String middleName = 'lbl_user_name';
   static const String firstName = 'lbl_first_name';
   static const String lastName = 'lbl_last_name';
-  static const String enterBeneficiaryPhoneNumber = 'enter_beneficiary_phonenumber';
+  static const String enterBeneficiaryPhoneNumber =
+      'enter_beneficiary_phonenumber';
   static const String email = 'lbl_email';
   static const String phoneNumber = 'lbl_phone_number';
   static const String gender = 'lbl_gender';
@@ -249,7 +251,8 @@ class AppKeys {
   static const String makePayment = "lbl_make_payment";
 
   // Payment screen (methods & messages)
-  static const String paymentMethodBankTransfer = "payment_method_bank_transfer";
+  static const String paymentMethodBankTransfer =
+      "payment_method_bank_transfer";
   static const String paymentMethodBankTransferSubtitle =
       "payment_method_bank_transfer_subtitle";
   static const String paymentMethodTelebirr = "payment_method_telebirr";
@@ -264,6 +267,9 @@ class AppKeys {
   static const String cannotContinue = "cannot_continue";
   static const String receiveCodeNotAvailable = "receive_code_not_available";
   static const String cbeUssdEnterPinMessage = "cbe_ussd_enter_pin_message";
+  static const String cbeBirrPlusTokenLabel = "cbe_birr_plus_token_label";
+  static const String cbeBirrPlusTokenUnavailable =
+      "cbe_birr_plus_token_unavailable";
   static const String notAvailable = "not_available";
   static const String currencyBirr = "currency_birr";
   static const String currencyEtb = "currency_etb";
@@ -283,6 +289,12 @@ class AppKeys {
   static const String taken = "lbl_taken";
   static const String round = "lbl_round";
   static const String report = "lbl_report";
+  static const String lotteryHistory = "lbl_lottery_history";
+  static const String weHaveAWinner = "lbl_we_have_a_winner";
+  static const String luckyLotteryNumber = "lbl_lucky_lottery_number";
+  static const String winner = "lbl_winner";
+  static const String noWinnersYet = "lbl_no_winners_yet";
+  static const String winnersWillAppearHere = "lbl_winners_will_appear_here";
   static const String home = "lbl_home";
   static const String account = "lbl_account";
   static const String personal = "lbl_personal";
@@ -299,6 +311,7 @@ class AppKeys {
   static const String copiedToClipBoard = "lbl_copied_to_clipboard";
 
   static const String next = "lbl_next";
+  static const String close = "lbl_close";
 
   static const String addAccountHolderName = "lbl_account_holder_name";
 

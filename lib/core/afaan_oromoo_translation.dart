@@ -15,6 +15,9 @@ final Map<String, String> omET = {
   "receive_code_not_available": "Koodiin fudhannaa hin argamne.",
   "cbe_ussd_enter_pin_message":
       "Kaffaltii USSDn xumuruuf CBEBirr keessatti PIN kee galchi.",
+  "cbe_birr_plus_token_label": "Token CBEBirr Plus",
+  "cbe_birr_plus_token_unavailable":
+      "Token CBEBirr Plus hin argamne. Hello Equb irraa CBEBirr Plus irra deebi'ii bani.",
   "not_available": "Hin jirre",
   "currency_birr": "Birr",
   "currency_etb": "ETB",

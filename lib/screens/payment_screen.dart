@@ -1,24 +1,26 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/utils/colors_constant.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/screens/LoginScreenWithPin.dart';
-import 'package:ekubee/screens/waiting_payment.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
-import 'package:ekubee/utils/lang_constants.dart';
-import 'package:ekubee/core/telebirr_service.dart';
-import 'package:ekubee/utils/secure_storage.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/screens/LoginScreenWithPin.dart';
+import 'package:helloequb/screens/waiting_payment.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/core/telebirr_service.dart';
+import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
+import 'package:helloequb/utils/secure_storage.dart';
 
-import 'package:ekubee/screens/join_ekub_detail.dart';
-import 'package:ekubee/screens/my_ekub_detail_screen.dart';
+import 'package:helloequb/screens/join_ekub_detail.dart';
+import 'package:helloequb/screens/my_ekub_detail_screen.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 import 'pending_equbs_screen.dart';
@@ -53,8 +55,10 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   int? selectedIndex;
+  String? selectedPaymentMethodId;
   bool _isProcessing = false;
   bool _isSubmitting = false;
+  bool _isInsideCbeBirrPlus = false;
   bool isLoading = false;
   final phoneController = TextEditingController();
 
@@ -68,9 +72,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String telebirrAppId = '';
   String telebirrAppSecret = '';
   String telebirrShortCode = '';
+  // Debug info for request/response display
+  String _debugRequestUrl = '';
+  String _debugRequestHeaders = '';
+  String _debugResponse = '';
+  String _debugCbeMiniAppStatus = '';
 
   bool get _isPaymentType =>
       (widget.type ?? '').trim().toLowerCase() == 'payment';
+
+  List<Map<String, dynamic>> get _visiblePaymentOptions {
+    if (!_isInsideCbeBirrPlus) return paymentOptions;
+    return paymentOptions
+        .where((option) => option['id'] != 'telebirr')
+        .toList(growable: false);
+  }
 
   final List<Map<String, dynamic>> paymentOptions = [
     {
@@ -105,6 +121,39 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void initState() {
     super.initState();
+    _isInsideCbeBirrPlus =
+        dataController.retrieveData<bool>('isCbeBirr') ?? false;
+    // Ensure runtime detection when possible (e.g., when navigated directly to payment)
+    _detectCbeBirrBridge();
+    _amountController = TextEditingController(
+      text:
+          '${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
+    );
+    _subscribeToTelebirrPaymentResults();
+  }
+
+  Future<void> _detectCbeBirrBridge() async {
+    try {
+      final bridge = createCbeBirrPlusBridge();
+      // Quick check first
+      if (bridge.isAvailable) {
+        dataController.storeData('isCbeBirr', true);
+        if (!_isInsideCbeBirrPlus) setState(() => _isInsideCbeBirrPlus = true);
+        return;
+      }
+
+      // Wait a short time for bridge to become available
+      final ok =
+          await bridge.waitUntilAvailable(timeout: const Duration(seconds: 6));
+      dataController.storeData('isCbeBirr', ok);
+      if (ok && !_isInsideCbeBirrPlus)
+        setState(() => _isInsideCbeBirrPlus = true);
+    } catch (_) {
+      // ignore errors; leave flag as-is
+    }
+  }
+
+  void _subscribeToTelebirrPaymentResults() {
     _paymentResultSub = TelebirrService.paymentResultStream.listen((result) {
       final code = result['code'];
       final errMsg = result['errMsg'];
@@ -115,10 +164,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         errMsg != null ? errMsg.toString() : AppKeys.unknownResult.tr(context),
       );
     });
-    _amountController = TextEditingController(
-      text:
-          '${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
-    );
   }
 
   @override
@@ -204,24 +249,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
         }
       }
     } catch (e) {
-      
     } finally {
       setState(() => _isProcessing = false);
-      
     }
   }
-
 
   Future<void> _getReceiveCode({
     String? phoneNumber,
     required String paymentMethod,
   }) async {
+    final useMiniAppEndpoint = paymentMethod == 'cbe' && _isInsideCbeBirrPlus;
+    final miniAppPhoneNumber = phoneNumber ??
+        dataController.retrieveData<String>('phoneNumber')?.trim();
     final data = <String, dynamic>{
       "paidAmount":
           double.tryParse((widget.ekubAmount ?? '0.0').replaceAll(',', '')) ??
               0,
       "paymentMethod": paymentMethod,
       if (phoneNumber != null) "phoneNumber": phoneNumber,
+      if (useMiniAppEndpoint &&
+          miniAppPhoneNumber != null &&
+          miniAppPhoneNumber.isNotEmpty)
+        "phoneNumber": miniAppPhoneNumber,
     };
 
     if (_isPaymentType) {
@@ -246,8 +295,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
 
-    final String url =
-        (_isPaymentType ? makePaymentUrl : joinEkubUrl) + (widget.ekubId ?? '');
+    final String url = (useMiniAppEndpoint
+            ? joinMiniAppEkubUrl
+            : (_isPaymentType ? makePaymentUrl : joinEkubUrl)) +
+        (widget.ekubId ?? '');
+
+    debugPrint('Payment request url: $url');
+    debugPrint('Payment request body: ${jsonEncode(data)}');
+    setState(() {
+      _debugRequestUrl = url;
+      _debugRequestHeaders =
+          jsonEncode({"Authorization": "Bearer $bearerToken", "body": data});
+      _debugResponse = '';
+      _debugCbeMiniAppStatus = useMiniAppEndpoint
+          ? 'Waiting for joinMiniAppEkubUrl response...'
+          : '';
+    });
+
     try {
       final Dio dio = Dio();
       final response = await dio.post(
@@ -258,11 +322,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'];
+        setState(() {
+          _debugResponse = jsonEncode(response.data);
+        });
 
-
-        
         final dynamic orderResult = responseData?['orderResult'];
-        final String rawRequest = (orderResult?['raw_request'] ?? '').toString();
+        final String rawRequest =
+            (orderResult?['raw_request'] ?? '').toString();
 
         String rawParam(String key) {
           if (rawRequest.isEmpty) return '';
@@ -278,21 +344,34 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
         final String appIdFromRaw = rawParam('appid');
         final String shortCodeFromRaw = rawParam('merch_code');
+        final String cbePaymentToken =
+            _extractProcessedPaymentToken(responseData);
 
-        final newReceiveCode =
-            (responseData?['receiveCode'] ?? orderResult?['receiveCode'] ?? '')
-                .toString();
+        if (useMiniAppEndpoint && cbePaymentToken.isNotEmpty) {
+          await _sendCbeMiniAppPaymentToken(cbePaymentToken);
+        } else if (useMiniAppEndpoint) {
+          setState(() {
+            _debugCbeMiniAppStatus =
+                'processedPaymentToken not found in joinMiniAppEkubUrl response.';
+          });
+        }
+
+        final newReceiveCode = (responseData?['receiveCode'] ??
+                orderResult?['receiveCode'] ??
+                cbePaymentToken)
+            .toString();
         final newAppId = (appIdFromRaw.isNotEmpty
                 ? appIdFromRaw
                 : (responseData?['appId'] ?? orderResult?['appId'] ?? ''))
             .toString();
-        final newAppSecret = (responseData?['appSecret'] ??
-                orderResult?['appSecret'] ??
-                '')
-            .toString();
+        final newAppSecret =
+            (responseData?['appSecret'] ?? orderResult?['appSecret'] ?? '')
+                .toString();
         final newShortCode = (shortCodeFromRaw.isNotEmpty
                 ? shortCodeFromRaw
-                : (responseData?['shortCode'] ?? orderResult?['shortCode'] ?? ''))
+                : (responseData?['shortCode'] ??
+                    orderResult?['shortCode'] ??
+                    ''))
             .toString();
 
         setState(() {
@@ -301,21 +380,57 @@ class _PaymentScreenState extends State<PaymentScreen> {
           telebirrAppSecret = newAppSecret;
           telebirrShortCode = newShortCode;
         });
-         
-      } else {
-      }
+      } else {}
     } on DioError catch (e) {
+      setState(() {
+        _debugResponse =
+            (e.response != null ? jsonEncode(e.response?.data) : e.message)!;
+        if (useMiniAppEndpoint) {
+          _debugCbeMiniAppStatus =
+              'Error before postMessage: ${e.response != null ? jsonEncode(e.response?.data) : e.message}';
+        }
+      });
       _handleDioError(e);
     }
+  }
 
+  String _extractProcessedPaymentToken(dynamic responseData) {
+    if (responseData is! Map) return '';
+
+    return responseData['processedPaymentToken']?.toString().trim() ?? '';
+  }
+
+  Future<void> _sendCbeMiniAppPaymentToken(String token) async {
+    final tokenLength = token.trim().length;
+    setState(() {
+      _debugCbeMiniAppStatus =
+          'processedPaymentToken received (length: $tokenLength). Initiating window.myJsChannel.postMessage(data)...';
+    });
+
+    final bridge = createCbeBirrPlusBridge();
+    final sent = await bridge.sendPaymentToken(token);
+    if (!mounted) return;
+
+    if (!sent) {
+      setState(() {
+        _debugCbeMiniAppStatus =
+            'Error: window.myJsChannel.postMessage(data) was not completed. myJsChannel may be unavailable.';
+      });
+      debugPrint(
+          'CBEBirr Plus payment token could not be sent to myJsChannel.');
+      return;
+    }
+
+    setState(() {
+      _debugCbeMiniAppStatus =
+          'Success: window.myJsChannel.postMessage(data) initiated with processedPaymentToken.';
+    });
   }
 
   Future<void> _submitJoinRequest({
     String? phoneNumber,
     required String paymentMethod,
   }) async {
-    
-
     try {
       await _getReceiveCode(
           phoneNumber: phoneNumber, paymentMethod: paymentMethod);
@@ -338,22 +453,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
         context,
         MaterialPageRoute(builder: (context) => const WaitingEkubs()),
       );
-    } catch (e) {
-      
-    }
-
+    } catch (e) {}
   }
 
   Future<void> _submitLotteryPayment({
     required String paymentMethod,
     String? phoneNumber,
   }) async {
-    
-
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
 
     List<Map<String, dynamic>> lottery = [];
-   
 
     for (var item in widget.selectedJoinOptions ?? []) {
       lottery.add({
@@ -369,8 +478,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (phoneNumber != null) "phoneNumber": phoneNumber,
     };
 
+    final bool useMiniAppEndpoint =
+        paymentMethod == 'cbe' && _isInsideCbeBirrPlus;
+    final String url =
+        (useMiniAppEndpoint ? joinMiniAppEkubUrl : makePaymentUrl) +
+            (widget.ekubId ?? '');
 
-    final String url = makePaymentUrl + (widget.ekubId ?? '');
+    debugPrint('Payment request url: $url');
+    debugPrint('Payment request body: ${jsonEncode(data)}');
+
     try {
       final Dio dio = Dio();
       final response = await dio.post(
@@ -380,6 +496,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
       );
       if (response.statusCode == 200) {
         if (paymentMethod == 'cbe') {
+          final responseData = response.data['data'];
+          final String cbePaymentToken =
+              _extractProcessedPaymentToken(responseData);
+
+          if (useMiniAppEndpoint && cbePaymentToken.isNotEmpty) {
+            await _sendCbeMiniAppPaymentToken(cbePaymentToken);
+          } else if (useMiniAppEndpoint) {
+            setState(() {
+              _debugCbeMiniAppStatus =
+                  'processedPaymentToken not found in joinMiniAppEkubUrl response.';
+            });
+          }
+
           CustomSnackBar.show(
             context,
             AppKeys.cbeUssdEnterPinMessage.tr(context),
@@ -407,7 +536,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             context, AppKeys.errorTryAgain.tr(context), AppColors.red);
       }
     } on DioError catch (e) {
-
       setState(() => isLoading = false);
       if (e.response?.statusCode == 401) {
         Navigator.push(
@@ -419,20 +547,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
         CustomSnackBar.show(
             context, AppKeys.errorTryAgain.tr(context), AppColors.red);
       }
-    } catch (e, stackTrace) {
-      
+    } catch (e) {
       setState(() => isLoading = false);
       CustomSnackBar.show(
           context, AppKeys.errorTryAgain.tr(context), AppColors.red);
     }
-
   }
 
   Future<void> _startTelebirrPayment() async {
     final String shortCode = telebirrShortCode;
     final String appId = telebirrAppId;
     final String appSecret = telebirrAppSecret;
-
 
     await _telebirrService.initiatePayment(
       appId: appId,
@@ -468,7 +593,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _showDialog(String title, String message) {
-    final bool isSuccess = (title == AppKeys.paymentSuccess.tr(context)) || title.toLowerCase().contains("success");
+    final bool isSuccess = (title == AppKeys.paymentSuccess.tr(context)) ||
+        title.toLowerCase().contains("success");
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -526,7 +652,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             ),
             SizedBox(height: 16.h),
-            Text('${AppKeys.confirm.tr(context)} $paymentMethodLabel ${AppKeys.payment.tr(context)}',
+            Text(
+                '${AppKeys.confirm.tr(context)} $paymentMethodLabel ${AppKeys.payment.tr(context)}',
                 style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
             SizedBox(height: 8.h),
             Text(AppKeys.enterBeneficiaryPhoneNumber.tr(context),
@@ -589,7 +716,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
                 onPressed: () {
                   if (phoneController.text.isNotEmpty) {
-
                     _processPhonePayment(
                       phone: phoneNumber,
                       paymentMethod: paymentMethodId,
@@ -603,13 +729,116 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         color: Colors.white)),
               ),
             ),
+            // Debug: show last request URL, headers and response with copy buttons
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.only(top: 12.h),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('Request URL',
+                          style: TextStyle(
+                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: _debugRequestUrl));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Copied')));
+                        },
+                      )
+                    ],
+                  ),
+                  SelectableText(
+                      _debugRequestUrl.isNotEmpty ? _debugRequestUrl : '-',
+                      style: TextStyle(fontSize: 12.sp)),
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      Text('Headers',
+                          style: TextStyle(
+                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: _debugRequestHeaders));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Copied')));
+                        },
+                      )
+                    ],
+                  ),
+                  SelectableText(
+                      _debugRequestHeaders.isNotEmpty
+                          ? _debugRequestHeaders
+                          : '-',
+                      style: TextStyle(fontSize: 12.sp)),
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      Text('Response',
+                          style: TextStyle(
+                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: _debugResponse));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Copied')));
+                        },
+                      )
+                    ],
+                  ),
+                  SelectableText(
+                      _debugResponse.isNotEmpty ? _debugResponse : '-',
+                      style: TextStyle(fontSize: 12.sp)),
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      Text('CBEBirr MiniApp',
+                          style: TextStyle(
+                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: _debugCbeMiniAppStatus));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Copied')));
+                        },
+                      )
+                    ],
+                  ),
+                  SelectableText(
+                      _debugCbeMiniAppStatus.isNotEmpty
+                          ? _debugCbeMiniAppStatus
+                          : '-',
+                      style: TextStyle(fontSize: 12.sp)),
+                ],
+              ),
+            ),
             SizedBox(height: 12.h),
           ],
         ),
       ),
     );
   }
-  
+
   CompanyBankAccountsResponse? companyBankAccountsResponse;
 
   Future<List<CompanyBankAccount>> getCompanyBanks() async {
@@ -619,7 +848,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final response = await dio.get(companyBankUrl);
 
       if (response.statusCode == 200) {
-        final jsonResponse = response.data; 
+        final jsonResponse = response.data;
         companyBankAccountsResponse =
             CompanyBankAccountsResponse.fromJson(jsonResponse);
         return companyBankAccountsResponse!.data.companyBankAccounts;
@@ -628,137 +857,134 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return [];
   }
 
+  void showBankAccountsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return FutureBuilder<List<CompanyBankAccount>>(
+          future: getCompanyBanks(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-void showBankAccountsBottomSheet(BuildContext context) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (context) {
-      return FutureBuilder<List<CompanyBankAccount>>(
-        future: getCompanyBanks(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SizedBox(
-              height: 200,
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return SizedBox(
+                height: 200,
+                child: Center(child: Text(AppKeys.noData.tr(context))),
+              );
+            }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return  SizedBox(
-              height: 200,
-              child: Center(child: Text(AppKeys.noData.tr(context))),
-            );
-          }
+            final banks = snapshot.data!;
 
-          final banks = snapshot.data!;
-
-          return Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-
-                /// HEADER
-                Row(
-                  children: [
-                    const Icon(Icons.account_balance, size: 26),
-                    const SizedBox(width: 10),
-                     Text(
-                      AppKeys.companyBankAccounts.tr(context),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+            return Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  /// HEADER
+                  Row(
+                    children: [
+                      const Icon(Icons.account_balance, size: 26),
+                      const SizedBox(width: 10),
+                      Text(
+                        AppKeys.companyBankAccounts.tr(context),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    )
-                  ],
-                ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      )
+                    ],
+                  ),
 
-                const SizedBox(height: 10),
+                  const SizedBox(height: 10),
 
-                ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: banks.length,
-                  itemBuilder: (context, index) {
-                    final bank = banks[index];
+                  ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: banks.length,
+                    itemBuilder: (context, index) {
+                      final bank = banks[index];
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: Colors.grey.shade50,
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-
-                          /// BANK INFO
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  bank.accountName,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.grey.shade50,
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            /// BANK INFO
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    bank.accountName,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  bank.accountNumber,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    letterSpacing: 1,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    bank.accountNumber,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      letterSpacing: 1,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
 
-                          /// COPY BUTTON
-                          IconButton(
-                            icon: const Icon(Icons.copy),
-                            onPressed: () async {
-                              await Clipboard.setData(
-                                ClipboardData(text: bank.accountNumber),
-                              );
+                            /// COPY BUTTON
+                            IconButton(
+                              icon: const Icon(Icons.copy),
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                  ClipboardData(text: bank.accountNumber),
+                                );
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      AppKeys.copiedToClipBoard.tr(context)),
-                                  duration: const Duration(seconds: 1),
-                                ),
-                              );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        AppKeys.copiedToClipBoard.tr(context)),
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
 
-                              Navigator.pop(context);
-                            },
-                          )
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                                Navigator.pop(context);
+                              },
+                            )
+                          ],
+                        ),
+                      );
+                    },
+                  ),
 
-                const SizedBox(height: 10),
-              ],
-            ),
-          );
-        },
-      );
-    },
-  );
-}
+                  const SizedBox(height: 10),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -815,7 +1041,8 @@ void showBankAccountsBottomSheet(BuildContext context) {
                         ],
                       ),
                       SizedBox(height: 16.h),
-                      _buildDetailRow(AppKeys.ekubName.tr(context),
+                      _buildDetailRow(
+                          AppKeys.ekubName.tr(context),
                           widget.ekubName ?? AppKeys.notAvailable.tr(context),
                           Icons.group),
                       SizedBox(height: 12.h),
@@ -837,15 +1064,19 @@ void showBankAccountsBottomSheet(BuildContext context) {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: paymentOptions.length,
+                itemCount: _visiblePaymentOptions.length,
                 itemBuilder: (context, index) {
-                  final option = paymentOptions[index];
-                  final isSelected = selectedIndex == index;
+                  final option = _visiblePaymentOptions[index];
+                  final optionId = option['id'] as String;
+                  final isSelected = selectedPaymentMethodId == optionId;
 
                   return GestureDetector(
-                    onTap: (){
-                      setState(() => selectedIndex = index);
-                      if (option['id'] == 'bankTransfer') {
+                    onTap: () {
+                      setState(() {
+                        selectedIndex = index;
+                        selectedPaymentMethodId = optionId;
+                      });
+                      if (optionId == 'bankTransfer') {
                         showBankAccountsBottomSheet(context);
                       }
                     },
@@ -947,21 +1178,22 @@ void showBankAccountsBottomSheet(BuildContext context) {
                         borderRadius: BorderRadius.circular(16)),
                     elevation: 2,
                   ),
-                  onPressed:
-                      (_isSubmitting || _isProcessing || selectedIndex == null)
-                          ? null
-                          : () {
-                              final selectedOption = paymentOptions[selectedIndex!];
-                              final selectedPaymentMethod = selectedOption['id'] as String;
+                  onPressed: (_isSubmitting ||
+                          _isProcessing ||
+                          selectedPaymentMethodId == null)
+                      ? null
+                      : () {
+                          final selectedPaymentMethod =
+                              selectedPaymentMethodId!;
 
-                              if (selectedPaymentMethod == 'bankTransfer') {
-                                _handleBankTransfer();
-                              } else if (selectedPaymentMethod == 'telebirr') {
-                                _handleTelebirr();
-                              } else if (selectedPaymentMethod == 'cbe') {
-                                _handleCbe();
-                              }
-                            },
+                          if (selectedPaymentMethod == 'bankTransfer') {
+                            _handleBankTransfer();
+                          } else if (selectedPaymentMethod == 'telebirr') {
+                            _handleTelebirr();
+                          } else if (selectedPaymentMethod == 'cbe') {
+                            _handleCbe();
+                          }
+                        },
                   child: _isSubmitting || _isProcessing
                       ? const SizedBox(
                           width: 24,
@@ -1224,14 +1456,11 @@ class _InfoPopupState extends State<InfoPopup> {
     getCompanyBanks();
   }
 
-  bool _isSubmitting = false;
   final DataController dataController = DataController();
 
   Future<void> submit(List<ListItem> percentage, double paidAmount,
       String paymentMethod, String type) async {
-    setState(() {
-      _isSubmitting = true;
-    });
+    setState(() {});
 
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
 
@@ -1339,9 +1568,7 @@ class _InfoPopupState extends State<InfoPopup> {
                 Text(textScaleFactor: 1.0, AppKeys.errorTryAgain.tr(context))),
       );
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      setState(() {});
     }
   }
 
@@ -1449,9 +1676,7 @@ class _InfoPopupState extends State<InfoPopup> {
                 Text(textScaleFactor: 1.0, AppKeys.errorTryAgain.tr(context))),
       );
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      setState(() {});
     }
   }
 

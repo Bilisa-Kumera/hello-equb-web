@@ -1,22 +1,22 @@
 
-import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/main.dart';
-import 'package:ekubee/models/ekub_category_model.dart';
-import 'package:ekubee/screens/my_ekub_detail_screen.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_button.dart';
-import 'package:ekubee/utils/custom_progress_screen.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:ekubee/utils/custom_text_field.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/main.dart';
+import 'package:helloequb/models/ekub_category_model.dart';
+import 'package:helloequb/screens/my_ekub_detail_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_button.dart';
+import 'package:helloequb/utils/custom_progress_screen.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/custom_text_field.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:dio/dio.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
@@ -226,12 +226,18 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
 
   Future<void> post(BuildContext context, String endpoint, String id,
       Map<String, dynamic> data,
-      {String? bearerToken, File? image}) async {
+      {String? bearerToken, XFile? image, Uint8List? imageBytes}) async {
     try {
       final Dio _dio = Dio();
-      final fileExtension = image!.path.split('.').last.toLowerCase();
-      final mimeType =
-          lookupMimeType(image.path) ?? 'application/octet-stream';
+      if (image == null) {
+        _handleError(context, 'Please select an image', AppColors.primary);
+        return;
+      }
+
+      final bytes = imageBytes ?? await image.readAsBytes();
+      final fileName = image.name.isNotEmpty ? image.name : image.path;
+      final fileExtension = fileName.split('.').last.toLowerCase();
+      final mimeType = lookupMimeType(fileName) ?? 'application/octet-stream';
 
       if (!(fileExtension == 'png' ||
           fileExtension == 'jpg' ||
@@ -243,9 +249,9 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
         return;
       }
       
-      data['picture'] = await MultipartFile.fromFile(
-        image.path,
-        filename: '1.jpg',
+      data['picture'] = MultipartFile.fromBytes(
+        bytes,
+        filename: image.name.isNotEmpty ? image.name : '1.$fileExtension',
         contentType: MediaType.parse(mimeType),
       );
       
@@ -307,15 +313,18 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
     }
   }
 
-  File? _image;
+  XFile? _image;
+  Uint8List? _imageBytes;
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage(ImageSource source) async {
     final XFile? pickedFile = await _picker.pickImage(source: source);
 
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
       setState(() {
-        _image = File(pickedFile.path);
+        _image = pickedFile;
+        _imageBytes = bytes;
       });
     }
   }
@@ -474,6 +483,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                             },
                             bearerToken: accessToken,
                             image: _image,
+                            imageBytes: _imageBytes,
                           );
 
                           setState(() {
@@ -681,9 +691,9 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                       const SizedBox(height: 10),
                       GestureDetector(
                         onTap: () => _showImageSourceActionSheet(context),
-                        child: _image != null
-                            ? Image.file(
-                                _image!,
+                        child: _imageBytes != null
+                            ? Image.memory(
+                                _imageBytes!,
                                 width: double.infinity,
                                 height: 200,
                                 fit: BoxFit.cover,

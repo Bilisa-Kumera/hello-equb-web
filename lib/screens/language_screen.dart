@@ -1,12 +1,12 @@
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:provider/provider.dart';
-import 'package:ekubee/screens/login_screen.dart';
-import 'package:ekubee/utils/custom_button.dart';
-import 'package:ekubee/utils/lang_constants.dart';
-import 'package:ekubee/utils/language.dart';
+import 'package:helloequb/screens/login_screen.dart';
+import 'package:helloequb/utils/custom_button.dart';
+import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/language.dart';
 
 class LanguageSelection extends StatefulWidget {
   const LanguageSelection({super.key});

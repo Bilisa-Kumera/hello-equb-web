@@ -1,15 +1,13 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
-import 'package:ekubee/models/report_model.dart';
+import 'package:helloequb/models/report_model.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:http/http.dart' as http;
 
-import 'file_handle_api.dart';
-
 class PdfInvoiceApi {
-  static Future<File> generate(
+  static Future<Uint8List> generateBytes(
     PdfColor color,
     pw.Font fontFamily,
     String type,
@@ -227,6 +225,6 @@ class PdfInvoiceApi {
       ),
     );
 
-    return FileHandleApi.saveDocument(name: 'Equb_Statement.pdf', pdf: pdf);
+    return pdf.save();
   }
 }

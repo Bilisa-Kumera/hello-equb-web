@@ -1,7 +1,7 @@
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
 
 import '../utils/secure_storage.dart';
 

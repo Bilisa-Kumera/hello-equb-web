@@ -1,6 +1,5 @@
-import 'dart:io';
-
-import 'package:ekubee/features/app_update/domain/exceptions/update_exception.dart';
+import 'package:helloequb/features/app_update/domain/exceptions/update_exception.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:logger/logger.dart';
@@ -17,7 +16,7 @@ class UpdateRemoteDataSourceImpl implements UpdateRemoteDataSource {
 
   @override
   Future<AppUpdateInfo> checkForUpdate() async {
-    if (!Platform.isAndroid) {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       throw const UpdateException(
         code: 'UNSUPPORTED_PLATFORM',
         message: 'In-app updates are supported only on Android.',
@@ -48,7 +47,7 @@ class UpdateRemoteDataSourceImpl implements UpdateRemoteDataSource {
 
   @override
   Future<AppUpdateResult> performImmediateUpdate() async {
-    if (!Platform.isAndroid) {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       throw const UpdateException(
         code: 'UNSUPPORTED_PLATFORM',
         message: 'In-app updates are supported only on Android.',

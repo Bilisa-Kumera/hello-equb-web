@@ -1,48 +1,63 @@
-import 'package:ekubee/provider/getmyequb_provider.dart';
-import 'package:ekubee/features/app_update/data/datasources/update_remote_data_source.dart';
-import 'package:ekubee/features/app_update/data/repositories/update_repository_impl.dart';
-import 'package:ekubee/features/app_update/domain/usecases/check_for_update_use_case.dart';
-import 'package:ekubee/features/app_update/presentation/providers/update_provider.dart';
+import 'package:helloequb/provider/getmyequb_provider.dart';
+import 'package:helloequb/features/app_update/data/datasources/update_remote_data_source.dart';
+import 'package:helloequb/features/app_update/data/repositories/update_repository_impl.dart';
+import 'package:helloequb/features/app_update/domain/usecases/check_for_update_use_case.dart';
+import 'package:helloequb/features/app_update/presentation/providers/update_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:ekubee/screens/splash_screen.dart';
+import 'package:helloequb/screens/splash_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/language.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/language.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:ekubee/utils/colors_constant.dart';
-import 'package:ekubee/provider/equb_type_provider.dart';
-import 'package:ekubee/provider/equb_category_provider.dart';
-import 'package:ekubee/provider/equb_provider.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/provider/equb_type_provider.dart';
+import 'package:helloequb/provider/equb_category_provider.dart';
+import 'package:helloequb/provider/equb_provider.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:ekubee/screens/notification_screen.dart';
-import 'package:ekubee/screens/my_ekub_detail_screen.dart';
+import 'package:helloequb/screens/notification_screen.dart';
+import 'package:helloequb/screens/my_ekub_detail_screen.dart';
 import 'dart:convert';
-import 'package:ekubee/screens/guarantee_request.dart';
+import 'package:helloequb/screens/guarantee_request.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:helloequb/core/routing/app_router.dart';
+import 'package:go_router/go_router.dart';
+import 'package:helloequb/core/logging/app_logger.dart';
+import 'package:helloequb/core/logging/superapp_debug_overlay.dart';
+import 'package:helloequb/core/superapp/superapp_js_log_forwarder.dart';
 
 import 'provider/allequb_payment.dart';
 import 'provider/cooperate_equbs_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'provider/lottery_provider.dart';
+
 Future<void> requestCameraAndGalleryPermissions() async {
+  if (kIsWeb) return;
   await Permission.camera.request();
   await Permission.storage.request();
 }
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+final GoRouter _webRouter = AppRouter.create(_navigatorKey);
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
 Future<void> _initGetStorageSafely() async {
+  if (kIsWeb) {
+    try {
+      await GetStorage.init();
+    } catch (_) {}
+    return;
+  }
+
   try {
     // Some devices/ROMs can have a broken/unreadable documents dir (app_flutter),
     // which makes `GetStorage.init()` throw and crash the app at startup.
@@ -101,63 +116,64 @@ dynamic _handleNotificationNavigation(Map<String, dynamic> data) {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  AppLogger.initFromEnv();
+  initSuperAppJsLogForwarder();
   await _ensureFirebaseInitialized();
 
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-  );
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) async {
-      Map<String, dynamic> data = {};
-      if (response.payload != null && response.payload!.isNotEmpty) {
-        try {
-          data = Map<String, dynamic>.from(jsonDecode(response.payload!));
-        } catch (_) {}
-      }
-      _handleNotificationNavigation(data);
-    },
-  );
+  if (!kIsWeb) {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
+        Map<String, dynamic> data = {};
+        if (response.payload != null && response.payload!.isNotEmpty) {
+          try {
+            data = Map<String, dynamic>.from(jsonDecode(response.payload!));
+          } catch (_) {}
+        }
+        _handleNotificationNavigation(data);
+      },
+    );
 
-  const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'high_importance_channel',
-    'High Importance Notifications',
-    description: 'This channel is used for important notifications.',
-    importance: Importance.high,
-  );
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(channel);
-  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel',
+      'High Importance Notifications',
+      description: 'This channel is used for important notifications.',
+      importance: Importance.high,
+    );
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
     await FirebaseMessaging.instance.requestPermission();
-  }
-  // if (Platform.isAndroid || Platform.isIOS) {
-  //   await FirebaseMessaging.instance.requestPermission();
-  // }
 
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-    if (message.notification != null) {
-      await flutterLocalNotificationsPlugin.show(
-        message.notification.hashCode,
-        message.notification?.title,
-        message.notification?.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            channel.id,
-            channel.name,
-            channelDescription: channel.description,
-            importance: Importance.high,
-            priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      if (message.notification != null) {
+        await flutterLocalNotificationsPlugin.show(
+          message.notification.hashCode,
+          message.notification?.title,
+          message.notification?.body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              channel.id,
+              channel.name,
+              channelDescription: channel.description,
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: '@mipmap/ic_launcher',
+            ),
           ),
-        ),
-        payload: jsonEncode(message.data),
-      );
-    }
-  });
+          payload: jsonEncode(message.data),
+        );
+      }
+    });
+  }
 
   FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
     if (message != null) {
@@ -169,7 +185,9 @@ Future<void> main() async {
     _handleNotificationNavigation(message.data);
   });
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  if (!kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
 
   await PrefUtils().init();
   var languageProvider = LanguageProvider();
@@ -185,6 +203,9 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          create: (_) => LotteryProvider(),
+        ),
         ChangeNotifierProvider(create: (_) => EqubTypeProvider()),
         ChangeNotifierProvider(create: (_) => EqubCategoryProvider()),
         ChangeNotifierProvider(create: (_) => EqubProvider()),
@@ -207,31 +228,55 @@ Future<void> main() async {
         builder: (context, child) {
           return Consumer2<ThemeProvider, LanguageProvider>(
               builder: (context, provider, languageProvider, child) {
+            final theme = ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: AppColors.black),
+              useMaterial3: true,
+            );
+
+            const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+                <LocalizationsDelegate<dynamic>>[
+              AppLocalizationDelegate(),
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ];
+
+            const supportedLocales = [
+              Locale('en', 'US'),
+              Locale('am', 'ET'),
+              Locale('fr', 'FR'),
+              Locale('es', 'ES'),
+            ];
+
+            final locale = Locale(
+              PrefUtils.sharedPreferences?.getString('language_code') ?? 'en',
+              '',
+            );
+
+            if (kIsWeb) {
+              return MaterialApp.router(
+                title: '',
+                routerConfig: _webRouter,
+                debugShowCheckedModeBanner: false,
+                theme: theme,
+                localizationsDelegates: localizationsDelegates,
+                supportedLocales: supportedLocales,
+                locale: locale,
+                builder: (context, child) {
+                  return SuperAppDebugOverlay(child: child ?? const SizedBox());
+                },
+              );
+            }
+
             return MaterialApp(
               title: '',
               navigatorKey: _navigatorKey,
               debugShowCheckedModeBanner: false,
-              theme: ThemeData(
-                colorScheme: ColorScheme.fromSeed(seedColor: AppColors.black),
-                useMaterial3: true,
-              ),
+              theme: theme,
               home: const SplashScreen(),
-              localizationsDelegates: const [
-                AppLocalizationDelegate(),
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
-              supportedLocales: const [
-                Locale('en', 'US'),
-                Locale('am', 'ET'),
-                Locale('fr', 'FR'),
-                Locale('es', 'ES'),
-              ],
-              locale: Locale(
-                  PrefUtils.sharedPreferences?.getString('language_code') ??
-                      'en',
-                  ''),
+              localizationsDelegates: localizationsDelegates,
+              supportedLocales: supportedLocales,
+              locale: locale,
             );
           });
         },

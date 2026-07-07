@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/models/allequb_payment.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/models/allequb_payment.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 

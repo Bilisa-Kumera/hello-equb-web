@@ -2,16 +2,16 @@
 
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/screens/reset_password.dart';
-import 'package:ekubee/screens/signup_screen.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_button.dart';
-import 'package:ekubee/utils/custom_progress_screen.dart';
-import 'package:ekubee/utils/lang_constants.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/screens/reset_password.dart';
+import 'package:helloequb/screens/signup_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_button.dart';
+import 'package:helloequb/utils/custom_progress_screen.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   String code;

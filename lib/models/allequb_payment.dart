@@ -244,13 +244,15 @@ class EqubCategory {
 class Equber {
   String? id;
   String? lotteryNumber;
+  String? equberUserId;
 
-  Equber({this.id, this.lotteryNumber});
+  Equber({this.id, this.lotteryNumber, this.equberUserId});
 
   factory Equber.fromMap(Map<String, dynamic> map) {
     return Equber(
-      id: map['id'] as String?,
+      id: map['equberUserId'] as String?,
       lotteryNumber: map['lotteryNumber'] as String?,
+      equberUserId: map['id'] as String?,
     );
   }
 }

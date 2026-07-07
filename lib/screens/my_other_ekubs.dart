@@ -1,29 +1,29 @@
 ﻿// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:dio/dio.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/models/ekub_category_model.dart';
-import 'package:ekubee/models/financeandothermodel.dart' as f;
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/screens/my_ekub_detail_screen.dart';
-import 'package:ekubee/screens/profile_screen.dart';
-import 'package:ekubee/screens/saving_ekub_detail.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_bottom_nav.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/models/ekub_category_model.dart';
+import 'package:helloequb/models/financeandothermodel.dart' as f;
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/my_ekub_detail_screen.dart';
+import 'package:helloequb/screens/profile_screen.dart';
+import 'package:helloequb/screens/saving_ekub_detail.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/custom_bottom_nav.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:provider/provider.dart';
-import 'package:ekubee/provider/equb_type_provider.dart' as type_provider;
-import 'package:ekubee/provider/equb_category_provider.dart';
-import 'package:ekubee/provider/getmyequb_provider.dart';
-import 'package:ekubee/screens/my_equb_screen.dart';
+import 'package:helloequb/provider/equb_type_provider.dart' as type_provider;
+import 'package:helloequb/provider/equb_category_provider.dart';
+import 'package:helloequb/provider/getmyequb_provider.dart';
+import 'package:helloequb/screens/my_equb_screen.dart';
 
-import 'package:ekubee/utils/getx_storage_custom.dart' show DataController;
-import 'package:ekubee/utils/lang_constants.dart' show AppKeys;
+import 'package:helloequb/utils/getx_storage_custom.dart' show DataController;
+import 'package:helloequb/utils/lang_constants.dart' show AppKeys;
 
 import '../utils/secure_storage.dart';
 import 'allequb_payment.dart';

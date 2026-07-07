@@ -1,60 +1,80 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 
- final String socketServer = dotenv.env['BASE_URL'] ?? '';
- final String baseUrl = "${dotenv.env['BASE_URL']}api/v1";
- final String mediaUrl = dotenv.env['BASE_URL'] ?? '';
+const String _defaultBaseUrl = 'http://localhost:8000/';
 
+String _normalizeBaseUrl(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return '';
+  return trimmed.endsWith('/') ? trimmed : '$trimmed/';
+}
 
- String sendOtpUrl = "$baseUrl/user/auth/otp";
- String registerUserUrls = "$baseUrl/user/auth/signup";
- String loginUrl = "$baseUrl/user/auth/login";
- String profileUrl = "$baseUrl/user/auth/";
+String get _baseUrlEnv {
+  final env = dotenv.env['BASE_URL'];
+  if (env == null || env.trim().isEmpty) return _defaultBaseUrl;
+  return env;
+}
 
- String equbTypeUrl = "$baseUrl/user/equb-type";
- String equbCategoriesUrl = "$baseUrl/user/equb-category";
- String deviceTokenUrl = '$baseUrl/user/device-token';
- String bannersUrl = '$baseUrl/user/banner?state=active';
- String updatePersonnalUrl = '$baseUrl/user/profile/personal-info/';
- String banksUrl = '$baseUrl/user/profile/banks';
- String addFinancialUrl = '$baseUrl/user/profile/financial-info/';
- String updateFinancialUrl = '$baseUrl/user/profile/bank-account/';
- String getMyProfile = '$baseUrl/user/profile/me';
- String ekubsUrl = '$baseUrl/user/equb';
- String joinEkubGroupUrl = '$baseUrl/user/equb/join/group/';
- String joinEkubIndividualUrl = '$baseUrl/user/equb/join/individual/';
- String ekubPaymentsUrl = '$baseUrl/user/equb/payments/';
- String getEligibleUsers = '$baseUrl/user/equb/lottery/';
- String getServerTimeUrl = '$baseUrl/server-time';
- String ekubLotteriesUrl = '$baseUrl/user/equb/lotteries/';
- String addGuarantorInfoUrl = '$baseUrl/user/equb/guarantee/';
- String claimEqubUrl = '$baseUrl/user/equb/claim/';
- String joinEkubUrl = '$baseUrl/user/equb/join/';
- String companyBankUrl = '$baseUrl/company-bank?_page&_limit';
- String paymentUrl = '$baseUrl/user/payment/confirm/';
- String makePaymentUrl = '$baseUrl/user/equb/payment/';
- String pendingPaymentUrl = '$baseUrl/user/equb/payment/';
- String getMyPendingEqubs = '$baseUrl/user/equb/pending?_page&_limit';
- String getTransactionHistoryUrl = '$baseUrl/user/payment/transaction';
- String requestUrl = "$baseUrl/user/equb/request/";
- String forgetPasswordUrl = "$baseUrl/user/auth/forgot-password";
- String resetPasswordUrl = "$baseUrl/user/auth/reset-password";
- String getNotificationUrl = "$baseUrl/user/notification/getNotification";
- String getGuaranteeToBeUrl = "$baseUrl/user/equb/unwon-users";
- String saveGuaranteeIdUrl = "$baseUrl/user/equb/save-guarantee/";
- String getGuaranteeRequestUrl =
+String get socketServer => _baseUrlEnv;
+String get mediaUrl => _baseUrlEnv;
+String get baseUrl {
+  final base = _normalizeBaseUrl(_baseUrlEnv);
+  if (base.isEmpty) return '';
+  return '${base}api/v1';
+}
+
+String get sendOtpUrl => "$baseUrl/user/auth/otp";
+String get registerUserUrls => "$baseUrl/user/auth/signup";
+String get loginUrl => "$baseUrl/user/auth/login";
+String get profileUrl => "$baseUrl/user/auth/";
+
+String get equbTypeUrl => "$baseUrl/user/equb-type";
+String get equbCategoriesUrl => "$baseUrl/user/equb-category";
+String get deviceTokenUrl => '$baseUrl/user/device-token';
+String get bannersUrl => '$baseUrl/user/banner?state=active';
+String get updatePersonnalUrl => '$baseUrl/user/profile/personal-info/';
+String get banksUrl => '$baseUrl/user/profile/banks';
+String get addFinancialUrl => '$baseUrl/user/profile/financial-info/';
+String get updateFinancialUrl => '$baseUrl/user/profile/bank-account/';
+String get getMyProfile => '$baseUrl/user/profile/me';
+String get ekubsUrl => '$baseUrl/user/equb';
+String get joinEkubGroupUrl => '$baseUrl/user/equb/join/group/';
+String get joinEkubIndividualUrl => '$baseUrl/user/equb/join/individual/';
+String get ekubPaymentsUrl => '$baseUrl/user/equb/payments/';
+String get getEligibleUsers => '$baseUrl/user/equb/lottery/';
+String get getServerTimeUrl => '$baseUrl/server-time';
+String get ekubLotteriesUrl => '$baseUrl/user/equb/lotteries/';
+String get addGuarantorInfoUrl => '$baseUrl/user/equb/guarantee/';
+String get claimEqubUrl => '$baseUrl/user/equb/claim/';
+String get joinEkubUrl => '$baseUrl/user/equb/join/';
+String get joinMiniAppEkubUrl => '$baseUrl/user/equb/joinMiniApp/';
+String get companyBankUrl => '$baseUrl/company-bank?_page&_limit';
+String get paymentUrl => '$baseUrl/user/payment/confirm/';
+String get makePaymentUrl => '$baseUrl/user/equb/payment/';
+String get pendingPaymentUrl => '$baseUrl/user/equb/payment/';
+String get getMyPendingEqubs => '$baseUrl/user/equb/pending?_page&_limit';
+String get getTransactionHistoryUrl => '$baseUrl/user/payment/transaction';
+String get requestUrl => "$baseUrl/user/equb/request/";
+String get forgetPasswordUrl => "$baseUrl/user/auth/forgot-password";
+String get resetPasswordUrl => "$baseUrl/user/auth/reset-password";
+String get getNotificationUrl => "$baseUrl/user/notification/getNotification";
+String get getGuaranteeToBeUrl => "$baseUrl/user/equb/unwon-users";
+String get saveGuaranteeIdUrl => "$baseUrl/user/equb/save-guarantee/";
+String get getGuaranteeRequestUrl =>
     "$baseUrl/user/equb/sendGuarantorNotificaton/";
-
- String getSavingEqubDetailUrl = "$baseUrl/user/equb/savingMember/";
- String getEqubReportUrl = "$baseUrl/user/report/";
- String refreshTokenUrl = "$baseUrl/user/auth/refresh-token";
- String declineRequestUrl = "$baseUrl/user/equb/sendDeleteNotification/";
- String financeAndOtherEqubsUrl =
+String get lotteriesListUrl => "$baseUrl/user/equb/getLotteriesAllTime/";
+String get getSavingEqubDetailUrl => "$baseUrl/user/equb/savingMember/";
+String get getEqubReportUrl => "$baseUrl/user/report/";
+String get refreshTokenUrl => "$baseUrl/user/auth/refresh-token";
+String get declineRequestUrl => "$baseUrl/user/equb/sendDeleteNotification/";
+String get financeAndOtherEqubsUrl =>
     "$baseUrl/equbs/getFinanceAndOtherMobile/";
- String cooperateEqubUrl = "$baseUrl/user/cooperate";
- String validateCooperateUrl = "$baseUrl/user/cooperate/checkValidCoopreateCode";
+String get cooperateEqubUrl => "$baseUrl/user/cooperate";
+String get validateCooperateUrl =>
+    "$baseUrl/user/cooperate/checkValidCoopreateCode";
+String get checkJoinUrl => "$baseUrl/user/equb/check-join";
 
 // Equb history (completed/past equbs per user)
-String getEqubHistoryUrl = "$baseUrl/user/equb/get-history-equbs";
+String get getEqubHistoryUrl => "$baseUrl/user/equb/get-history-equbs";
 
 final NumberFormat numberFormat = NumberFormat('#,##0.00');

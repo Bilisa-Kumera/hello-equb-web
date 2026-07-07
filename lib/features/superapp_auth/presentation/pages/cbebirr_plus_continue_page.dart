@@ -1,0 +1,343 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
+import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
+import 'package:helloequb/core/logging/app_logger.dart';
+import 'package:helloequb/core/superapp/superapp_diagnostics.dart';
+import 'package:helloequb/features/superapp_auth/presentation/widgets/superapp_log_panel.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+
+// ─── Step types ──────────────────────────────────────────────────────────────
+
+enum _StepStatus { idle, loading, success, error }
+
+class _LogStep {
+  _LogStep(this.label);
+  final String label;
+  _StepStatus status = _StepStatus.idle;
+  String? detail;
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+class CbeBirrPlusContinuePage extends StatefulWidget {
+  const CbeBirrPlusContinuePage({super.key});
+
+  @override
+  State<CbeBirrPlusContinuePage> createState() =>
+      _CbeBirrPlusContinuePageState();
+}
+
+class _CbeBirrPlusContinuePageState extends State<CbeBirrPlusContinuePage> {
+  late final CbeBirrPlusBridge _bridge;
+
+  final List<_LogStep> _steps = [];
+  String? _error;
+  bool _canRetry = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bridge = createCbeBirrPlusBridge();
+
+    _steps.addAll([
+      _LogStep('Connecting to CBEBirr Plus channel'),
+      _LogStep('Confirming CBEBirr Plus'),
+      _LogStep('Redirecting to app'),
+    ]);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runAutoLogin());
+  }
+
+  void _updateStep(int index, _StepStatus status, {String? detail}) {
+    if (!mounted) return;
+    setState(() {
+      _steps[index].status = status;
+      if (detail != null) _steps[index].detail = detail;
+    });
+  }
+
+  Future<void> _runAutoLogin() async {
+    if (!mounted) return;
+    setState(() {
+      _error = null;
+      _canRetry = false;
+      for (final s in _steps) {
+        s.status = _StepStatus.idle;
+        s.detail = null;
+      }
+    });
+
+    // ── Step 0: wait for channel ──────────────────────────────────────────────
+    _updateStep(0, _StepStatus.loading);
+    AppLogger.log('CBEBirr Plus: waiting for channel');
+    final channelOk = await _bridge.waitUntilAvailable(
+      timeout: const Duration(seconds: 8),
+      pollInterval: const Duration(milliseconds: 140),
+    );
+    if (!mounted) return;
+    if (!channelOk) {
+      _updateStep(0, _StepStatus.error, detail: 'Channel not found');
+      setState(() {
+        _error = 'Not running inside CBEBirr Plus.';
+        _canRetry = false;
+      });
+      AppLogger.warn('CBEBirr Plus: channel unavailable, redirecting to login');
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (mounted) context.go('/login');
+      return;
+    }
+    _updateStep(0, _StepStatus.success, detail: 'Channel connected');
+
+    // ── Step 1: confirm CBEBirr Plus ──────────────────────────────────────────
+    _updateStep(1, _StepStatus.loading);
+    AppLogger.log('CBEBirr Plus: channel available');
+    _updateStep(1, _StepStatus.success, detail: 'CBEBirr Plus detected');
+
+    // ── Step 2: redirect ─────────────────────────────────────────────────────
+    _updateStep(2, _StepStatus.loading);
+    AppLogger.log('CBEBirr Plus: continuing to app');
+    _updateStep(2, _StepStatus.success, detail: 'Redirecting');
+
+    if (mounted) context.go('/login');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final diag = createSuperAppDiagnostics().snapshot();
+
+    return Scaffold(
+      backgroundColor: AppColors.white,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 420.w),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 32.h),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _CbeBirrPlusLogo(),
+                  SizedBox(height: 18.h),
+                  Text(
+                    'CBEBirr Plus',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.deepForestGreen,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    'Setting up your Hello Equb session…',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13.sp, color: Colors.black54),
+                  ),
+                  SizedBox(height: 20.h),
+                  _StepLogPanel(steps: _steps),
+                  if (_error != null) ...[
+                    SizedBox(height: 14.h),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        border: Border.all(color: Colors.red.shade200),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: Colors.red.shade700,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                    if (_canRetry) ...[
+                      SizedBox(height: 10.h),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _runAutoLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.deepForestGreen,
+                            foregroundColor: AppColors.white,
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ),
+                    ],
+                  ],
+                  SizedBox(height: 20.h),
+                  _DiagnosticsPanel(diag: diag),
+                  SizedBox(height: 12.h),
+                  const SuperAppLogPanel(title: 'CBEBirr Plus logs'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Widgets ──────────────────────────────────────────────────────────────────
+
+class _CbeBirrPlusLogo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 100.w,
+      height: 100.w,
+      decoration: BoxDecoration(
+        color: AppColors.deepForestGreen.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.account_balance_wallet_rounded,
+        size: 54.sp,
+        color: AppColors.deepForestGreen,
+      ),
+    );
+  }
+}
+
+class _StepLogPanel extends StatelessWidget {
+  const _StepLogPanel({required this.steps});
+
+  final List<_LogStep> steps;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black12),
+        borderRadius: BorderRadius.circular(8.r),
+        color: const Color(0xFFF7F7F7),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: steps.map((s) => _StepRow(step: s)).toList(),
+      ),
+    );
+  }
+}
+
+class _StepRow extends StatelessWidget {
+  const _StepRow({required this.step});
+
+  final _LogStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget leading;
+    final Color labelColor;
+
+    switch (step.status) {
+      case _StepStatus.loading:
+        leading = SizedBox(
+          width: 16.sp,
+          height: 16.sp,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.deepForestGreen,
+          ),
+        );
+        labelColor = AppColors.deepForestGreen;
+        break;
+      case _StepStatus.success:
+        leading = Icon(Icons.check_circle_rounded,
+            size: 16.sp, color: Colors.green.shade600);
+        labelColor = Colors.green.shade700;
+        break;
+      case _StepStatus.error:
+        leading = Icon(Icons.error_rounded,
+            size: 16.sp, color: Colors.red.shade600);
+        labelColor = Colors.red.shade700;
+        break;
+      case _StepStatus.idle:
+      default:
+        leading = Icon(Icons.radio_button_unchecked_rounded,
+            size: 16.sp, color: Colors.black26);
+        labelColor = Colors.black38;
+        break;
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 5.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+              width: 20.w, child: Center(heightFactor: 1, child: leading)),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  step.label,
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w500,
+                    color: labelColor,
+                  ),
+                ),
+                if (step.detail != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: 2.h),
+                    child: Text(
+                      step.detail!,
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: labelColor.withOpacity(0.75),
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _DiagnosticsPanel extends StatelessWidget {
+  const _DiagnosticsPanel({required this.diag});
+
+  final Map<String, String> diag;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black12),
+        borderRadius: BorderRadius.circular(8.r),
+        color: const Color(0xFFF7F7F7),
+      ),
+      child: SelectableText(
+        diag.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
+        style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 11.sp,
+          height: 1.25,
+        ),
+      ),
+    );
+  }
+}

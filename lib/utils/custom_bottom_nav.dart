@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/lang_constants.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
@@ -50,7 +50,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
                     Icons.home,
                     color: currentIndex == 0
                         ? AppColors.white
-                        : AppColors.white.withOpacity(0.5),
+                        : AppColors.white,
                     size: currentIndex == 0 ? 30.0 : 24.0,
                   ),
                 ),
@@ -63,7 +63,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
                     Icons.chair_outlined,
                     color: currentIndex == 1
                         ? AppColors.white
-                        : AppColors.white.withOpacity(0.5),
+                        : AppColors.white,
                     size: currentIndex == 1 ? 30.0 : 24.0,
                   ),
                 ),
@@ -77,7 +77,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
                     Icons.payment,
                     color: currentIndex == 2
                         ? AppColors.white
-                        : AppColors.white.withOpacity(0.5),
+                        : AppColors.white,
                     size: currentIndex == 2 ? 30.0 : 24.0,
                   ),
                 ),
@@ -90,7 +90,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
                     Icons.person_2_outlined,
                     color: currentIndex == 3
                         ? AppColors.white
-                        : AppColors.white.withOpacity(0.5),
+                        : AppColors.white,
                     size: currentIndex == 3 ? 30.0 : 24.0,
                   ),
                 ),
@@ -98,7 +98,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
               ),
             ],
             selectedItemColor: AppColors.white,
-            unselectedItemColor: AppColors.white.withOpacity(0.5),
+            unselectedItemColor: AppColors.white,
             selectedLabelStyle: const TextStyle(
               fontSize: 12,
               fontFamily: 'Poppins',

@@ -1,29 +1,33 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:ekubee/utils/colors_constant.dart';
+import 'package:dio/dio.dart';
+import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/logic/check_network.dart';
+import 'package:helloequb/screens/forget_screen.dart';
+import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/login_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/custom_progress_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:ekubee/core/api_url.dart';
-import 'package:ekubee/logic/check_network.dart';
-import 'package:ekubee/screens/forget_screen.dart';
-import 'package:ekubee/screens/home_screen.dart';
-import 'package:ekubee/screens/login_screen.dart';
-import 'package:ekubee/utils/app_localizations.dart';
-import 'package:ekubee/utils/custom_button.dart';
-import 'package:ekubee/utils/custom_snack_bar.dart';
-import 'package:dio/dio.dart';
-import 'package:ekubee/utils/getx_storage_custom.dart';
-import 'package:ekubee/utils/lang_constants.dart';
-import 'package:ekubee/utils/custom_progress_screen.dart';
+import 'dart:convert';
 
 import '../utils/secure_storage.dart';
 
 class LoginScreenWithPin extends StatefulWidget {
-  String? phoneNumber;
-  LoginScreenWithPin({super.key, required this.phoneNumber});
+  final String? phoneNumber;
+
+  const LoginScreenWithPin({
+    super.key,
+    required this.phoneNumber,
+  });
 
   @override
   State<LoginScreenWithPin> createState() => _LoginScreenWithPinState();
@@ -31,122 +35,213 @@ class LoginScreenWithPin extends StatefulWidget {
 
 class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
   final Dio _dio = Dio();
-  bool waiting = false;
-  String errorMessage = '';
+
   final DataController dataController = DataController();
 
-  TextEditingController? phoneController;
-  TextEditingController pinController = TextEditingController();
+  late TextEditingController phoneController;
+  final TextEditingController pinController = TextEditingController();
+
+  bool waiting = false;
+  bool _obscureText = true;
+
+  String errorMessage = '';
   String phoneNumber = '';
+
+  late Connectivity _connectivity;
+  late List<ConnectivityResult> _connectionStatus;
 
   @override
   void initState() {
     super.initState();
+
+    _connectivity = Connectivity();
+
+    phoneNumber = widget.phoneNumber ?? '';
+
     phoneController = TextEditingController(
-      text: dataController.retrieveData(deviceId ?? ''),
+      text: phoneNumber.isNotEmpty
+          ? phoneNumber
+          : dataController.retrieveData('phoneNumber') ?? '',
     );
   }
 
   @override
   void dispose() {
-    phoneController?.dispose();
+    phoneController.dispose();
     pinController.dispose();
     super.dispose();
   }
 
-  void registerUser(BuildContext context) async {
-    if (phoneNumber.isEmpty || pinController.text.isEmpty) {
+  Future<void> registerUser(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+
+    _validateAndNormalize(phoneController.text);
+
+    if (phoneNumber.isEmpty || pinController.text.trim().isEmpty) {
       setState(() {
         errorMessage = phoneNumber.isEmpty
             ? AppKeys.pleaseEnterPhoneNumber.tr(context)
             : AppKeys.pleaseEnterValid.tr(context);
       });
+
       return;
     }
-    waiting = true;
-    bool dialogOpen = true;
-    if (!kIsWeb) {
-  showDialog(
-    context: context,
-    builder: (_) => const WaitingProgressPage(),
-  );
-}
-   
-    Future.delayed(const Duration(seconds: 15), () {
-      if (dialogOpen && mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-        dialogOpen = false;
-      }
-    });
+
+    bool dialogOpen = false;
+
     try {
-      Response response = await _dio.post(
+      setState(() {
+        waiting = true;
+      });
+
+      if (!kIsWeb) {
+        dialogOpen = true;
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const WaitingProgressPage(),
+        );
+      }
+
+      final Response response = await _dio.post(
         loginUrl,
         data: {
           "phoneNumber": phoneNumber,
-          "password": pinController.text,
+          "password": pinController.text.trim(),
         },
+
+        options: Options(
+          headers: {
+            "Content-Type": "application/json",
+          },
+        ),
       );
+
+      if (kDebugMode) {
+      }
+
       if (dialogOpen && mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        dialogOpen = false;
       }
+
       if (response.statusCode == 200) {
+        Map<String, dynamic> body;
+        final dynamic raw = response.data;
+        if (raw is String) {
+          final trimmed = raw.trimLeft();
+          if (trimmed.startsWith('<!DOCTYPE html') ||
+              trimmed.startsWith('<html')) {
+            throw FormatException(
+              'Received HTML instead of JSON from ${response.realUri}. '
+              'Your app likely called Firebase Hosting (rewrite to index.html) instead of the API. '
+              'Check BASE_URL/.env and hard refresh.',
+            );
+          }
+          body = jsonDecode(raw) as Map<String, dynamic>;
+        } else if (raw is Map) {
+          body = Map<String, dynamic>.from(raw as Map);
+        } else {
+          throw const FormatException('Unexpected login response format');
+        }
+
+        final dynamic userDynamic = body['user'] ?? body['data']?['user'];
+        if (userDynamic is! Map) {
+          throw const FormatException('Login response missing user');
+        }
+        final user = Map<String, dynamic>.from(userDynamic);
+
+        final accessToken = body['accessToken'] ?? body['data']?['accessToken'];
+        final refreshToken =
+            body['refreshToken'] ?? body['data']?['refreshToken'];
+        if (accessToken == null || refreshToken == null) {
+          throw const FormatException('Login response missing token(s)');
+        }
+
         dataController.storeData('isLoggedIn', true);
-        await SecureStorageHelper.saveUserId(response.data['user']['id']);
-        await SecureStorageHelper.saveAccessToken(response.data['accessToken']);
+
+        await SecureStorageHelper.saveUserId(user['id'].toString());
+
+        await SecureStorageHelper.saveAccessToken(
+          accessToken.toString(),
+        );
+
         await SecureStorageHelper.saveRefreshToken(
-            response.data['refreshToken']);
-        dataController.storeData('fullName', response.data['user']['fullName']);
-        dataController.storeData('userId', response.data['user']['id']);
-        dataController.storeData(
-            'phoneNumber', response.data['user']['phoneNumber']);
-        dataController.storeData('lastName', response.data['user']['lastName']);
-        dataController.storeData(
-            'firstName', response.data['user']['firstName']);
-        dataController.storeData('middleName', response.data['user']['middleName']);
-        dataController.storeData('email', response.data['user']['email']);
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()));
+          refreshToken.toString(),
+        );
+
+        dataController.storeData('userId', user['id']);
+        dataController.storeData('fullName', user['fullName']);
+        dataController.storeData('phoneNumber', user['phoneNumber']);
+        dataController.storeData('lastName', user['lastName']);
+        dataController.storeData('firstName', user['firstName']);
+        dataController.storeData('middleName', user['middleName']);
+        dataController.storeData('email', user['email']);
+
+        if (!mounted) return;
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const HomeScreen(),
+          ),
+          (route) => false,
+        );
       }
     } on DioError catch (e) {
       if (dialogOpen && mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        dialogOpen = false;
       }
-      waiting = false;
-      if (e.response?.statusCode == 400) {
+
+      String message = "Login failed";
+
+      if (e.type == DioErrorType.connectionError) {
+        message = "Unable to connect to server";
+      } else if (e.response?.statusCode == 400) {
         if (e.response?.data['status'] == 'fail') {
-          errorMessage = e.response?.data['message'];
+          message = e.response?.data['message'];
         } else {
-          errorMessage = e.response?.data['errors'][0]['msg'];
+          message = e.response?.data['errors'][0]['msg'];
         }
-        setState(() {});
-        CustomSnackBar.show(context, errorMessage, AppColors.red);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => LoginScreenWithPin(
-              phoneNumber: widget.phoneNumber,
-            ),
-          ),
-        );
+      } else if (e.response?.statusCode == 401) {
+        message = "Invalid credentials";
+      }
+
+      setState(() {
+        errorMessage = message;
+      });
+
+      if (mounted) {
+        CustomSnackBar.show(context, message, AppColors.red);
       }
     } catch (e) {
       if (dialogOpen && mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        dialogOpen = false;
       }
-      waiting = false;
-      CustomSnackBar.show(context, "Unexpected oerror ocurred", AppColors.red);
+
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          kDebugMode
+              ? 'Unexpected error: $e'
+              : (e is FormatException
+                  ? 'Unexpected server response. Check app BASE_URL config.'
+                  : "Unexpected error occurred $e"),
+          AppColors.red,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          waiting = false;
+        });
+      }
     }
   }
 
-  late Connectivity _connectivity;
-  late List<ConnectivityResult> _connectionStatus;
-  String? deviceId;
-
-  void _checkNetworkStatus() async {
+  Future<void> _checkNetworkStatus() async {
     _connectionStatus = await _connectivity.checkConnectivity();
+
     if (_connectionStatus.contains(ConnectivityResult.none)) {
       _showNetworkCheckScreen();
     }
@@ -156,71 +251,61 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(child: CheckNetwork(onRetry: _retryConnection)),
-    );
-  }
-
-  void _retryConnection() {
-    _checkNetworkStatus();
-    Navigator.of(context).pop();
-  }
-
-  void _showPopup(BuildContext context, String title, String content) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(title,
-            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Text(content,
-              style: TextStyle(fontSize: 16.sp, color: AppColors.black87)),
+      builder: (_) => Dialog(
+        child: CheckNetwork(
+          onRetry: _retryConnection,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Close",
-                style: TextStyle(color: AppColors.primary, fontSize: 16.sp)),
-          ),
-        ],
       ),
     );
   }
 
-  void _validateAndNormalize(String? value) {
-    if (value == null || value.trim().isEmpty) return;
-
-    String v = value.trim();
-    String normalized = v;
-
-    if (v.startsWith('+251') && v.length == 13) {
-      normalized = v;
-    } else if (v.startsWith('9') && v.length == 9) {
-      normalized = '+251$v';
-    } else if (v.startsWith('09') && v.length == 10) {
-      normalized = '+251${v.substring(1)}';
-    } else {
-      normalized = v;
-    }
-
-    phoneNumber = normalized;
+  void _retryConnection() {
+    Navigator.of(context).pop();
+    _checkNetworkStatus();
   }
 
-  bool _obscureText = true;
+  void _validateAndNormalize(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      phoneNumber = '';
+      return;
+    }
+
+    final String v = value.trim();
+
+    if (v.startsWith('+251') && v.length == 13) {
+      phoneNumber = v;
+    } else if (v.startsWith('9') && v.length == 9) {
+      phoneNumber = '+251$v';
+    } else if (v.startsWith('09') && v.length == 10) {
+      phoneNumber = '+251${v.substring(1)}';
+    } else {
+      phoneNumber = v;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.softBlueBackground,
-      body: Column(
-        children: [
-          Expanded(
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 500,
+            ),
             child: SingleChildScrollView(
               child: Column(
                 children: [
                   SizedBox(height: 30.h),
-                  Center(
-                      child: Image.asset('assets/splash.png', height: 230.h)),
-                  const SizedBox(height: 10),
+
+                  /// WEB RESPONSIVE
+                  Image.asset(
+                    'assets/splash.png',
+                    height: kIsWeb ? 180 : 230.h,
+                  ),
+
+                  const SizedBox(height: 20),
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Align(
@@ -228,316 +313,184 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
                       child: Text(
                         AppKeys.welcomeBack.tr(context),
                         style: TextStyle(
-                            fontSize: 28.sp,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.darkBlueGray),
+                          fontSize: 28.sp,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkBlueGray,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+
+                  const SizedBox(height: 20),
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: TextFormField(
                       controller: phoneController,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.3,
-                      ),
+                      onChanged: _validateAndNormalize,
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: AppColors.grayOverlay,
                         hintText: AppKeys.enterPhoneOrEmail.tr(context),
-                        hintStyle: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                        ),
-                        prefixIcon: Icon(
-                          Icons.person_outline,
-                          color: Colors.grey.shade600,
-                          size: 22,
-                        ),
+                        prefixIcon: const Icon(Icons.person_outline),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(
-                            color:
-                                Theme.of(context).primaryColor.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(
-                            color: Colors.redAccent,
-                            width: 1.5,
-                          ),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(
-                            color: Colors.redAccent,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
-                        ),
-                        errorStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
                       ),
-                      onChanged: _validateAndNormalize,
-                      validator: (value) {
-                        if (phoneNumber.startsWith('+251')) {
-                          return (phoneNumber.length != 13)
-                              ? AppKeys.invalidPhoneOrEmail.tr(context)
-                              : null;
-                        } else {
-                          final emailRegex = RegExp(
-                              r'^[^@]+@(?:gmail\.com|somecompany\.com)$');
-                          return emailRegex.hasMatch(phoneNumber)
-                              ? null
-                              : AppKeys.invalidPhoneOrEmail.tr(context);
-                        }
-                      },
                     ),
                   ),
+
                   const SizedBox(height: 20),
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: TextFormField(
                       controller: pinController,
                       obscureText: _obscureText,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 2.0,
-                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: AppColors.grayOverlay,
                         hintText: AppKeys.pin.tr(context),
-                        hintStyle: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
+                        prefixIcon: const Icon(Icons.lock_outline),
+
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureText
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureText = !_obscureText;
+                            });
+                          },
                         ),
-                        prefixIcon: Icon(
-                          Icons.lock_outline,
-                          color: Colors.grey.shade600,
-                          size: 22,
-                        ),
+
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(
-                            color:
-                                Theme.of(context).primaryColor.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(
-                            color: Colors.redAccent,
-                            width: 1.5,
-                          ),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(
-                            color: Colors.redAccent,
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
-                        ),
-                        suffixIcon: Material(
-                          color: Colors.transparent,
-                          child: IconButton(
-                            splashRadius: 24,
-                            icon: Icon(
-                              _obscureText
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              color: _obscureText
-                                  ? Colors.grey.shade500
-                                  : Theme.of(context).primaryColor,
-                              size: 22,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscureText = !_obscureText;
-                              });
-                            },
-                          ),
-                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  if (errorMessage.isNotEmpty)
-                    Center(
-                      child: Text(errorMessage,
-                          style: const TextStyle(color: AppColors.red)),
+
+                  if (errorMessage.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      errorMessage,
+                      style: const TextStyle(
+                        color: AppColors.red,
+                      ),
                     ),
+                  ],
+
                   const SizedBox(height: 20),
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
-                        onTap: () => Navigator.push(
+                        onTap: () {
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const ForgetScreen())),
+                              builder: (_) => const ForgetScreen(),
+                            ),
+                          );
+                        },
                         child: Text(
                           AppKeys.forgetPassword.tr(context),
                           style: TextStyle(
-                              fontSize: 14.sp,
-                              color: AppColors.darkTeal,
-                              fontWeight: FontWeight.w600),
+                            fontSize: 14.sp,
+                            color: AppColors.darkTeal,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 30),
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: SizedBox(
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: () {
-                          _connectivity = Connectivity();
-                          _checkNetworkStatus();
-                          dataController.storeData('phoneNumber', phoneNumber);
-                          registerUser(context);
-                        },
                         style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          padding: EdgeInsets.zero,
-                          elevation: 2,
-                          textStyle: TextStyle(
-                              fontSize: 18.sp, fontWeight: FontWeight.bold),
-                          backgroundColor: Colors.transparent,
-                        ).copyWith(
-                          backgroundColor:
-                              MaterialStateProperty.resolveWith<Color>(
-                                  (states) {
-                            return Colors.transparent;
-                          }),
-                          shadowColor:
-                              MaterialStateProperty.all(Colors.transparent),
                         ),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppColors.primary, AppColors.secondary],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Container(
-                            alignment: Alignment.center,
-                            child: Text(
-                              AppKeys.login.tr(context),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.bold,
+                        onPressed: waiting
+                            ? null
+                            : () async {
+                                await _checkNetworkStatus();
+
+                                dataController.storeData(
+                                  'phoneNumber',
+                                  phoneNumber,
+                                );
+
+                                registerUser(context);
+                              },
+                        child: waiting
+                            ? const CircularProgressIndicator()
+                            : Text(
+                                AppKeys.login.tr(context), style: TextStyle(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.white,
+                                ),
                               ),
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                   ),
-                  SizedBox(height: 50.h),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 30),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          AppKeys.dontHaveAccount.tr(context),
-                          style: TextStyle(
-                              fontSize: 16.sp, color: AppColors.darkBlueGray),
-                        ),
-                        SizedBox(width: 8.w),
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const LoginScreen())),
-                          child: Text(
-                            AppKeys.register.tr(context),
-                            style: TextStyle(
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary),
+
+                  SizedBox(height: 40.h),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        AppKeys.dontHaveAccount.tr(context),
+                      ),
+                      SizedBox(width: 8.w),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          AppKeys.register.tr(context),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  // Padding(
-                  //   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  //   child: Wrap(
-                  //     alignment: WrapAlignment.center,
-                  //     spacing: 8.w,
-                  //     runSpacing: 4.h,
-                  //     children: [
-                  //       Text(
-                  //         AppKeys.byLoggingIn.tr(context),
-                  //         style: TextStyle(
-                  //             fontSize: 16.sp,
-                  //             color: AppColors.lightGrayNeutral),
-                  //       ),
-                  //       GestureDetector(
-                  //         onTap: () => _showPopup(context, "Terms of Service",
-                  //             AppKeys.termsConditions.tr(context)),
-                  //         child: Text(
-                  //           AppKeys.termsOfService.tr(context),
-                  //           style: TextStyle(
-                  //               fontSize: 16.sp,
-                  //               fontWeight: FontWeight.bold,
-                  //               color: AppColors.black),
-                  //         ),
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
-                  const SizedBox(height: 40),
+
+                  SizedBox(height: 30.h),
                 ],
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
