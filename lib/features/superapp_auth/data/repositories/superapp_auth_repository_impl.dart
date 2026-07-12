@@ -9,6 +9,7 @@ import 'package:helloequb/features/superapp_auth/data/datasources/telebirr_gatew
 import 'package:helloequb/features/superapp_auth/domain/entities/session.dart';
 import 'package:helloequb/features/superapp_auth/domain/repositories/superapp_auth_repository.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/secure_storage.dart';
 
 class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
   SuperAppAuthRepositoryImpl({
@@ -143,7 +144,8 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       appToken: appToken,
     );
     AppLogger.success('SuperApp backend login response received');
-    return _persistSessionFromPayload(remote, payload, phoneNumber: phoneNumber);
+    return _persistSessionFromPayload(remote, payload,
+        phoneNumber: phoneNumber);
   }
 
   /// POSTs `{"token": appToken}` to the Telebirr auto-login endpoint and
@@ -179,11 +181,15 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
     );
     AppLogger.success('Telebirr auto-login response received');
     onResponse?.call(_telebirrGatewayAuthTokenUrl, requestBody, payload);
-    return _persistSessionFromPayload(remote, payload);
+    final session = await _persistSessionFromPayload(remote, payload);
+    _dataController.storeData('isFromTelebirrMiniApp', true);
+    _dataController.storeData('isCbeBirr', false);
+    return session;
   }
 
   /// POSTs `{"token": launchToken}` to the CBEBirr Plus auto-login endpoint.
-  Future<Session> autoLoginCbeBirrPlusMiniApp({required String launchToken}) async {
+  Future<Session> autoLoginCbeBirrPlusMiniApp(
+      {required String launchToken}) async {
     final url = _cbeBirrPlusAutoLoginUrl.isNotEmpty
         ? _cbeBirrPlusAutoLoginUrl
         : '$_apiBaseUrl/user/auth/auto-login-cbebirr-miniapp';
@@ -206,7 +212,10 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       token: launchToken,
     );
     AppLogger.success('CBEBirr Plus auto-login response received');
-    return _persistSessionFromPayload(remote, payload);
+    final session = await _persistSessionFromPayload(remote, payload);
+    _dataController.storeData('isFromTelebirrMiniApp', false);
+    _dataController.storeData('isCbeBirr', true);
+    return session;
   }
 
   Future<Session> _persistSessionFromPayload(
@@ -220,8 +229,10 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
     );
 
     await _tokenStorage.writeAccessToken(session.accessToken);
+    await SecureStorageHelper.saveAccessToken(session.accessToken);
     _dataController.storeData('accessToken', session.accessToken);
     if (session.refreshToken != null) {
+      await SecureStorageHelper.saveRefreshToken(session.refreshToken!);
       _dataController.storeData('refreshToken', session.refreshToken);
     }
     _dataController.storeData('isLoggedIn', true);
@@ -239,6 +250,10 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       _dataController.storeData('email', user['email']);
     } else if (phoneNumber != null && phoneNumber.isNotEmpty) {
       _dataController.storeData('phoneNumber', phoneNumber);
+    }
+    final payloadPhoneNumber = _phoneNumberFromPayload(payload);
+    if (payloadPhoneNumber != null && payloadPhoneNumber.isNotEmpty) {
+      _dataController.storeData('phoneNumber', payloadPhoneNumber);
     }
 
     try {
@@ -259,5 +274,46 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
     }
 
     return session;
+  }
+
+  String? _phoneNumberFromPayload(Map<String, dynamic> payload) {
+    String? stringAt(List<String> paths) {
+      for (final path in paths) {
+        dynamic current = payload;
+        for (final part in path.split('.')) {
+          if (current is Map) {
+            current = current[part];
+          } else {
+            current = null;
+            break;
+          }
+        }
+        final value = current?.toString().trim();
+        if (value != null && value.isNotEmpty && value != 'null') {
+          return value;
+        }
+      }
+      return null;
+    }
+
+    final directPhone = stringAt([
+      'phoneNumber',
+      'phone',
+      'identifier',
+      'data.phoneNumber',
+      'data.phone',
+      'data.identifier',
+      'user.phoneNumber',
+      'data.user.phoneNumber',
+    ]);
+    if (directPhone != null) return directPhone;
+
+    final authRes = stringAt(['authRes', 'data.authRes']);
+    if (authRes == null) return null;
+
+    final match = RegExp(r'identifier:\s*([^,}]+)').firstMatch(authRes);
+    final phone = match?.group(1)?.trim();
+    if (phone == null || phone.isEmpty || phone == 'null') return null;
+    return phone.startsWith('+') ? phone : '+$phone';
   }
 }

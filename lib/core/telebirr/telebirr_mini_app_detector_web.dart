@@ -1,5 +1,8 @@
 // ignore_for_file: avoid_web_libraries_in_flutter
 
+import 'dart:convert';
+import 'dart:html' as html;
+import 'dart:js' as js;
 import 'dart:js_util' as js_util;
 
 import 'package:helloequb/core/logging/app_logger.dart';
@@ -79,7 +82,8 @@ class _TelebirrMiniAppDetectorWeb implements TelebirrMiniAppDetector {
 
   @override
   Future<Map<String, dynamic>> startTelebirrPayment(dynamic rawRequest) async {
-    if (rawRequest == null) {
+    final rawRequestText = rawRequest?.toString().trim() ?? '';
+    if (rawRequestText.isEmpty) {
       return const {'success': false, 'error': 'NO_RAW_REQUEST'};
     }
 
@@ -87,15 +91,28 @@ class _TelebirrMiniAppDetectorWeb implements TelebirrMiniAppDetector {
     for (final call in <Future<dynamic> Function()>[
       () async {
         final consumerapp = _cachedConsumerApp ?? _safeGet(win, 'consumerapp');
+        final evaluate = _safeGet(consumerapp, 'evaluate');
         if (consumerapp == null ||
-            !js_util.hasProperty(consumerapp, 'evaluate')) {
+            evaluate == null ||
+            !js_util.typeofEquals(evaluate, 'function')) {
           return null;
         }
-        return js_util.callMethod(consumerapp, 'evaluate', [
-          js_util.jsify({
-            'action': 'startTelebirrPayment',
-            'rawRequest': rawRequest.toString(),
+        js_util.setProperty(
+          win,
+          'handleinitDataCallback',
+          js.allowInterop(() {
+            html.window.location.href = html.window.location.origin;
           }),
+        );
+        final payload = jsonEncode({
+          'functionName': 'js_fun_start_pay',
+          'params': {
+            'rawRequest': rawRequestText,
+            'functionCallBackName': 'handleinitDataCallback',
+          },
+        });
+        return js_util.callMethod(consumerapp, 'evaluate', [
+          payload,
         ]);
       },
       () async {
@@ -106,13 +123,13 @@ class _TelebirrMiniAppDetectorWeb implements TelebirrMiniAppDetector {
         }
         return js_util.callMethod(xm, 'native', [
           'startTelebirrPayment',
-          js_util.jsify({'rawRequest': rawRequest.toString()}),
+          js_util.jsify({'rawRequest': rawRequestText}),
         ]);
       },
       () async {
         if (!js_util.hasProperty(win, 'startTelebirrPayment')) return null;
         return js_util.callMethod(win, 'startTelebirrPayment', [
-          rawRequest.toString(),
+          rawRequestText,
         ]);
       },
     ]) {
@@ -177,7 +194,7 @@ class _TelebirrMiniAppDetectorWeb implements TelebirrMiniAppDetector {
 
   String? _readToken(dynamic value) {
     if (value == null) return null;
-    if (value is String) return value.trim().isEmpty ? null : value.trim();
+    if (value is String) return value.trim().isEmpty ? null : value;
     try {
       for (final key in const ['token', 'accessToken', 'authToken']) {
         if (!js_util.hasProperty(value, key)) continue;

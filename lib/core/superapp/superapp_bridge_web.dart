@@ -150,7 +150,7 @@ class _SuperAppBridgeWeb implements SuperAppBridge {
 
   String? _readToken(dynamic value) {
     if (value == null) return null;
-    if (value is String) return value.trim().isEmpty ? null : value.trim();
+    if (value is String) return value.trim().isEmpty ? null : value;
     try {
       for (final key in const ['token', 'accessToken', 'authToken']) {
         if (!js_util.hasProperty(value, key)) continue;

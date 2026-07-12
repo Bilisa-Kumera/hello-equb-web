@@ -31,6 +31,7 @@ import 'package:go_router/go_router.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/core/logging/superapp_debug_overlay.dart';
 import 'package:helloequb/core/superapp/superapp_js_log_forwarder.dart';
+import 'package:helloequb/core/web_leave_guard.dart';
 
 import 'provider/allequb_payment.dart';
 import 'provider/cooperate_equbs_provider.dart';
@@ -118,6 +119,7 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   AppLogger.initFromEnv();
   initSuperAppJsLogForwarder();
+  initWebLeaveGuard();
   await _ensureFirebaseInitialized();
 
   if (!kIsWeb) {
@@ -263,7 +265,11 @@ Future<void> main() async {
                 supportedLocales: supportedLocales,
                 locale: locale,
                 builder: (context, child) {
-                  return SuperAppDebugOverlay(child: child ?? const SizedBox());
+                  return WebLeaveGuard(
+                    child: SuperAppDebugOverlay(
+                      child: child ?? const SizedBox(),
+                    ),
+                  );
                 },
               );
             }

@@ -16,6 +16,7 @@ import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
 import 'package:helloequb/core/telebirr_service.dart';
+import 'package:helloequb/core/telebirr/telebirr.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/utils/secure_storage.dart';
 
@@ -59,6 +60,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _isProcessing = false;
   bool _isSubmitting = false;
   bool _isInsideCbeBirrPlus = false;
+  bool _isFromTelebirrMiniApp = false;
   bool isLoading = false;
   final phoneController = TextEditingController();
 
@@ -72,20 +74,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String telebirrAppId = '';
   String telebirrAppSecret = '';
   String telebirrShortCode = '';
-  // Debug info for request/response display
-  String _debugRequestUrl = '';
-  String _debugRequestHeaders = '';
-  String _debugResponse = '';
-  String _debugCbeMiniAppStatus = '';
-
   bool get _isPaymentType =>
       (widget.type ?? '').trim().toLowerCase() == 'payment';
 
   List<Map<String, dynamic>> get _visiblePaymentOptions {
+    if (_isFromTelebirrMiniApp) {
+      return paymentOptions
+          .where((option) => option['id'] == 'telebirr')
+          .toList(growable: false);
+    }
     if (!_isInsideCbeBirrPlus) return paymentOptions;
     return paymentOptions
         .where((option) => option['id'] != 'telebirr')
         .toList(growable: false);
+  }
+
+  bool _usesMiniAppEndpoint(String paymentMethod) {
+    return (paymentMethod == 'cbe' && _isInsideCbeBirrPlus) ||
+        (paymentMethod == 'telebirr' && _isFromTelebirrMiniApp);
+  }
+
+  String _paymentRequestBaseUrl({
+    required bool useMiniAppEndpoint,
+  }) {
+    if (!useMiniAppEndpoint) {
+      return _isPaymentType ? makePaymentUrl : joinEkubUrl;
+    }
+    return _isPaymentType ? makePaymentMiniAppUrl : joinMiniAppEkubUrl;
   }
 
   final List<Map<String, dynamic>> paymentOptions = [
@@ -123,6 +138,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.initState();
     _isInsideCbeBirrPlus =
         dataController.retrieveData<bool>('isCbeBirr') ?? false;
+    _isFromTelebirrMiniApp =
+        dataController.retrieveData<bool>('isFromTelebirrMiniApp') ?? false;
+    if (_isFromTelebirrMiniApp) {
+      selectedIndex = 0;
+      selectedPaymentMethodId = 'telebirr';
+    }
     // Ensure runtime detection when possible (e.g., when navigated directly to payment)
     _detectCbeBirrBridge();
     _amountController = TextEditingController(
@@ -214,12 +235,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
     required String phone,
     required String paymentMethod,
   }) async {
-    Navigator.pop(context);
+    final bool useTelebirrMiniApp =
+        paymentMethod == 'telebirr' && _isFromTelebirrMiniApp;
+    if (!useTelebirrMiniApp) {
+      Navigator.pop(context);
+    }
 
     setState(() => _isProcessing = true);
 
     try {
       if (paymentMethod == 'telebirr') {
+        if (useTelebirrMiniApp) {
+          await _getReceiveCode(
+            phoneNumber: phone,
+            paymentMethod: paymentMethod,
+          );
+          return;
+        }
+
         await _getReceiveCode(
           phoneNumber: phone,
           paymentMethod: paymentMethod,
@@ -258,15 +291,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
     String? phoneNumber,
     required String paymentMethod,
   }) async {
-    final useMiniAppEndpoint = paymentMethod == 'cbe' && _isInsideCbeBirrPlus;
-    final miniAppPhoneNumber = phoneNumber ??
+    final useMiniAppEndpoint = _usesMiniAppEndpoint(paymentMethod);
+    final submittedPhoneNumber = phoneNumber?.trim();
+    final storedPhoneNumber =
         dataController.retrieveData<String>('phoneNumber')?.trim();
+    final miniAppPhoneNumber = submittedPhoneNumber?.isNotEmpty == true
+        ? submittedPhoneNumber
+        : storedPhoneNumber;
     final data = <String, dynamic>{
       "paidAmount":
           double.tryParse((widget.ekubAmount ?? '0.0').replaceAll(',', '')) ??
               0,
       "paymentMethod": paymentMethod,
-      if (phoneNumber != null) "phoneNumber": phoneNumber,
+      if (submittedPhoneNumber != null && submittedPhoneNumber.isNotEmpty)
+        "phoneNumber": submittedPhoneNumber,
       if (useMiniAppEndpoint &&
           miniAppPhoneNumber != null &&
           miniAppPhoneNumber.isNotEmpty)
@@ -295,22 +333,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
 
-    final String url = (useMiniAppEndpoint
-            ? joinMiniAppEkubUrl
-            : (_isPaymentType ? makePaymentUrl : joinEkubUrl)) +
-        (widget.ekubId ?? '');
+    final String url =
+        _paymentRequestBaseUrl(useMiniAppEndpoint: useMiniAppEndpoint) +
+            (widget.ekubId ?? '');
 
     debugPrint('Payment request url: $url');
     debugPrint('Payment request body: ${jsonEncode(data)}');
-    setState(() {
-      _debugRequestUrl = url;
-      _debugRequestHeaders =
-          jsonEncode({"Authorization": "Bearer $bearerToken", "body": data});
-      _debugResponse = '';
-      _debugCbeMiniAppStatus = useMiniAppEndpoint
-          ? 'Waiting for joinMiniAppEkubUrl response...'
-          : '';
-    });
+    if (useMiniAppEndpoint) {
+      debugPrint(
+        'Waiting for ${_isPaymentType ? 'makePaymentMiniAppUrl' : 'joinMiniAppEkubUrl'} response...',
+      );
+    }
 
     try {
       final Dio dio = Dio();
@@ -322,9 +355,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'];
-        setState(() {
-          _debugResponse = jsonEncode(response.data);
-        });
+        debugPrint('Payment response: ${jsonEncode(response.data)}');
 
         final dynamic orderResult = responseData?['orderResult'];
         final String rawRequest =
@@ -347,13 +378,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
         final String cbePaymentToken =
             _extractProcessedPaymentToken(responseData);
 
-        if (useMiniAppEndpoint && cbePaymentToken.isNotEmpty) {
+        if (paymentMethod == 'telebirr' && _isFromTelebirrMiniApp) {
+          await _startTelebirrMiniAppPayment(rawRequest);
+        }
+
+        if (paymentMethod == 'cbe' &&
+            useMiniAppEndpoint &&
+            cbePaymentToken.isNotEmpty) {
           await _sendCbeMiniAppPaymentToken(cbePaymentToken);
-        } else if (useMiniAppEndpoint) {
-          setState(() {
-            _debugCbeMiniAppStatus =
-                'processedPaymentToken not found in joinMiniAppEkubUrl response.';
-          });
+        } else if (paymentMethod == 'cbe' && useMiniAppEndpoint) {
+          debugPrint(
+            'processedPaymentToken not found in joinMiniAppEkubUrl response.',
+          );
         }
 
         final newReceiveCode = (responseData?['receiveCode'] ??
@@ -374,22 +410,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ''))
             .toString();
 
-        setState(() {
-          receiveCode = newReceiveCode;
-          telebirrAppId = newAppId;
-          telebirrAppSecret = newAppSecret;
-          telebirrShortCode = newShortCode;
-        });
+        if (!(paymentMethod == 'telebirr' && _isFromTelebirrMiniApp)) {
+          setState(() {
+            receiveCode = newReceiveCode;
+            telebirrAppId = newAppId;
+            telebirrAppSecret = newAppSecret;
+            telebirrShortCode = newShortCode;
+          });
+        }
       } else {}
     } on DioError catch (e) {
-      setState(() {
-        _debugResponse =
-            (e.response != null ? jsonEncode(e.response?.data) : e.message)!;
-        if (useMiniAppEndpoint) {
-          _debugCbeMiniAppStatus =
-              'Error before postMessage: ${e.response != null ? jsonEncode(e.response?.data) : e.message}';
-        }
-      });
+      if (useMiniAppEndpoint) {
+        debugPrint(
+          'MiniApp payment error before bridge call: ${e.response != null ? jsonEncode(e.response?.data) : e.message}',
+        );
+      }
       _handleDioError(e);
     }
   }
@@ -400,31 +435,49 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return responseData['processedPaymentToken']?.toString().trim() ?? '';
   }
 
+  Future<void> _startTelebirrMiniAppPayment(String rawRequest) async {
+    final trimmedRawRequest = rawRequest.trim();
+    if (trimmedRawRequest.isEmpty) {
+      debugPrint('Telebirr raw_request not found in API response.');
+      return;
+    }
+
+    debugPrint(
+      'raw_request received (${trimmedRawRequest.length} chars). Calling window.consumerapp.evaluate(js_fun_start_pay)...',
+    );
+
+    final detector = createTelebirrMiniAppDetector();
+    final result = await detector.startTelebirrPayment(trimmedRawRequest);
+    if (!mounted) return;
+
+    debugPrint(
+      'Telebirr MiniApp bridge result: ${jsonEncode({
+            'bridge': 'window.consumerapp.evaluate',
+            'functionName': 'js_fun_start_pay',
+            'result': result,
+          })}',
+    );
+  }
+
   Future<void> _sendCbeMiniAppPaymentToken(String token) async {
     final tokenLength = token.trim().length;
-    setState(() {
-      _debugCbeMiniAppStatus =
-          'processedPaymentToken received (length: $tokenLength). Initiating window.myJsChannel.postMessage(data)...';
-    });
+    debugPrint(
+      'processedPaymentToken received (length: $tokenLength). Initiating window.myJsChannel.postMessage(data)...',
+    );
 
     final bridge = createCbeBirrPlusBridge();
     final sent = await bridge.sendPaymentToken(token);
     if (!mounted) return;
 
     if (!sent) {
-      setState(() {
-        _debugCbeMiniAppStatus =
-            'Error: window.myJsChannel.postMessage(data) was not completed. myJsChannel may be unavailable.';
-      });
       debugPrint(
           'CBEBirr Plus payment token could not be sent to myJsChannel.');
       return;
     }
 
-    setState(() {
-      _debugCbeMiniAppStatus =
-          'Success: window.myJsChannel.postMessage(data) initiated with processedPaymentToken.';
-    });
+    debugPrint(
+      'Success: window.myJsChannel.postMessage(data) initiated with processedPaymentToken.',
+    );
   }
 
   Future<void> _submitJoinRequest({
@@ -478,10 +531,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (phoneNumber != null) "phoneNumber": phoneNumber,
     };
 
-    final bool useMiniAppEndpoint =
-        paymentMethod == 'cbe' && _isInsideCbeBirrPlus;
+    final bool useMiniAppEndpoint = _usesMiniAppEndpoint(paymentMethod);
     final String url =
-        (useMiniAppEndpoint ? joinMiniAppEkubUrl : makePaymentUrl) +
+        (useMiniAppEndpoint ? makePaymentMiniAppUrl : makePaymentUrl) +
             (widget.ekubId ?? '');
 
     debugPrint('Payment request url: $url');
@@ -503,10 +555,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
           if (useMiniAppEndpoint && cbePaymentToken.isNotEmpty) {
             await _sendCbeMiniAppPaymentToken(cbePaymentToken);
           } else if (useMiniAppEndpoint) {
-            setState(() {
-              _debugCbeMiniAppStatus =
-                  'processedPaymentToken not found in joinMiniAppEkubUrl response.';
-            });
+            debugPrint(
+              'processedPaymentToken not found in joinMiniAppEkubUrl response.',
+            );
           }
 
           CustomSnackBar.show(
@@ -629,6 +680,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     required String paymentMethodId,
     required String paymentMethodLabel,
   }) {
+    final bool isTelebirrMiniApp =
+        paymentMethodId == 'telebirr' && _isFromTelebirrMiniApp;
     return Container(
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -638,202 +691,102 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              SizedBox(height: 16.h),
+              Text(
+                  '${AppKeys.confirm.tr(context)} $paymentMethodLabel ${AppKeys.payment.tr(context)}',
+                  style:
+                      TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
+              SizedBox(height: 8.h),
+              Text(AppKeys.enterBeneficiaryPhoneNumber.tr(context),
+                  style: TextStyle(fontSize: 14.sp, color: Colors.grey)),
+              SizedBox(height: 20.h),
+              Container(
                 decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-                '${AppKeys.confirm.tr(context)} $paymentMethodLabel ${AppKeys.payment.tr(context)}',
-                style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
-            SizedBox(height: 8.h),
-            Text(AppKeys.enterBeneficiaryPhoneNumber.tr(context),
-                style: TextStyle(fontSize: 14.sp, color: Colors.grey)),
-            SizedBox(height: 20.h),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: IntlPhoneField(
-                controller: phoneController,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                  border: InputBorder.none,
-                  hintText: '*** ** ** **',
-                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
-                initialCountryCode: 'ET',
-                disableLengthCheck: true,
-                onChanged: (phone) => phoneNumber = phone.completeNumber,
+                child: IntlPhoneField(
+                  controller: phoneController,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    border: InputBorder.none,
+                    hintText: '*** ** ** **',
+                    hintStyle: TextStyle(color: Colors.grey.shade400),
+                  ),
+                  initialCountryCode: 'ET',
+                  disableLengthCheck: true,
+                  onChanged: (phone) => phoneNumber = phone.completeNumber,
+                ),
               ),
-            ),
-            SizedBox(height: 20.h),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withOpacity(0.1)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(AppKeys.totalAmount.tr(context),
+              SizedBox(height: 20.h),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(AppKeys.totalAmount.tr(context),
+                        style: TextStyle(
+                            fontSize: 14.sp, color: Colors.grey.shade600)),
+                    Text(
+                      "${widget.ekubAmount ?? '0'} ${AppKeys.currencyBirr.tr(context)}",
                       style: TextStyle(
-                          fontSize: 14.sp, color: Colors.grey.shade600)),
-                  Text(
-                    "${widget.ekubAmount ?? '0'} ${AppKeys.currencyBirr.tr(context)}",
-                    style: TextStyle(
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 24.h),
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary),
+                    ),
+                  ],
                 ),
-                onPressed: () {
-                  if (phoneController.text.isNotEmpty) {
-                    _processPhonePayment(
-                      phone: phoneNumber,
-                      paymentMethod: paymentMethodId,
-                    );
-                  }
-                },
-                child: Text(AppKeys.makePayment.tr(context),
-                    style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white)),
               ),
-            ),
-            // Debug: show last request URL, headers and response with copy buttons
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.only(top: 12.h),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade200),
+              SizedBox(height: 24.h),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  onPressed: () {
+                    if (isTelebirrMiniApp || phoneController.text.isNotEmpty) {
+                      _processPhonePayment(
+                        phone: phoneNumber,
+                        paymentMethod: paymentMethodId,
+                      );
+                    }
+                  },
+                  child: Text(AppKeys.makePayment.tr(context),
+                      style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white)),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text('Request URL',
-                          style: TextStyle(
-                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 18),
-                        onPressed: () async {
-                          await Clipboard.setData(
-                              ClipboardData(text: _debugRequestUrl));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Copied')));
-                        },
-                      )
-                    ],
-                  ),
-                  SelectableText(
-                      _debugRequestUrl.isNotEmpty ? _debugRequestUrl : '-',
-                      style: TextStyle(fontSize: 12.sp)),
-                  SizedBox(height: 8.h),
-                  Row(
-                    children: [
-                      Text('Headers',
-                          style: TextStyle(
-                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 18),
-                        onPressed: () async {
-                          await Clipboard.setData(
-                              ClipboardData(text: _debugRequestHeaders));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Copied')));
-                        },
-                      )
-                    ],
-                  ),
-                  SelectableText(
-                      _debugRequestHeaders.isNotEmpty
-                          ? _debugRequestHeaders
-                          : '-',
-                      style: TextStyle(fontSize: 12.sp)),
-                  SizedBox(height: 8.h),
-                  Row(
-                    children: [
-                      Text('Response',
-                          style: TextStyle(
-                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 18),
-                        onPressed: () async {
-                          await Clipboard.setData(
-                              ClipboardData(text: _debugResponse));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Copied')));
-                        },
-                      )
-                    ],
-                  ),
-                  SelectableText(
-                      _debugResponse.isNotEmpty ? _debugResponse : '-',
-                      style: TextStyle(fontSize: 12.sp)),
-                  SizedBox(height: 8.h),
-                  Row(
-                    children: [
-                      Text('CBEBirr MiniApp',
-                          style: TextStyle(
-                              fontSize: 13.sp, fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 18),
-                        onPressed: () async {
-                          await Clipboard.setData(
-                              ClipboardData(text: _debugCbeMiniAppStatus));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Copied')));
-                        },
-                      )
-                    ],
-                  ),
-                  SelectableText(
-                      _debugCbeMiniAppStatus.isNotEmpty
-                          ? _debugCbeMiniAppStatus
-                          : '-',
-                      style: TextStyle(fontSize: 12.sp)),
-                ],
-              ),
-            ),
-            SizedBox(height: 12.h),
-          ],
+              SizedBox(height: 12.h),
+            ],
+          ),
         ),
       ),
     );

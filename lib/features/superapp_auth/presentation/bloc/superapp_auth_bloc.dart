@@ -62,7 +62,7 @@ class SuperAppAuthBloc extends Bloc<SuperAppAuthEvent, SuperAppAuthState> {
 
     try {
       await _attemptAutoLogin(
-        appToken: event.appToken.trim(),
+        appToken: event.appToken,
         phoneNumber: event.phoneNumber.trim(),
       );
       AppLogger.success('SuperApp backend login completed');

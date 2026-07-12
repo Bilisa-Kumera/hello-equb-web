@@ -48,6 +48,7 @@ String get addGuarantorInfoUrl => '$baseUrl/user/equb/guarantee/';
 String get claimEqubUrl => '$baseUrl/user/equb/claim/';
 String get joinEkubUrl => '$baseUrl/user/equb/join/';
 String get joinMiniAppEkubUrl => '$baseUrl/user/equb/joinMiniApp/';
+String get makePaymentMiniAppUrl => '$baseUrl/user/equb/paymentMiniApp/';
 String get companyBankUrl => '$baseUrl/company-bank?_page&_limit';
 String get paymentUrl => '$baseUrl/user/payment/confirm/';
 String get makePaymentUrl => '$baseUrl/user/equb/payment/';
