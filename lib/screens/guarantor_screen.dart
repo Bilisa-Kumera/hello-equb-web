@@ -23,6 +23,7 @@ import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:mime/mime.dart';
 
 import '../utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class GuarantorScreen extends StatefulWidget {
   final String ekubId;
@@ -409,8 +410,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
             padding: const EdgeInsets.all(8.0),
             child: Text(
               AppKeys.chooseGuarantor.tr(context),
-              style: TextStyle(
-                  fontSize: 16.sp, color: AppColors.grey),
+              style: AppTextStyles.poppins40016.copyWith(color: AppColors.grey),
             ),
           ),
           icon: const Icon(Icons.arrow_drop_down,
@@ -423,8 +423,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
                   guarantor.name,
-                  style: TextStyle(
-                      fontSize: 16, color: AppColors.black),
+                  style: AppTextStyles.poppins40016.copyWith(color: AppColors.black),
                 ),
               ),
             );
@@ -434,10 +433,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
               selectedGuarantor = newValue;
             });
           },
-          style: TextStyle(
-            color: AppColors.black,
-            fontSize: 16,
-          ),
+          style: AppTextStyles.poppins40016.copyWith(color: AppColors.black),
           dropdownColor: AppColors.white,
           underline: const SizedBox(),
         ),
@@ -534,7 +530,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                   padding: const EdgeInsets.only(left: 8.0),
                   child: IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios,
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
                           color: AppColors.black)),
                 ),
               ),
@@ -546,15 +542,12 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
               Text(
                 textScaleFactor: 1.0,
                 AppKeys.guarantorInformation.tr(context),
-                style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.w600),
+                style: AppTextStyles.sectionTitleLarge,
               ),
               Text(
                 textScaleFactor: 1.0,
                 '',
-                style: TextStyle(color: AppColors.primary, fontSize: 18.sp),
+                style: AppTextStyles.poppins40018.copyWith(color: AppColors.primary),
               )
             ],
           ),
@@ -579,7 +572,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                     optional
                         ? AppKeys.pickFromEkubers.tr(context)
                         : AppKeys.didntGetYourGuarantee.tr(context),
-                    style: TextStyle(color: AppColors.primary, fontSize: 14.sp),
+                    style: AppTextStyles.poppins40014.copyWith(color: AppColors.primary),
                   ),
                 ),
               ),
@@ -590,10 +583,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                   child: Text(
                     textScaleFactor: 1.0,
                     AppKeys.guarantorFirstName.tr(context),
-                    style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16.sp),
+                    style: AppTextStyles.poppins70016,
                   ),
                 ),
                 Padding(
@@ -613,10 +603,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                   child: Text(
                     textScaleFactor: 1.0,
                     AppKeys.guarantorLastName.tr(context),
-                    style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16.sp),
+                    style: AppTextStyles.poppins70016,
                   ),
                 ),
                 Padding(
@@ -636,10 +623,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                   child: Text(
                     textScaleFactor: 1.0,
                     AppKeys.guarantorPhoneNumber.tr(context),
-                    style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16.sp),
+                    style: AppTextStyles.poppins70016,
                   ),
                 ),
                 SizedBox(
@@ -652,10 +636,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                       filled: true,
                       fillColor: AppColors.grayOverlay,
                       hintText: AppKeys.phoneNumber.tr(context),
-                      hintStyle: TextStyle(
-                        fontSize: 15.sp,
-                        color: AppColors.coolGray,
-                      ),
+                      hintStyle: AppTextStyles.poppins40015.copyWith(color: AppColors.coolGray),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -683,10 +664,7 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
                       Text(
                         textScaleFactor: 1.0,
                         AppKeys.uploadGuaranteeIdCardImage.tr(context),
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: AppTextStyles.poppins70016,
                       ),
                       const SizedBox(height: 10),
                       GestureDetector(

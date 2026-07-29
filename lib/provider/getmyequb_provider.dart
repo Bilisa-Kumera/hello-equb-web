@@ -66,8 +66,12 @@ class GetMyEqubProvider extends ChangeNotifier {
             data['data'] != null &&
             data['data']['equbs'] is List) {
           _equbs = (data['data']['equbs'] as List)
-              .map((json) => PendingEqub.fromJson(json as Map<String, dynamic>))
+              .map((json) => PendingEqub.fromJson(
+                    json as Map<String, dynamic>,
+                    currentUserId: userId,
+                  ))
               .toList();
+          PendingEqub.sortByLatestJoined(_equbs);
         } else {
           _equbs = [];
         }

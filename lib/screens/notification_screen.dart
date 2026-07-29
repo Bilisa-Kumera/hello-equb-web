@@ -1,17 +1,15 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:helloequb/utils/colors_constant.dart';
-import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/utils/app_localizations.dart';
-import 'package:helloequb/utils/getx_storage_custom.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:intl/intl.dart';
-
-import '../utils/secure_storage.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -32,8 +30,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
     _fetchNotifications();
   }
 
-  final DataController dataController = DataController();
-
   Future<void> _fetchNotifications() async {
     try {
       final response = await _dio
@@ -45,11 +41,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
           _notifications = List<Map<String, dynamic>>.from(
               response.data['data']['notifications'])
             ..sort((a, b) {
-              final dateA = dateFormat.parse(a['updatedAt']);
-              final dateB = dateFormat.parse(b['updatedAt']);
-              return dateB.compareTo(dateA);
+              try {
+                final dateA = dateFormat.parse(a['updatedAt']);
+                final dateB = dateFormat.parse(b['updatedAt']);
+                return dateB.compareTo(dateA);
+              } catch (_) {
+                return 0;
+              }
             });
           _loading = false;
+          _errorMessage = null;
         });
       } else {
         setState(() {
@@ -59,7 +60,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error: $e';
+        _errorMessage = AppKeys.errorTryAgain.tr(context);
         _loading = false;
       });
     }
@@ -68,50 +69,108 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: Center(
-          child: Padding(
-            padding: const EdgeInsets.only(left: 4.0),
-            child: InkWell(
-                onTap: () => Navigator.pop(context),
-                child:
-                    const Icon(Icons.arrow_back_ios, color: AppColors.white)),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.black87,
+            size: 18,
           ),
         ),
         title: Text(
-          textScaleFactor: 1.0,
           AppKeys.notifications.tr(context),
-          style: const TextStyle(
-              color: AppColors.white, fontWeight: FontWeight.w600),
+          style: AppTextStyles.poppins60014,
         ),
-        backgroundColor: AppColors.primary,
+        centerTitle: false,
       ),
-      body: _loading
-          ? const Center(
-              child: SpinKitFadingCircle(
-                color: AppColors.primary,
-                size: 31.0,
-              ),
-            )
-          : _errorMessage != null
-              ? Center(
-                  child: Text(
-                    textScaleFactor: 1.0,
-                    _errorMessage!,
-                    style: TextStyle(color: AppColors.red, fontSize: 16.sp),
-                  ),
-                )
-              : !_loading && _notifications.isEmpty
-                  ? Center(
-                      child: Text(AppKeys.noData.tr(context)),
-                    )
-                  : ListView.builder(
-                      itemCount: _notifications.length,
-                      itemBuilder: (context, index) {
-                        final notification = _notifications[index];
-                        return NotificationCard(notification: notification);
-                      },
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: _fetchNotifications,
+        child: _loading
+            ? ListView(
+                children: [
+                  SizedBox(height: 120.h),
+                  const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
                     ),
+                  ),
+                ],
+              )
+            : _errorMessage != null
+                ? ListView(
+                    children: [
+                      SizedBox(height: 100.h),
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24.w),
+                          child: Column(
+                            children: [
+                              Text(
+                                _errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.labelSmall
+                                    .copyWith(color: Colors.red.shade400),
+                              ),
+                              SizedBox(height: 12.h),
+                              TextButton(
+                                onPressed: () {
+                                  setState(() => _loading = true);
+                                  _fetchNotifications();
+                                },
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                ),
+                                child: Text(
+                                  AppKeys.retry.tr(context),
+                                  style: AppTextStyles.button
+                                      .copyWith(color: AppColors.primary),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : _notifications.isEmpty
+                    ? ListView(
+                        children: [
+                          SizedBox(height: 100.h),
+                          Icon(
+                            Icons.notifications_none_rounded,
+                            size: 40.sp,
+                            color: Colors.grey.shade400,
+                          ),
+                          SizedBox(height: 10.h),
+                          Center(
+                            child: Text(
+                              AppKeys.noData.tr(context),
+                              style: AppTextStyles.captionMuted,
+                            ),
+                          ),
+                        ],
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
+                        itemCount: _notifications.length,
+                        separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                        itemBuilder: (context, index) {
+                          return NotificationCard(
+                            notification: _notifications[index],
+                          );
+                        },
+                      ),
+      ),
     );
   }
 }
@@ -123,69 +182,61 @@ class NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          gradient: const LinearGradient(
-            colors: [AppColors.forestGreenPrimary, AppColors.jungleGreen],
-
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36.w,
+            height: 36.w,
+            decoration: BoxDecoration(
               color: AppColors.primary.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
+              borderRadius: BorderRadius.circular(10.r),
             ),
-          ],
-        ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16.0),
-          leading: CircleAvatar(
-            backgroundColor: AppColors.white.withOpacity(0.2),
-            child: const Icon(Icons.notifications, color: AppColors.white),
-          ),
-          title: Text(
-            textScaleFactor: 1.0,
-            notification['title'] ?? 'No Title',
-            style: TextStyle(
-              color: AppColors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18.sp,
+            child: Icon(
+              Icons.notifications_outlined,
+              color: AppColors.primary,
+              size: 18.sp,
             ),
           ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8.0),
-              Text(
-                textScaleFactor: 1.0,
-                notification['body'] ?? 'No Message',
-                style: TextStyle(
-                  color: AppColors.white60,
-                  fontSize: 15.sp,
-                  height: 1.3,
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  notification['title'] ?? 'No Title',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.poppins60014,
                 ),
-              ),
-              const SizedBox(height: 8.0),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Text(
-                  textScaleFactor: 1.0,
-                  notification['createdAt'],
-                  style: TextStyle(
-                    color: AppColors.white60,
-                    fontSize: 12.sp,
-                    fontStyle: FontStyle.italic,
+                SizedBox(height: 4.h),
+                Text(
+                  notification['body'] ?? 'No Message',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: Colors.grey.shade700,
+                    height: 1.35,
                   ),
                 ),
-              ),
-            ],
+                SizedBox(height: 6.h),
+                Text(
+                  '${notification['createdAt'] ?? ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.captionMuted.copyWith(
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

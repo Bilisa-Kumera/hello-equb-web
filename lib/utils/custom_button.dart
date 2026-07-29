@@ -1,6 +1,8 @@
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 
+import 'style_constants.dart';
+
 class CustomTextButton extends StatelessWidget {
   final String text;
   final void Function() onPressed;
@@ -34,12 +36,7 @@ class CustomTextButton extends StatelessWidget {
         child: Text(
           textScaleFactor: 1.0,
           text,
-          style: TextStyle(
-            fontFamily: 'Urbanist',
-            color: textColor,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTextStyles.poppins60015.copyWith(color: textColor),
         ),
       ),
     );
@@ -78,12 +75,7 @@ class CustomLogoutButton extends StatelessWidget {
         child: Text(
           textScaleFactor: 1.0,
           text,
-          style: TextStyle(
-            fontFamily: 'Urbanist',
-            color: textColor,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTextStyles.poppins60015.copyWith(color: textColor),
         ),
       ),
     );

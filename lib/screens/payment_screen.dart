@@ -282,7 +282,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           );
         }
       }
-    } catch (e) {
     } finally {
       setState(() => _isProcessing = false);
     }
@@ -593,7 +592,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => LoginScreenWithPin(phoneNumber: '')),
+              builder: (context) => const LoginScreenWithPin(phoneNumber: '')),
         );
       } else {
         CustomSnackBar.show(
@@ -637,7 +636,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => LoginScreenWithPin(phoneNumber: '')));
+              builder: (context) => const LoginScreenWithPin(phoneNumber: '')));
     } else {
       CustomSnackBar.show(
           context, AppKeys.errorTryAgain.tr(context), AppColors.red);
@@ -1524,7 +1523,7 @@ class _InfoPopupState extends State<InfoPopup> {
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => LoginScreenWithPin(phoneNumber: '')),
+              builder: (context) => const LoginScreenWithPin(phoneNumber: '')),
         );
       } else if (e.response?.statusCode == 400) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1632,7 +1631,7 @@ class _InfoPopupState extends State<InfoPopup> {
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => LoginScreenWithPin(phoneNumber: '')),
+              builder: (context) => const LoginScreenWithPin(phoneNumber: '')),
         );
       } else if (e.response?.statusCode == 400) {
         ScaffoldMessenger.of(context).showSnackBar(

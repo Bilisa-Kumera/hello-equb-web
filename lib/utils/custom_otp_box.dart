@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'style_constants.dart';
+
 class OtpBox extends StatefulWidget {
   final TextEditingController controller;
 
@@ -27,8 +29,7 @@ class _OtpBoxState extends State<OtpBox> {
       width: 60.0,
       height: 50.0,
       child: TextField(
-        style:  TextStyle(
-            fontFamily: 'Urbanist', fontSize: 16, fontWeight: FontWeight.w700),
+        style: AppTextStyles.poppins70016,
         controller: widget.controller,
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,

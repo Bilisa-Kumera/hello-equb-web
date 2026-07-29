@@ -21,6 +21,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
 
 import '../utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 // ignore: must_be_immutable
 class CompleteProfileScreen extends StatefulWidget {
@@ -319,18 +320,13 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         Text(
           textScaleFactor: 1.0,
           label,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w700,
-            fontSize: 14.sp,
-            color: AppColors.black87,
-          ),
+          style: AppTextStyles.labelSmall.copyWith(color: Colors.grey.shade800),
         ),
         SizedBox(height: 8.h),
         CustomTextField(
           hintText: hintText,
           controller: controller,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12.r),
           height: 56,
           width: double.infinity,
           borderWidth: 0.8,
@@ -343,44 +339,34 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.grey50,
+      backgroundColor: AppColors.white,
       appBar: AppBar(
-        backgroundColor: AppColors.transparent,
+        backgroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.black87),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.black87),
         ),
         title: Text(
           textScaleFactor: 1.0,
           AppKeys.personalInformation.tr(context),
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w700,
-            color: AppColors.black87,
-          ),
+          style: AppTextStyles.poppins60014.copyWith(color: AppColors.black87),
         ),
         centerTitle: true,
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: EdgeInsets.only(right: 12.w),
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(999),
+                  color: AppColors.primary.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: const Text(
+                child: Text(
                   textScaleFactor: 1.0,
                   '1/2',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
+                  style: AppTextStyles.badge.copyWith(color: AppColors.primary),
                 ),
               ),
             ),
@@ -394,32 +380,25 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           children: [
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(18.w),
+              padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.primary.withOpacity(0.14),
-                    AppColors.primary.withOpacity(0.06),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: AppColors.primary.withOpacity(0.12)),
+                color: const Color(0xFFF7F8FA),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.grey.shade200),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 32.w,
+                    height: 32.w,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.16),
-                      borderRadius: BorderRadius.circular(14),
+                      color: AppColors.primary.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
-                    child: const Icon(Icons.person_outline,
-                        color: AppColors.primary),
+                    child: Icon(Icons.person_outline,
+                        color: AppColors.primary, size: 18.sp),
                   ),
-                  SizedBox(width: 12.w),
+                  SizedBox(width: 10.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,20 +406,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                         Text(
                           textScaleFactor: 1.0,
                           AppKeys.personalInformation.tr(context),
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.black87,
-                          ),
+                          style: AppTextStyles.poppins60012
+                              .copyWith(color: AppColors.black87),
                         ),
-                        SizedBox(height: 4.h),
+                        SizedBox(height: 2.h),
                         Text(
                           textScaleFactor: 1.0,
                           AppKeys.pleaseFillAllTheFields.tr(context),
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: AppColors.black54,
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: Colors.grey.shade600,
                             height: 1.3,
                           ),
                         ),
@@ -450,7 +424,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                 ],
               ),
             ),
-            SizedBox(height: 18.h),
+            SizedBox(height: 16.h),
             Center(
               child: GestureDetector(
                 onTap: _showImagePicker,
@@ -458,7 +432,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                   alignment: Alignment.bottomRight,
                   children: [
                     CircleAvatar(
-                      radius: 56,
+                      radius: 52.r,
                       backgroundColor: AppColors.lightBlueGray,
                       backgroundImage: _profileImageBytes != null
                           ? MemoryImage(_profileImageBytes!)
@@ -466,38 +440,32 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                               ? NetworkImage(profileAvatarUrl) as ImageProvider
                               : null,
                       child: (_profileImage == null && profileAvatarUrl.isEmpty)
-                          ? const Icon(Icons.camera_alt,
-                              size: 44, color: AppColors.grey)
+                          ? Icon(Icons.camera_alt,
+                              size: 40.sp, color: AppColors.grey)
                           : null,
                     ),
                     Container(
-                      width: 34,
-                      height: 34,
+                      width: 30.w,
+                      height: 30.w,
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.white, width: 3),
+                        border: Border.all(color: AppColors.white, width: 2),
                       ),
-                      child: const Icon(Icons.edit,
-                          size: 16, color: AppColors.white),
+                      child: Icon(Icons.edit,
+                          size: 14.sp, color: AppColors.white),
                     ),
                   ],
                 ),
               ),
             ),
-            SizedBox(height: 18.h),
+            SizedBox(height: 16.h),
             Container(
-              padding: EdgeInsets.all(18.w),
+              padding: EdgeInsets.all(14.w),
               decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.black.withOpacity(0.05),
-                    blurRadius: 18,
-                    offset: const Offset(0, 10),
-                  )
-                ],
+                color: const Color(0xFFF7F8FA),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.grey.shade200),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -537,30 +505,26 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                   Text(
                     textScaleFactor: 1.0,
                     AppKeys.gender.tr(context),
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14.sp,
-                      color: AppColors.black87,
-                    ),
+                    style: AppTextStyles.labelSmall
+                        .copyWith(color: Colors.grey.shade800),
                   ),
                   SizedBox(height: 8.h),
                   DropdownButtonFormField<int>(
                     value: selectedIndex,
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: AppColors.grey50,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 14),
+                      fillColor: AppColors.white,
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14.w, vertical: 14.h),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12.r),
                         borderSide: BorderSide(
-                          color: AppColors.darkOverlay.withOpacity(0.5),
+                          color: Colors.grey.shade200,
                           width: 0.8,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12.r),
                         borderSide: const BorderSide(
                           color: AppColors.primary,
                           width: 1.2,
@@ -576,11 +540,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                           genderOptions[index].toLowerCase() == 'male'
                               ? AppKeys.male.tr(context)
                               : AppKeys.female.tr(context),
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: AppTextStyles.poppins60014,
                         ),
                       );
                     }),

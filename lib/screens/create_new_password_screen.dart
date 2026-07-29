@@ -20,6 +20,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
 
 import '../utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
 
 // ignore: must_be_immutable
@@ -171,18 +172,15 @@ class CreateNewPasswordScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.0), // Rounded corners
                 ),
-                title: const Row(
+                title: Row(
                   children: [
-                    Icon(Icons.error_outline,
-                        color: AppColors.red, size: 28), // Add error icon
-                    SizedBox(width: 8), // Space between icon and text
+                    const Icon(Icons.error_outline,
+                        color: AppColors.red, size: 28),
+                    const SizedBox(width: 8),
                     Text(
                       'Error',
-                      style: TextStyle(
-                        color: AppColors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
+                      style: AppTextStyles.poppins70020
+                          .copyWith(color: AppColors.red),
                       textScaleFactor: 1.0,
                     ),
                   ],
@@ -190,10 +188,7 @@ class CreateNewPasswordScreen extends StatelessWidget {
                 content: Text(
                   errorMessage,
                   textScaleFactor: 1.0,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.grey, // Subtle text color
-                  ),
+                  style: AppTextStyles.poppins40016.copyWith(color: AppColors.grey),
                 ),
                 actions: <Widget>[
                   TextButton(
@@ -207,10 +202,10 @@ class CreateNewPasswordScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'OK',
                       textScaleFactor: 1.0,
-                      style: TextStyle(fontSize: 16),
+                      style: AppTextStyles.bodyLarge,
                     ),
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -248,7 +243,7 @@ class CreateNewPasswordScreen extends StatelessWidget {
                 child: const Center(
                   child: Padding(
                     padding: EdgeInsets.only(left: 8.0),
-                    child: Icon(Icons.arrow_back_ios, color: AppColors.black),
+                    child: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.black),
                   ), // Set icon color to black
                 ),
               ),),
@@ -259,11 +254,7 @@ class CreateNewPasswordScreen extends StatelessWidget {
                 child: Text(
                   textScaleFactor: 1.0,
                   AppKeys.createNewPin.tr(context),
-                  style: TextStyle(
-                      color: AppColors.darkBlueGray,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Urbanist',
-                      fontSize: 24.sp),
+                  style: AppTextStyles.poppins70024.copyWith(color: AppColors.darkBlueGray),
                 ),
               ),
             ),
@@ -273,11 +264,7 @@ class CreateNewPasswordScreen extends StatelessWidget {
                 child: Text(
                   textScaleFactor: 1.0,
                   AppKeys.yourNewPinMustBe.tr(context),
-                  style: TextStyle(
-                      color: AppColors.coolGray,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'Urbanist',
-                      fontSize: 14.sp),
+                  style: AppTextStyles.poppins50014.copyWith(color: AppColors.coolGray),
                 ),
               ),
             ),
@@ -308,7 +295,7 @@ class CreateNewPasswordScreen extends StatelessWidget {
                 ? Text(
                     textScaleFactor: 1.0,
                     errorMessage,
-                    style: const TextStyle(color: AppColors.red),
+                    style: AppTextStyles.poppins40014.copyWith(color: AppColors.red),
                   )
                 : const SizedBox.shrink(),
             Padding(

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 
 class CbeBirrPage extends StatefulWidget {
@@ -67,17 +68,14 @@ class _CbeBirrPageState extends State<CbeBirrPage> {
                   Text(
                     'CBE Birr Plus',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22.sp,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.deepForestGreen,
-                    ),
+                    style: AppTextStyles.poppins70022
+                        .copyWith(color: AppColors.deepForestGreen),
                   ),
                   SizedBox(height: 6.h),
                   Text(
                     'Authorization token from CBE Birr Plus',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13.sp, color: Colors.black54),
+                    style: AppTextStyles.subtitleMuted,
                   ),
                   SizedBox(height: 28.h),
                   if (!_loaded)
@@ -160,11 +158,8 @@ class _TokenPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Token received',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.green.shade700,
-                  ),
+                  style: AppTextStyles.poppins60013
+                      .copyWith(color: Colors.green.shade700),
                 ),
               ),
               InkWell(
@@ -180,11 +175,8 @@ class _TokenPanel extends StatelessWidget {
                       SizedBox(width: 4.w),
                       Text(
                         'Copy',
-                        style: TextStyle(
-                          fontSize: 11.sp,
-                          color: AppColors.deepForestGreen,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTextStyles.poppins60011
+                            .copyWith(color: AppColors.deepForestGreen),
                       ),
                     ],
                   ),
@@ -195,8 +187,7 @@ class _TokenPanel extends StatelessWidget {
           SizedBox(height: 10.h),
           SelectableText(
             token,
-            style: TextStyle(
-              fontSize: 12.sp,
+            style: AppTextStyles.caption.copyWith(
               fontFamily: 'monospace',
               color: AppColors.deepForestGreen,
               height: 1.35,
@@ -205,7 +196,7 @@ class _TokenPanel extends StatelessWidget {
           SizedBox(height: 4.h),
           Text(
             '${token.length} chars · saved',
-            style: TextStyle(fontSize: 10.sp, color: Colors.black38),
+            style: AppTextStyles.captionSmall.copyWith(color: Colors.black38),
           ),
         ],
       ),
@@ -233,18 +224,14 @@ class _NoTokenPanel extends StatelessWidget {
           Text(
             'No token received from CBE Birr Plus',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.orange.shade800,
-            ),
+            style: AppTextStyles.poppins60014
+                .copyWith(color: Colors.orange.shade800),
           ),
           SizedBox(height: 6.h),
           Text(
             'The token is sent via the Authorization header when CBE Birr Plus opens this page.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12.sp,
+            style: AppTextStyles.caption.copyWith(
               color: Colors.orange.shade700,
               height: 1.4,
             ),

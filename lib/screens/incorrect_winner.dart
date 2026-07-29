@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 
 import '../utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class WinnerCard extends StatelessWidget {
   final String winnerName;
@@ -38,25 +39,17 @@ class WinnerCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 textScaleFactor: 1.0,
                 'NB: Only one person will be the winner for this Equb round.',
-                style: TextStyle(
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.coralRed, // Darker red for better emphasis
-                ),
+                style: AppTextStyles.poppins50016.copyWith(color: AppColors.coralRed),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20.0),
               Text(
                 textScaleFactor: 1.0,
                 'Equb Name: $round',
-                style: const TextStyle(
-                  fontSize: 20.0,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.grey800, // Darker grey for clarity
-                ),
+                style: AppTextStyles.poppins70020.copyWith(color: AppColors.grey800),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 15.0),
@@ -79,25 +72,17 @@ class WinnerCard extends StatelessWidget {
                       ),
                       child: Column(
                         children: [
-                          const Text(
+                          Text(
                             textScaleFactor: 1.0,
                             "Congratulations! The winner is:",
-                            style: TextStyle(
-                              fontSize: 16.0,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.white,
-                            ),
+                            style: AppTextStyles.poppins70016.copyWith(color: AppColors.white),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 10.0),
                           Text(
                             textScaleFactor: 1.0,
                             winnerName,
-                            style: const TextStyle(
-                              fontSize: 28.0,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.white,
-                            ),
+                            style: AppTextStyles.poppins70028.copyWith(color: AppColors.white),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -123,25 +108,17 @@ class WinnerCard extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       textScaleFactor: 1.0,
                       "Winner's Lottery Number:",
-                      style: TextStyle(
-                        fontSize: 16.0,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.white,
-                      ),
+                      style: AppTextStyles.poppins50016.copyWith(color: AppColors.white),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 10.0),
                     Text(
                       textScaleFactor: 1.0,
                       lotteryNumber,
-                      style: TextStyle(
-                        fontSize: 24.sp,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.white,
-                      ),
+                      style: AppTextStyles.poppins70024.copyWith(color: AppColors.white),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -166,13 +143,10 @@ class WinnerCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       vertical: 15.0, horizontal: 30.0),
                 ),
-                child: const Text(
+                child: Text(
                   textScaleFactor: 1.0,
                   'Close',
-                  style: TextStyle(
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.poppins70018,
                 ),
               ),
             ],

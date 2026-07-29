@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
@@ -6,6 +7,7 @@ import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/core/superapp/superapp_diagnostics.dart';
 import 'package:helloequb/features/superapp_auth/presentation/widgets/superapp_log_panel.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 // ─── Step types ──────────────────────────────────────────────────────────────
 
@@ -122,17 +124,14 @@ class _CbeBirrPlusContinuePageState extends State<CbeBirrPlusContinuePage> {
                   Text(
                     'CBEBirr Plus',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22.sp,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.deepForestGreen,
-                    ),
+                    style: AppTextStyles.poppins70022
+                        .copyWith(color: AppColors.deepForestGreen),
                   ),
                   SizedBox(height: 6.h),
                   Text(
                     'Setting up your Hello Equb session…',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13.sp, color: Colors.black54),
+                    style: AppTextStyles.subtitleMuted,
                   ),
                   SizedBox(height: 20.h),
                   _StepLogPanel(steps: _steps),
@@ -149,8 +148,7 @@ class _CbeBirrPlusContinuePageState extends State<CbeBirrPlusContinuePage> {
                       child: Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13.sp,
+                        style: AppTextStyles.poppins40013.copyWith(
                           color: Colors.red.shade700,
                           height: 1.4,
                         ),
@@ -287,19 +285,14 @@ class _StepRow extends StatelessWidget {
               children: [
                 Text(
                   step.label,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w500,
-                    color: labelColor,
-                  ),
+                  style: AppTextStyles.poppins50013.copyWith(color: labelColor),
                 ),
                 if (step.detail != null)
                   Padding(
                     padding: EdgeInsets.only(top: 2.h),
                     child: Text(
                       step.detail!,
-                      style: TextStyle(
-                        fontSize: 11.sp,
+                      style: AppTextStyles.poppins40011.copyWith(
                         color: labelColor.withOpacity(0.75),
                         height: 1.3,
                       ),
@@ -314,6 +307,88 @@ class _StepRow extends StatelessWidget {
   }
 }
 
+class _TokenPanel extends StatelessWidget {
+  const _TokenPanel({required this.title, required this.token});
+
+  final String title;
+  final String token;
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: token));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Token copied to clipboard'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        border:
+            Border.all(color: AppColors.deepForestGreen.withOpacity(0.35)),
+        borderRadius: BorderRadius.circular(8.r),
+        color: AppColors.deepForestGreen.withOpacity(0.04),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.poppins60012
+                      .copyWith(color: Colors.black54),
+                ),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _copy(context),
+                child: Padding(
+                  padding: EdgeInsets.all(4.w),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.copy_rounded,
+                          size: 16.sp, color: AppColors.deepForestGreen),
+                      SizedBox(width: 4.w),
+                      Text(
+                        'Copy',
+                        style: AppTextStyles.poppins60011
+                            .copyWith(color: AppColors.deepForestGreen),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 6.h),
+          SelectableText(
+            token,
+            style: AppTextStyles.caption.copyWith(
+              fontFamily: 'monospace',
+              color: AppColors.deepForestGreen,
+              height: 1.35,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            '${token.length} chars',
+            style: AppTextStyles.captionSmall.copyWith(color: Colors.black38),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _DiagnosticsPanel extends StatelessWidget {
   const _DiagnosticsPanel({required this.diag});
@@ -332,11 +407,8 @@ class _DiagnosticsPanel extends StatelessWidget {
       ),
       child: SelectableText(
         diag.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
-        style: TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 11.sp,
-          height: 1.25,
-        ),
+        style: AppTextStyles.poppins40011
+            .copyWith(fontFamily: 'monospace', height: 1.25),
       ),
     );
   }

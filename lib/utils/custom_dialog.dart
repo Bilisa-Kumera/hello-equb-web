@@ -6,6 +6,8 @@ import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'style_constants.dart';
+
 class CustomInputDialog extends StatefulWidget {
   const CustomInputDialog({super.key});
 
@@ -46,10 +48,10 @@ class _CustomInputDialogState extends State<CustomInputDialog> {
         borderRadius: BorderRadius.circular(16.0),
       ),
       contentPadding: const EdgeInsets.all(20),
-      title: const Text(
+      title: Text(
           textScaleFactor: 1.0,
           'Submit Details',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          style: AppTextStyles.sectionTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

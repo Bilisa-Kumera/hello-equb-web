@@ -7,6 +7,7 @@ import 'package:helloequb/screens/login_screen.dart';
 import 'package:helloequb/utils/custom_button.dart';
 import 'package:helloequb/utils/lang_constants.dart';
 import 'package:helloequb/utils/language.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class LanguageSelection extends StatefulWidget {
   const LanguageSelection({super.key});
@@ -98,23 +99,13 @@ class _LanguageSelectionState extends State<LanguageSelection> {
                             Text(
                               textScaleFactor: 1.0,
                               AppKeys.pleaseSelectLanguage.tr(context),
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.black87,
-                              ),
+                              style: AppTextStyles.poppins40018.copyWith(color: AppColors.black87),
                             ),
                             const SizedBox(height: 6),
                             Text(
                               textScaleFactor: 1.0,
                               AppKeys.selectLanguage.tr(context),
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.black54,
-                              ),
+                              style: AppTextStyles.poppins60013.copyWith(color: AppColors.black54),
                             ),
                           ],
                         ),
@@ -166,11 +157,7 @@ class _LanguageSelectionState extends State<LanguageSelection> {
                               child: Text(
                                 textScaleFactor: 1.0,
                                 AppKeys.pleaseSelectLanguage.tr(context),
-                                style: const TextStyle(
-                                  color: AppColors.red,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: AppTextStyles.poppins60013.copyWith(color: AppColors.red),
                               ),
                             ),
                           ],
@@ -254,11 +241,7 @@ class _LanguageSelectionState extends State<LanguageSelection> {
                   child: Text(
                     textScaleFactor: 1.0,
                     language,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.black87,
-                    ),
+                    style: AppTextStyles.poppins70018.copyWith(color: AppColors.black87),
                   ),
                 ),
                 AnimatedContainer(

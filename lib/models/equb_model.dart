@@ -28,6 +28,7 @@ class EqubModel {
   final String? startDate;
   final String? endDate;
   final String? ethiopianStartDate;
+  final String? ethiopianEndDate;
   final String? state;
   final String? branchId;
   final String? createdAt;
@@ -69,6 +70,7 @@ class EqubModel {
     this.startDate,
     this.endDate,
     this.ethiopianStartDate,
+    this.ethiopianEndDate,
     this.state,
     this.branchId,
     this.createdAt,
@@ -114,6 +116,7 @@ class EqubModel {
       startDate: json['startDate'] as String?,
       endDate: json['endDate'] as String?,
       ethiopianStartDate: json['ethiopianStartDate'] as String?,
+      ethiopianEndDate: json['ethiopianEndDate'] as String?,
       state: json['state'] as String?,
       branchId: json['branchId'] as String?,
       createdAt: json['createdAt'] as String?,

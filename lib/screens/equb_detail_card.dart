@@ -1,21 +1,66 @@
+import 'package:dio/dio.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/models/equb_model.dart';
 import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/equb_date_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
 import '../utils/colors_constant.dart';
 import '../utils/lang_constants.dart';
+import '../utils/secure_storage.dart';
+import '../widgets/equb_tile_card.dart';
 import 'join_ekub_detail.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
-class EqubDetailCard extends StatelessWidget {
+/// Caches join-status checks so list tiles don't spam the API.
+class _EqubJoinStatusCache {
+  static final Map<String, bool> _cache = {};
+
+  static Future<bool> isJoined(
+    String equbId, {
+    bool forceRefresh = false,
+  }) async {
+    if (equbId.isEmpty) return false;
+    if (!forceRefresh && _cache[equbId] == true) return true;
+
+    try {
+      final token = await SecureStorageHelper.getAccessToken() ?? '';
+      final response = await Dio().post(
+        checkJoinUrl,
+        data: {'equbId': equbId},
+        options: Options(headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        }),
+      );
+      final joined = response.statusCode == 200 &&
+          response.data is Map &&
+          response.data['status'] == 'success' &&
+          response.data['data']?['joined'] == true;
+      // A positive result is safe to cache. A false result can become stale
+      // immediately after the user joins this equb.
+      if (joined) {
+        _cache[equbId] = true;
+      } else {
+        _cache.remove(equbId);
+      }
+      return joined;
+    } catch (_) {
+      return false;
+    }
+  }
+}
+
+class EqubDetailCard extends StatefulWidget {
   final EqubModel equb;
   final String equbType;
   final String type;
   final String? imageUrl;
   final String? image;
   final String? description;
+  final bool? isJoined;
 
   const EqubDetailCard({
     super.key,
@@ -25,495 +70,386 @@ class EqubDetailCard extends StatelessWidget {
     this.imageUrl,
     this.image,
     this.description,
+    this.isJoined,
   });
 
-  String _formatDate(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return 'TBD';
-    try {
-      final dt = DateTime.parse(dateStr);
-      return DateFormat('d/M/yyyy').format(dt);
-    } catch (_) {
-      return dateStr;
+  @override
+  State<EqubDetailCard> createState() => _EqubDetailCardState();
+}
+
+class _EqubDetailCardState extends State<EqubDetailCard> {
+  bool _isJoined = false;
+  bool _checkedJoin = false;
+
+  EqubModel get equb => widget.equb;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isJoined != null) {
+      _isJoined = widget.isJoined!;
+      _checkedJoin = true;
+    } else {
+      _loadJoinStatus();
     }
   }
 
+  @override
+  void didUpdateWidget(covariant EqubDetailCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.equb.id != widget.equb.id ||
+        oldWidget.isJoined != widget.isJoined) {
+      if (widget.isJoined != null) {
+        setState(() {
+          _isJoined = widget.isJoined!;
+          _checkedJoin = true;
+        });
+      } else {
+        setState(() {
+          _isJoined = false;
+          _checkedJoin = false;
+        });
+        _loadJoinStatus(forceRefresh: true);
+      }
+    }
+  }
+
+  Future<void> _loadJoinStatus({bool forceRefresh = false}) async {
+    final id = equb.id ?? '';
+    if (id.isEmpty) {
+      if (mounted) setState(() => _checkedJoin = true);
+      return;
+    }
+    final joined = await _EqubJoinStatusCache.isJoined(
+      id,
+      forceRefresh: forceRefresh,
+    );
+    if (!mounted || equb.id != id) return;
+    setState(() {
+      _isJoined = joined;
+      _checkedJoin = true;
+    });
+  }
+
+  String _formatGregorian(DateTime? date) {
+    if (date == null) return '-';
+    return DateFormat('dd MMM yyyy').format(date.toLocal());
+  }
+
+  DateTime? _parseDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return null;
+    try {
+      return DateTime.parse(dateStr).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  DateTime? _resolveEndDate() {
+    final parsedEnd = _parseDate(equb.endDate);
+    if (parsedEnd != null) return parsedEnd;
+
+    final start = _parseDate(equb.startDate);
+    if (start == null) return null;
+
+    final typeName = (equb.equbType?['name'] as String?) ?? widget.type;
+    final interval = equb.equbType?['interval'] as int?;
+
+    return calculateEqubEndDate(
+      startDate: start,
+      numberOfRounds: equb.numberOfEqubers ?? 0,
+      intervalDays: interval,
+      typeName: typeName,
+    );
+  }
+
+  int get _joinedCount => equb.equbers?.length ?? 0;
+  int get _neededCount => equb.numberOfEqubers ?? 0;
+  bool get _isFilled => _neededCount > 0 && _joinedCount >= _neededCount;
+
   void _showFullScreenImage(
-  BuildContext context,
-  String heroTag,
-  String image,
-) {
-  showDialog(
-    context: context,
-    barrierColor: Colors.black.withOpacity(0.95),
-    builder: (_) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(0),
-        child: Stack(
-          children: [
-            InteractiveViewer(
-              minScale: 0.8,
-              maxScale: 5,
-              child: Center(
-                child: Hero(
-                  tag: heroTag,
-                  child: Image.network(
-                    image,
-                    fit: BoxFit.contain,
+    BuildContext context,
+    String heroTag,
+    String imageUrl,
+  ) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.95),
+      builder: (_) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
+              InteractiveViewer(
+                minScale: 0.8,
+                maxScale: 5,
+                child: Center(
+                  child: Hero(
+                    tag: heroTag,
+                    child: Image.network(imageUrl, fit: BoxFit.contain),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 40,
+                right: 20,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget? _buildTopSection(BuildContext context) {
+    final hasImage =
+        (widget.imageUrl ?? '').isNotEmpty || (widget.image ?? '').isNotEmpty;
+    final hasDescription = (widget.description ?? '').isNotEmpty;
+    if (!hasImage && !hasDescription) return null;
+
+    final imagel = widget.image != null
+        ? '${mediaUrl}images/equb/${widget.image}'
+        : '${mediaUrl}images/category/${widget.imageUrl}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasImage)
+          GestureDetector(
+            onTap: () =>
+                _showFullScreenImage(context, '${equb.id}_$imagel', imagel),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12.r),
+              child: Image.network(
+                imagel,
+                height: 180.h,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 180.h,
+                  color: Colors.grey.shade100,
+                  child: const Center(
+                    child:
+                        Icon(Icons.broken_image, size: 40, color: Colors.grey),
                   ),
                 ),
               ),
             ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius:
-                        BorderRadius.circular(100),
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+          ),
+        if (hasDescription) ...[
+          if (hasImage) SizedBox(height: 10.h),
+          Text(
+            widget.description!,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: Colors.grey.shade700,
+              height: 1.5,
             ),
-          ],
-        ),
-      );
-    },
-  );
-}
+          ),
+        ],
+      ],
+    );
+  }
+
+  // int get _intervalDays {
+  //   final typeName = (equb.equbType?['name'] as String?) ?? widget.type;
+  //   final interval = equb.equbType?['interval'] as int?;
+  //   return resolveEqubIntervalDays(interval: interval, typeName: typeName);
+  // }
+
+  // Widget _buildMembersProgress(BuildContext context) {
+  //   final total = _neededCount <= 0 ? 1 : _neededCount;
+  //   final joined = _joinedCount.clamp(0, total);
+  //   final progress = joined / total;
+  //   final percent = (progress * 100).round();
+  //   final spotsLeft = (total - joined).clamp(0, total);
+  //   final muted = Colors.grey.shade600;
+  //   final interval = _intervalDays;
+  //
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       Row(
+  //         children: [
+  //           Icon(Icons.people_outline, size: 14.sp, color: muted),
+  //           SizedBox(width: 4.w),
+  //           Text(
+  //             '$joined/$total',
+  //             style: AppTextStyles.labelSmall.copyWith(color: muted),
+  //           ),
+  //           const Spacer(),
+  //           Icon(Icons.calendar_today_outlined, size: 12.sp, color: muted),
+  //           SizedBox(width: 4.w),
+  //           Text(
+  //             '${AppKeys.every.tr(context)} $interval ${AppKeys.days.tr(context).toLowerCase()}',
+  //             style: AppTextStyles.labelSmall.copyWith(color: muted),
+  //           ),
+  //         ],
+  //       ),
+  //       SizedBox(height: 8.h),
+  //       ClipRRect(
+  //         borderRadius: BorderRadius.circular(8.r),
+  //         child: LinearProgressIndicator(
+  //           value: progress,
+  //           minHeight: 6.h,
+  //           backgroundColor: Colors.grey.shade200,
+  //           valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+  //         ),
+  //       ),
+  //       SizedBox(height: 6.h),
+  //       Row(
+  //         children: [
+  //           Text(
+  //             '$percent% ${AppKeys.filled.tr(context)}',
+  //             style: AppTextStyles.captionMuted.copyWith(color: muted),
+  //           ),
+  //           const Spacer(),
+  //           Builder(
+  //             builder: (context) {
+  //               final isLow = spotsLeft < 2;
+  //               final accent = isLow ? Colors.red : AppColors.primary;
+  //               final label = isLow
+  //                   ? (spotsLeft == 1
+  //                       ? AppKeys.spotLeft.tr(context)
+  //                       : AppKeys.spotsLeft.tr(context))
+  //                   : AppKeys.spotsToGo.tr(context);
+  //               return Row(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   Icon(Icons.bolt, size: 14.sp, color: accent),
+  //                   SizedBox(width: 2.w),
+  //                   Text(
+  //                     '$spotsLeft $label',
+  //                     style: AppTextStyles.labelSmall.copyWith(
+  //                       color: accent,
+  //                       fontWeight: FontWeight.w700,
+  //                     ),
+  //                   ),
+  //                 ],
+  //               );
+  //             },
+  //           ),
+  //         ],
+  //       ),
+  //     ],
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
-    final title = equb.name ?? 'Ashewa Equb';
-    final round = equb.numberOfEqubers?.toString() ?? '100';
-    final amount = numberFormat.format(equb.equbAmount);
-
+    final equbName = (equb.name?.trim().isNotEmpty ?? false)
+        ? equb.name!.trim()
+        : (widget.type.isNotEmpty ? widget.type : 'Equb');
+    final amount = numberFormat.format(equb.equbAmount ?? 0);
     final totalAmount = numberFormat.format(
-      equb.equbAmount! * int.parse(
-        equb.numberOfEqubers.toString(),
-      ),
+      (equb.equbAmount ?? 0) * (equb.numberOfEqubers ?? 0),
     );
+    final status = (equb.status?.trim().isNotEmpty ?? false)
+        ? equb.status!
+        : (equb.isActive ? 'started' : 'pending');
 
-    final startDate = _formatDate(equb.startDate ?? '');
-    final ethiopianStartDate =
-        _formatDate(equb.ethiopianStartDate ?? '');
+    final startParts = resolveEthiopianGregorianParts(
+      ethiopianDate: equb.ethiopianStartDate,
+      gregorianDateStr: equb.startDate,
+      formatGregorian: _formatGregorian,
+    );
+    final endParts = resolveEthiopianGregorianParts(
+      ethiopianDate: equb.ethiopianEndDate,
+      gregorianDate: _parseDate(equb.endDate) ?? _resolveEndDate(),
+      formatGregorian: _formatGregorian,
+    );
+    final currentRound = equb.currentRound ?? 0;
+    final totalRounds = equb.numberOfEqubers ?? 0;
 
-    final imagel = image != null ? '${mediaUrl}images/equb/$image': '${mediaUrl}images/category/$imageUrl';
+    return EqubTileCard(
+      title: equbName,
+      amountText: '$amount ${AppKeys.currencyBirr.tr(context)}',
+      badgeText: status,
+      isJoined: _checkedJoin && _isJoined,
+      topSection: _buildTopSection(context),
+      details: [
+        EqubTileDetail(
+          icon: Icons.account_balance_wallet_outlined,
+          label: AppKeys.totalAmount.tr(context),
+          value: '$totalAmount ${AppKeys.currencyBirr.tr(context)}',
+        ),
+        EqubTileDetail(
+          icon: Icons.calendar_today_outlined,
+          label: AppKeys.expectedStartDate.tr(context),
+          value: startParts.ethiopian,
+          secondaryValue:
+              startParts.gregorian == '-' ? null : startParts.gregorian,
+        ),
+        EqubTileDetail(
+          icon: Icons.event_outlined,
+          label: AppKeys.expectedEndDate.tr(context),
+          value: endParts.ethiopian,
+          secondaryValue:
+              endParts.gregorian == '-' ? null : endParts.gregorian,
+        ),
+        EqubTileDetail(
+          icon: Icons.autorenew_rounded,
+          label: AppKeys.round.tr(context),
+          value: '$currentRound/$totalRounds',
+        ),
 
-
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-
-          /// IMAGE + DESCRIPTION SECTION
-          if ((imageUrl ?? '').isNotEmpty ||
-              (description ?? '').isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white,
-                    Colors.green.shade50,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+      ],
+      // bottomSection: _buildMembersProgress(context),
+      actionRow: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () async {
+            if (_isFilled) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(AppKeys.alreadyFilled.tr(context)),
+                  behavior: SnackBarBehavior.floating,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-                border: Border.all(
-                  color: Colors.green.withOpacity(0.08),
-                ),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-
-                    /// IMAGE
-                    if ((imageUrl ?? '').isNotEmpty)
-                      GestureDetector(
-                        onTap: () =>
-                            _showFullScreenImage(
-                          context,
-                          "${equb.id}_$imagel",
-                          imagel,
-                        ),
-                        child: Stack(
-                          children: [
-                           Hero(
-  tag: "${equb.id}_$imagel",
-                              child: SizedBox(
-                                height: 220,
-                                width: double.infinity,
-                                child: Image.network(
-                                  imagel,
-                                  fit: BoxFit.cover,
-                                  errorBuilder:
-                                      (_, __, ___) =>
-                                          Container(
-                                    color:
-                                        Colors.grey.shade100,
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.broken_image,
-                                        size: 40,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ),
-                                  loadingBuilder:
-                                      (
-                                        context,
-                                        child,
-                                        loadingProgress,
-                                      ) {
-                                    if (loadingProgress ==
-                                        null) {
-                                      return child;
-                                    }
-
-                                    return Container(
-                                      height: 220,
-                                      alignment:
-                                          Alignment.center,
-                                      child:
-                                          const CircularProgressIndicator(
-                                        color: AppColors
-                                            .vibrantGreen,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-
-                            Positioned(
-                              top: 14,
-                              right: 14,
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.black45,
-                                  borderRadius:
-                                      BorderRadius.circular(
-                                    100,
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.zoom_in,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-
-                            Positioned(
-                              left: 16,
-                              bottom: 16,
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  borderRadius:
-                                      BorderRadius.circular(
-                                    100,
-                                  ),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(
-                                      Icons.image,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                    SizedBox(width: 6),
-                                    Text(
-                                      'Tap to view',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight:
-                                            FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    /// DESCRIPTION
-                    if ((description ?? '').isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding:
-                                  const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppColors
-                                    .vibrantGreen
-                                    .withOpacity(0.12),
-                                borderRadius:
-                                    BorderRadius.circular(
-                                  14,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.auto_awesome,
-                                size: 22,
-                                color:
-                                    AppColors.vibrantGreen,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Text(
-                                description!,
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  height: 1.7,
-                                  color: Colors.black87,
-                                  fontWeight:
-                                      FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+              );
+              return;
+            }
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EqubJoinDetail(
+                  equb: equb,
+                  equbType: widget.equbType,
                 ),
               ),
+            );
+            if (mounted) {
+              await _loadJoinStatus(forceRefresh: true);
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor:
+                _isFilled ? Colors.grey.shade500 : AppColors.primary,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.r),
             ),
-
-          /// TYPE
-          if (type.isNotEmpty)
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.12),
-                    borderRadius:
-                        BorderRadius.circular(8),
-                    border: Border.all(
-                      color:
-                          Colors.green.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    type,
-                    style: TextStyle(
-                      color: Colors.green[800],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12.sp,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-              ],
-            ),
-
-          const SizedBox(height: 10),
-
-          /// TITLE + ROUND
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14.sp,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              Text(
-                "${AppKeys.round.tr(context)} : $round",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13.sp,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
+            padding: EdgeInsets.symmetric(vertical: 10.h),
           ),
-
-          const SizedBox(height: 8),
-
-          /// AMOUNT
-          RichText(
-            text: TextSpan(
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: Colors.black87,
-                fontFamily: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.fontFamily,
-              ),
-              children: [
-                TextSpan(
-                  text:
-                      "${AppKeys.amount.tr(context)} : ",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                TextSpan(
-                  text: amount,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
+          child: Text(
+            _isFilled
+                ? AppKeys.alreadyFilled.tr(context)
+                : _isJoined
+                    ? AppKeys.joinAgain.tr(context)
+                    : AppKeys.join.tr(context),
+            style: AppTextStyles.button.copyWith(color: Colors.white),
           ),
-
-          const SizedBox(height: 4),
-
-          /// TOTAL
-          Text(
-            "${AppKeys.totalAmount.tr(context)} : $totalAmount",
-            style: TextStyle(
-              fontSize: 12.sp,
-              color: Colors.black87,
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          /// DATE
-          Text(
-            "${AppKeys.expectedStartDate.tr(context)} : "
-            "$ethiopianStartDate ($startDate)",
-            style: TextStyle(
-              fontSize: 12.sp,
-              color: Colors.black87,
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          /// BUTTONS
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                      color: Colors.grey.shade400,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(8),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(
-                      vertical: 12,
-                    ),
-                  ),
-                  child: Text(
-                    AppKeys.cancel
-                        .tr(context)
-                        .toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EqubJoinDetail(
-                          equb: equb,
-                          equbType: equbType,
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor:
-                        AppColors.vibrantGreen,
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(8),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(
-                      vertical: 12,
-                    ),
-                  ),
-                  child: Text(
-                    AppKeys.join.tr(context),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

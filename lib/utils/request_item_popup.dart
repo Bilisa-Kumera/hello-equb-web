@@ -8,6 +8,8 @@ import 'package:helloequb/utils/getx_storage_custom.dart';
 
 import 'secure_storage.dart';
 
+import 'style_constants.dart';
+
 Future<void> showBeautifulInputDialog(BuildContext context, String ekubId,
     {String? itemName, double? amount, String? reason, String? requestId}) {
   bool isUpdate = requestId != null;
@@ -110,12 +112,8 @@ Future<void> showBeautifulInputDialog(BuildContext context, String ekubId,
             title: Text(
               textScaleFactor: 1.0,
               !isUpdate ? 'Submit Request' : "Update Request",
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
+              style: AppTextStyles.dialogTitle
+                  .copyWith(color: AppColors.primary),
             ),
             content: SingleChildScrollView(
               child: Form(
@@ -123,15 +121,11 @@ Future<void> showBeautifulInputDialog(BuildContext context, String ekubId,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       textScaleFactor: 1.0,
                       'Item Name:',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.neutralGray,
-                      ),
+                      style: AppTextStyles.poppins50016
+                          .copyWith(color: AppColors.neutralGray),
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -150,15 +144,11 @@ Future<void> showBeautifulInputDialog(BuildContext context, String ekubId,
                       },
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       textScaleFactor: 1.0,
                       'Item Price:',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.neutralGray,
-                      ),
+                      style: AppTextStyles.poppins50016
+                          .copyWith(color: AppColors.neutralGray),
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -181,15 +171,11 @@ Future<void> showBeautifulInputDialog(BuildContext context, String ekubId,
                       },
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       textScaleFactor: 1.0,
                       'Request Reason:',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.neutralGray,
-                      ),
+                      style: AppTextStyles.poppins50016
+                          .copyWith(color: AppColors.neutralGray),
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -236,26 +222,18 @@ Future<void> showBeautifulInputDialog(BuildContext context, String ekubId,
                 child: Text(
                   textScaleFactor: 1.0,
                   isUpdate ? 'Update' : 'Submit',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                  style: AppTextStyles.onPrimaryBold,
                 ),
               ),
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text(
+                child: Text(
                   textScaleFactor: 1.0,
                   'Cancel',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.red,
-                  ),
+                  style: AppTextStyles.poppins70016
+                      .copyWith(color: AppColors.red),
                 ),
               ),
             ],

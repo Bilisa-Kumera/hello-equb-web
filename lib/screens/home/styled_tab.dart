@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../utils/app_localizations.dart';
 import '../../utils/colors_constant.dart';
 import '../../utils/lang_constants.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class StyledTab extends StatelessWidget {
   final String text;
@@ -35,12 +36,7 @@ class StyledTab extends StatelessWidget {
               : text == "Weekly"
                   ? AppKeys.weekly.tr(context)
                   : AppKeys.monthly.tr(context),
-          style: TextStyle(
-            color: const Color.fromARGB(255, 10, 69, 1),
-            fontWeight: FontWeight.w500,
-            fontFamily: 'Urbanist',
-            fontSize: 15.sp,
-          ),
+          style: AppTextStyles.poppins50014,
         ),
       ),
     );

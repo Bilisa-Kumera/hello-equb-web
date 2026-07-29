@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:helloequb/provider/lottery_provider.dart';
 import 'package:helloequb/screens/splash_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/utils/app_localizations.dart';
@@ -35,9 +36,10 @@ import 'package:helloequb/core/web_leave_guard.dart';
 
 import 'provider/allequb_payment.dart';
 import 'provider/cooperate_equbs_provider.dart';
+import 'provider/joined_equbs_status_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'provider/lottery_provider.dart';
+import 'provider/joined_equbs_status_provider.dart';
 
 Future<void> requestCameraAndGalleryPermissions() async {
   if (kIsWeb) return;
@@ -156,6 +158,13 @@ Future<void> main() async {
     await FirebaseMessaging.instance.requestPermission();
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      if (!kIsWeb &&
+          JoinedEqubsStatusProvider.looksLikeApprovalNotification(message)) {
+        _navigatorKey.currentContext
+            ?.read<JoinedEqubsStatusProvider>()
+            .refresh(silent: true);
+      }
+
       if (message.notification != null) {
         await flutterLocalNotificationsPlugin.show(
           message.notification.hashCode,
@@ -184,6 +193,12 @@ Future<void> main() async {
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    if (!kIsWeb &&
+        JoinedEqubsStatusProvider.looksLikeApprovalNotification(message)) {
+      _navigatorKey.currentContext
+          ?.read<JoinedEqubsStatusProvider>()
+          .refresh(silent: true);
+    }
     _handleNotificationNavigation(message.data);
   });
 
@@ -216,6 +231,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => GetMyEqubProvider()),
         ChangeNotifierProvider(create: (_) => EqubPaymentProvider()),
         ChangeNotifierProvider(create: (_) => CooperateEqubsProvider()),
+        ChangeNotifierProvider(create: (_) => JoinedEqubsStatusProvider()),
         ChangeNotifierProvider(
           create: (_) => UpdateProvider(
             checkForUpdateUseCase: checkForUpdateUseCase,

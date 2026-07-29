@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +14,7 @@ import 'package:helloequb/features/superapp_auth/presentation/bloc/superapp_auth
 import 'package:helloequb/features/superapp_auth/presentation/bloc/superapp_auth_event.dart';
 import 'package:helloequb/features/superapp_auth/presentation/bloc/superapp_auth_state.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 
 SuperAppAuthRepositoryImpl _createSuperAppRepo(SuperAppAuthConfig cfg) {
@@ -210,17 +212,14 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                 Text(
                   'Continue with telebirr',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.deepForestGreen,
-                  ),
+                  style: AppTextStyles.poppins70022
+                      .copyWith(color: AppColors.deepForestGreen),
                 ),
                 SizedBox(height: 6.h),
                 Text(
                   'Setting up your Hello Equb session...',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13.sp, color: Colors.black54),
+                  style: AppTextStyles.subtitleMuted,
                 ),
                 SizedBox(height: 20.h),
                 if (_isFromCbeBirr) ...[
@@ -240,11 +239,8 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                         Text(
                           'This is rendering from CBE Birr Plus',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF7B5800),
-                          ),
+                          style: AppTextStyles.poppins60014
+                              .copyWith(color: const Color(0xFF7B5800)),
                         ),
                         SizedBox(height: 14.h),
                         SizedBox(
@@ -286,8 +282,7 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                       child: Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13.sp,
+                        style: AppTextStyles.poppins40013.copyWith(
                           color: Colors.red.shade700,
                           height: 1.4,
                         ),
@@ -402,27 +397,22 @@ class _TelebirrMiniAppLoginViewState extends State<_TelebirrMiniAppLoginView> {
                     Text(
                       'Continue with Telebirr',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 22.sp,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.deepForestGreen,
-                      ),
+                    style: AppTextStyles.poppins70022
+                        .copyWith(color: AppColors.deepForestGreen),
                     ),
                     SizedBox(height: 10.h),
                     Text(
                       'Signing you in with Telebirr...',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14.sp),
+                      style: AppTextStyles.bodyMedium,
                     ),
                     SizedBox(height: 12.h),
                     if (error != null) ...[
                       Text(
                         error,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          color: Colors.red.shade700,
-                        ),
+                        style: AppTextStyles.poppins40013
+                            .copyWith(color: Colors.red.shade700),
                       ),
                       SizedBox(height: 10.h),
                     ],
@@ -484,6 +474,188 @@ class _TelebirrMiniAppLoginViewState extends State<_TelebirrMiniAppLoginView> {
 
 // ─── Shared widgets ───────────────────────────────────────────────────────────
 
+class _StepLogPanel extends StatelessWidget {
+  const _StepLogPanel({required this.steps});
+
+  final List<_LogStep> steps;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black12),
+        borderRadius: BorderRadius.circular(8.r),
+        color: const Color(0xFFF7F7F7),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: steps.map((s) => _StepRow(step: s)).toList(),
+      ),
+    );
+  }
+}
+
+class _StepRow extends StatelessWidget {
+  const _StepRow({required this.step});
+
+  final _LogStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget leading;
+    final Color labelColor;
+
+    switch (step.status) {
+      case _StepStatus.loading:
+        leading = SizedBox(
+          width: 16.sp,
+          height: 16.sp,
+          child: const CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.deepForestGreen,
+          ),
+        );
+        labelColor = AppColors.deepForestGreen;
+        break;
+      case _StepStatus.success:
+        leading = Icon(Icons.check_circle_rounded,
+            size: 16.sp, color: Colors.green.shade600);
+        labelColor = Colors.green.shade700;
+        break;
+      case _StepStatus.error:
+        leading =
+            Icon(Icons.error_rounded, size: 16.sp, color: Colors.red.shade600);
+        labelColor = Colors.red.shade700;
+        break;
+      case _StepStatus.idle:
+      default:
+        leading = Icon(Icons.radio_button_unchecked_rounded,
+            size: 16.sp, color: Colors.black26);
+        labelColor = Colors.black38;
+        break;
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 5.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+              width: 20.w, child: Center(heightFactor: 1, child: leading)),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  step.label,
+                  style: AppTextStyles.poppins50013.copyWith(color: labelColor),
+                ),
+                if (step.detail != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: 2.h),
+                    child: Text(
+                      step.detail!,
+                      style: AppTextStyles.poppins40011.copyWith(
+                        color: labelColor.withOpacity(0.75),
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Displays a token value with a copy-to-clipboard button.
+class _TokenPanel extends StatelessWidget {
+  const _TokenPanel({required this.title, required this.token});
+
+  final String title;
+  final String token;
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: token));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Token copied to clipboard'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.deepForestGreen.withOpacity(0.35)),
+        borderRadius: BorderRadius.circular(8.r),
+        color: AppColors.deepForestGreen.withOpacity(0.04),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.poppins60012
+                      .copyWith(color: Colors.black54),
+                ),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _copy(context),
+                child: Padding(
+                  padding: EdgeInsets.all(4.w),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.copy_rounded,
+                          size: 16.sp, color: AppColors.deepForestGreen),
+                      SizedBox(width: 4.w),
+                      Text(
+                        'Copy',
+                        style: AppTextStyles.poppins60011
+                            .copyWith(color: AppColors.deepForestGreen),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 6.h),
+          SelectableText(
+            token,
+            style: AppTextStyles.caption.copyWith(
+              fontFamily: 'monospace',
+              color: AppColors.deepForestGreen,
+              height: 1.35,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            '${token.length} chars',
+            style: AppTextStyles.captionSmall.copyWith(color: Colors.black38),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TelebirrLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -497,5 +669,180 @@ class _TelebirrLogo extends StatelessWidget {
         color: AppColors.deepForestGreen,
       ),
     );
+  }
+}
+
+
+  late final Map<String, String> diag;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black12),
+        borderRadius: BorderRadius.circular(8.r),
+        color: const Color(0xFFF7F7F7),
+      ),
+      child: SelectableText(
+        diag.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
+        style: AppTextStyles.poppins40011
+            .copyWith(fontFamily: 'monospace', height: 1.25),
+      ),
+    );
+  }
+
+
+// ─── Auth call inspector panel ────────────────────────────────────────────────
+
+class _AuthCallPanel extends StatelessWidget {
+  const _AuthCallPanel({
+    required this.apiUrl,
+    required this.requestBody,
+    this.responseBody,
+  });
+
+  final String apiUrl;
+  final Map<String, dynamic> requestBody;
+  final Map<String, dynamic>? responseBody;
+
+  static const _headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+
+  String _prettyJson(Map<String, dynamic> map) {
+    final buffer = StringBuffer('{\n');
+    final entries = map.entries.toList();
+    for (var i = 0; i < entries.length; i++) {
+      final key = entries[i].key;
+      var value = entries[i].value;
+      if (value is String && value.length > 60) {
+        value = '${value.substring(0, 60)}…';
+      }
+      final comma = i < entries.length - 1 ? ',' : '';
+      buffer.writeln('  "$key": "$value"$comma');
+    }
+    buffer.write('}');
+    return buffer.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.deepForestGreen.withOpacity(0.25)),
+        borderRadius: BorderRadius.circular(8.r),
+        color: const Color(0xFFF2F8F4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(label: 'API', value: 'POST'),
+          _MonoBlock(text: apiUrl),
+          const _Divider(),
+          const _SectionHeader(label: 'Headers', value: ''),
+          _MonoBlock(
+            text: _headers.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
+          ),
+          const _Divider(),
+          const _SectionHeader(label: 'Request body', value: ''),
+          _MonoBlock(text: _prettyJson(requestBody)),
+          const _Divider(),
+          _SectionHeader(
+            label: 'Response',
+            value: responseBody == null ? 'pending…' : '200 OK',
+            valueColor: responseBody == null
+                ? Colors.black38
+                : Colors.green.shade700,
+          ),
+          if (responseBody != null)
+            _MonoBlock(text: _prettyJson(responseBody!)),
+          if (responseBody == null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+              child: SizedBox(
+                height: 12.h,
+                width: 12.h,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: AppColors.deepForestGreen,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 2.h),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.captionSmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.deepForestGreen,
+              letterSpacing: 0.5,
+            ),
+          ),
+          if (value.isNotEmpty) ...[
+            SizedBox(width: 6.w),
+            Text(
+              value,
+              style: AppTextStyles.statusBadge
+                  .copyWith(color: valueColor ?? Colors.black54),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MonoBlock extends StatelessWidget {
+  const _MonoBlock({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12.w, 2.h, 12.w, 8.h),
+      child: SelectableText(
+        text,
+        style: AppTextStyles.captionSmall.copyWith(
+          fontFamily: 'monospace',
+          color: Colors.black87,
+          height: 1.45,
+        ),
+      ),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Divider(height: 1, thickness: 1, color: Colors.black.withOpacity(0.06));
   }
 }

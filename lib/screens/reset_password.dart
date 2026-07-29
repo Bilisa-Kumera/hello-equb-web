@@ -15,6 +15,7 @@ import 'package:helloequb/utils/custom_text_field.dart';
 import 'package:dio/dio.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/style_constants.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
 
 // ignore: must_be_immutable
@@ -120,7 +121,7 @@ class ResetPassword extends StatelessWidget {
                   child: const Center(
                     child: Padding(
                       padding: EdgeInsets.only(left: 8.0),
-                      child: Icon(Icons.arrow_back_ios, color: AppColors.black),
+                      child: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.black),
                     ), // Set icon color to black
                   ),
                 ),
@@ -132,11 +133,7 @@ class ResetPassword extends StatelessWidget {
                 child: Text(
                   textScaleFactor: 1.0,
                   AppKeys.resetPassword.tr(context),
-                  style: TextStyle(
-                      color: AppColors.darkBlueGray,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Urbanist',
-                      fontSize: 24.sp),
+                  style: AppTextStyles.poppins70024.copyWith(color: AppColors.darkBlueGray),
                 ),
               ),
             ),
@@ -146,11 +143,7 @@ class ResetPassword extends StatelessWidget {
                 child: Text(
                   textScaleFactor: 1.0,
                   AppKeys.yourNewPinMustBe.tr(context),
-                  style: TextStyle(
-                      color: AppColors.coolGray,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'Urbanist',
-                      fontSize: 14.sp),
+                  style: AppTextStyles.poppins50014.copyWith(color: AppColors.coolGray),
                 ),
               ),
             ),
@@ -181,7 +174,7 @@ class ResetPassword extends StatelessWidget {
                 ? Text(
                     textScaleFactor: 1.0,
                     errorMessage,
-                    style: const TextStyle(color: AppColors.red),
+                    style: AppTextStyles.poppins40014.copyWith(color: AppColors.red),
                   )
                 : const SizedBox.shrink(),
             Padding(

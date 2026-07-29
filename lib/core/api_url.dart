@@ -75,7 +75,7 @@ String get validateCooperateUrl =>
     "$baseUrl/user/cooperate/checkValidCoopreateCode";
 String get checkJoinUrl => "$baseUrl/user/equb/check-join";
 
-// Equb history (completed/past equbs per user)
+// Equb history (joined equbs per user; Active = registering|started)
 String get getEqubHistoryUrl => "$baseUrl/user/equb/get-history-equbs";
 
 final NumberFormat numberFormat = NumberFormat('#,##0.00');

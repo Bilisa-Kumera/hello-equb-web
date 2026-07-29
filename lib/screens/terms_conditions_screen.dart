@@ -8,6 +8,7 @@ import 'package:helloequb/screens/payment_arrangement_screen.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_button.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class TermsConditionsScreen extends StatefulWidget {
   final String? ekubId;
@@ -51,7 +52,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
           icon: const Icon(
-            Icons.arrow_back_ios,
+            Icons.arrow_back_ios_new_rounded,
             color: AppColors.white,
             size: 20,
           ),
@@ -59,12 +60,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
         title: Text(
           textScaleFactor: 1.0,
           AppKeys.termsAndConditions.tr(context),
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w700,
-            color: AppColors.white,
-          ),
+          style: AppTextStyles.poppins70018.copyWith(color: AppColors.white),
         ),
         centerTitle: true,
         elevation: 0,
@@ -93,13 +89,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
                           'en'
                       ? widget.termAndCondition
                       : widget.termAndConditionInAmharic,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13.5.sp,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.grey700,
-                    height: 1.5,
-                  ),
+                  style: AppTextStyles.poppins40013.copyWith(color: AppColors.grey700, height: 1.5),
                   textAlign: TextAlign.justify,
                 ),
               ),
@@ -156,12 +146,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
                             child: Text(
                               textScaleFactor: 1.0,
                               AppKeys.acceptTerms.tr(context),
-                              style: TextStyle(
-                                fontSize: 13.sp,
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.grey700,
-                              ),
+                              style: AppTextStyles.poppins50013.copyWith(color: AppColors.grey700),
                             ),
                           ),
                         ],

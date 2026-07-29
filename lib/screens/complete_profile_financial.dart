@@ -20,6 +20,7 @@ import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 
 import '../utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class FinancialInformation extends StatefulWidget {
   final String? ekubName, ekubId;
@@ -190,10 +191,7 @@ class _FinancialInformationState extends State<FinancialInformation> {
             child: Text(
               textScaleFactor: 1.0,
               AppKeys.addFinancial.tr(context),
-              style: TextStyle(
-                  color: AppColors.white,
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.bold),
+              style: AppTextStyles.poppins70020.copyWith(color: AppColors.white),
             ),
           ),
           contentPadding: const EdgeInsets.all(16),
@@ -204,10 +202,7 @@ class _FinancialInformationState extends State<FinancialInformation> {
                 Text(
                   textScaleFactor: 1.0,
                   AppKeys.selectBank.tr(context),
-                  style: TextStyle(
-                      color: AppColors.black,
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold),
+                  style: AppTextStyles.poppins70018.copyWith(color: AppColors.black),
                 ),
                 const SizedBox(height: 5),
                 StatefulBuilder(
@@ -237,7 +232,7 @@ class _FinancialInformationState extends State<FinancialInformation> {
                           child: Text(
                               textScaleFactor: 1.0,
                               banks[index],
-                              style: TextStyle(color: AppColors.black)),
+                              style: AppTextStyles.poppins40014.copyWith(color: AppColors.black)),
                         );
                       }),
                       onChanged: (int? newValue) {
@@ -252,10 +247,7 @@ class _FinancialInformationState extends State<FinancialInformation> {
                 Text(
                   textScaleFactor: 1.0,
                   AppKeys.addAccountHolderName.tr(context),
-                  style: TextStyle(
-                      color: AppColors.black,
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold),
+                  style: AppTextStyles.poppins70018.copyWith(color: AppColors.black),
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -275,7 +267,7 @@ class _FinancialInformationState extends State<FinancialInformation> {
                       borderSide: const BorderSide(color: AppColors.primary),
                     ),
                   ),
-                  style: const TextStyle(color: AppColors.black),
+                  style: AppTextStyles.poppins40014.copyWith(color: AppColors.black),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'^[a-zA-Z\s]*$')),
                   ],
@@ -284,10 +276,7 @@ class _FinancialInformationState extends State<FinancialInformation> {
                 Text(
                   textScaleFactor: 1.0,
                   AppKeys.enterAccountNumber.tr(context),
-                  style: TextStyle(
-                      color: AppColors.black,
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold),
+                  style: AppTextStyles.poppins70018.copyWith(color: AppColors.black),
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -307,7 +296,7 @@ class _FinancialInformationState extends State<FinancialInformation> {
                       borderSide: const BorderSide(color: AppColors.primary),
                     ),
                   ),
-                  style: const TextStyle(color: AppColors.black),
+                  style: AppTextStyles.poppins40014.copyWith(color: AppColors.black),
                   keyboardType: TextInputType.number,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly
@@ -368,8 +357,7 @@ class _FinancialInformationState extends State<FinancialInformation> {
                     child: Text(
                       textScaleFactor: 1.0,
                       AppKeys.submit.tr(context),
-                      style: TextStyle(
-                          fontSize: 16.sp, fontWeight: FontWeight.bold),
+                      style: AppTextStyles.poppins70016,
                     ),
                   ),
                 ),
@@ -446,61 +434,53 @@ class _FinancialInformationState extends State<FinancialInformation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.grey50,
+      backgroundColor: AppColors.white,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddBankDialog,
+        elevation: 1,
+        highlightElevation: 2,
         label: Row(
           children: [
-            const Icon(Icons.add, size: 23),
-            SizedBox(width: 8.w),
+            Icon(Icons.add, size: 18.sp),
+            SizedBox(width: 6.w),
             Text(
               textScaleFactor: 1.0,
               AppKeys.add.tr(context),
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16.sp),
+              style: AppTextStyles.poppins60012,
             ),
           ],
         ),
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.primary.withOpacity(0.92),
         foregroundColor: AppColors.white,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       appBar: AppBar(
-        backgroundColor: AppColors.transparent,
+        backgroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.black87),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.black87),
         ),
         title: Text(
           textScaleFactor: 1.0,
           AppKeys.financialInformation.tr(context),
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w700,
-            color: AppColors.black87,
-          ),
+          style: AppTextStyles.poppins60014.copyWith(color: AppColors.black87),
         ),
         centerTitle: true,
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: EdgeInsets.only(right: 12.w),
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(999),
+                  color: AppColors.primary.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
-                child: const Text(
+                child: Text(
                   textScaleFactor: 1.0,
                   '2/2',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
+                  style: AppTextStyles.badge.copyWith(color: AppColors.primary),
                 ),
               ),
             ),
@@ -515,33 +495,25 @@ class _FinancialInformationState extends State<FinancialInformation> {
             children: [
               Container(
                 width: double.infinity,
-                padding: EdgeInsets.all(18.w),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary.withOpacity(0.14),
-                      AppColors.primary.withOpacity(0.06),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(22),
-                  border:
-                      Border.all(color: AppColors.primary.withOpacity(0.12)),
+                  color: const Color(0xFFF7F8FA),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 32.w,
+                      height: 32.w,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.16),
-                        borderRadius: BorderRadius.circular(14),
+                        color: AppColors.primary.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(8.r),
                       ),
-                      child: const Icon(Icons.account_balance_outlined,
-                          color: AppColors.primary),
+                      child: Icon(Icons.account_balance_outlined,
+                          color: AppColors.primary, size: 18.sp),
                     ),
-                    SizedBox(width: 12.w),
+                    SizedBox(width: 10.w),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -549,20 +521,15 @@ class _FinancialInformationState extends State<FinancialInformation> {
                           Text(
                             textScaleFactor: 1.0,
                             AppKeys.listOfBanks.tr(context),
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.black87,
-                            ),
+                            style: AppTextStyles.poppins60012
+                                .copyWith(color: AppColors.black87),
                           ),
-                          SizedBox(height: 4.h),
+                          SizedBox(height: 2.h),
                           Text(
                             textScaleFactor: 1.0,
                             AppKeys.enterDetails.tr(context),
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: AppColors.black54,
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: Colors.grey.shade600,
                             ),
                           ),
                         ],
@@ -592,13 +559,16 @@ class _FinancialInformationState extends State<FinancialInformation> {
                                 ),
                               );
                             },
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.symmetric(horizontal: 8.w),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                             child: Text(
                               textScaleFactor: 1.0,
                               AppKeys.addGuarantee.tr(context),
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style: AppTextStyles.poppins60012
+                                  .copyWith(color: AppColors.primary),
                             ),
                           )
                         : const SizedBox.shrink(),
@@ -613,36 +583,28 @@ class _FinancialInformationState extends State<FinancialInformation> {
                   itemCount: accountInfo.length,
                   itemBuilder: (context, index) {
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
+                      margin: EdgeInsets.only(bottom: 10.h),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 12.w, vertical: 12.h),
                       decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.black.withOpacity(0.05),
-                            blurRadius: 16,
-                            offset: const Offset(0, 10),
-                          )
-                        ],
-                        border: Border.all(
-                          color: AppColors.darkOverlay.withOpacity(0.25),
-                        ),
+                        color: const Color(0xFFF7F8FA),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: Colors.grey.shade200),
                       ),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
-                            width: 42,
-                            height: 42,
+                            width: 32.w,
+                            height: 32.w,
                             decoration: BoxDecoration(
                               color: AppColors.primary.withOpacity(0.10),
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(8.r),
                             ),
-                            child: const Icon(Icons.credit_card,
-                                color: AppColors.primary),
+                            child: Icon(Icons.credit_card,
+                                color: AppColors.primary, size: 18.sp),
                           ),
-                          SizedBox(width: 12.w),
+                          SizedBox(width: 10.w),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,19 +613,15 @@ class _FinancialInformationState extends State<FinancialInformation> {
                                   textScaleFactor: 1.0,
                                   (accountInfo[index].accountName ?? '')
                                       .toString(),
-                                  style: TextStyle(
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.black87,
-                                  ),
+                                  style: AppTextStyles.poppins60014
+                                      .copyWith(color: AppColors.black87),
                                 ),
-                                SizedBox(height: 6.h),
+                                SizedBox(height: 4.h),
                                 Text(
                                   textScaleFactor: 1.0,
                                   '${accountInfo[index].bank.name}  •  ${accountInfo[index].accountNumber}',
-                                  style: TextStyle(
-                                    fontSize: 13.sp,
-                                    color: AppColors.black54,
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: Colors.grey.shade600,
                                   ),
                                 ),
                               ],
@@ -699,7 +657,9 @@ class _FinancialInformationState extends State<FinancialInformation> {
                                 },
                               );
                             },
-                            icon: const Icon(Icons.edit, color: AppColors.primary),
+                            icon: Icon(Icons.edit,
+                                color: AppColors.primary, size: 20.sp),
+                            visualDensity: VisualDensity.compact,
                           ),
                         ],
                       ),
@@ -708,7 +668,7 @@ class _FinancialInformationState extends State<FinancialInformation> {
                 )
               else if (isLoading)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  padding: EdgeInsets.symmetric(vertical: 48.h),
                   child: Center(
                     child: SpinKitFadingCircle(
                       color: AppColors.primary,
@@ -718,38 +678,34 @@ class _FinancialInformationState extends State<FinancialInformation> {
                 )
               else
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 42),
+                  padding: EdgeInsets.symmetric(vertical: 42.h),
                   child: Center(
                     child: Column(
                       children: [
                         Container(
-                          width: 64,
-                          height: 64,
+                          width: 56.w,
+                          height: 56.w,
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.10),
-                            borderRadius: BorderRadius.circular(22),
+                            color: const Color(0xFFF7F8FA),
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(color: Colors.grey.shade200),
                           ),
-                          child: const Icon(Icons.account_balance_wallet_outlined,
-                              color: AppColors.primary, size: 30),
+                          child: Icon(Icons.account_balance_wallet_outlined,
+                              color: AppColors.primary, size: 26.sp),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12.h),
                         Text(
                           textScaleFactor: 1.0,
                           AppKeys.noData.tr(context),
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.black87,
-                          ),
+                          style: AppTextStyles.poppins60014
+                              .copyWith(color: AppColors.black87),
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 4.h),
                         Text(
                           textScaleFactor: 1.0,
                           AppKeys.add.tr(context),
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: AppColors.black54,
-                          ),
+                          style: AppTextStyles.labelSmall
+                              .copyWith(color: Colors.grey.shade600),
                         ),
                       ],
                     ),

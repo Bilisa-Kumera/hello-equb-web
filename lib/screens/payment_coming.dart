@@ -1,6 +1,7 @@
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class ComingSoonScreen extends StatelessWidget {
   const ComingSoonScreen({super.key});
@@ -22,11 +23,7 @@ class ComingSoonScreen extends StatelessWidget {
             Text(
               textScaleFactor: 1.0,
               'Coming Soon',
-              style: TextStyle(
-                fontSize: 28.sp,
-                fontWeight: FontWeight.bold,
-                color: AppColors.blueGrey,
-              ),
+              style: AppTextStyles.poppins70028.copyWith(color: AppColors.blueGrey),
             ),
             const SizedBox(height: 10),
             Padding(
@@ -35,10 +32,7 @@ class ComingSoonScreen extends StatelessWidget {
                 textScaleFactor: 1.0,
                 'We are working to add this functionality, Stay tuned!',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  color: AppColors.grey,
-                ),
+                style: AppTextStyles.poppins40016.copyWith(color: AppColors.grey),
               ),
             ),
           ],

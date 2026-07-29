@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:helloequb/core/superapp/superapp_diagnostics.dart';
 import 'package:helloequb/features/superapp_auth/presentation/widgets/superapp_log_panel.dart';
 
@@ -40,27 +41,22 @@ class _NotInSuperAppPageState extends State<NotInSuperAppPage> {
                 Text(
                   'You are not in the SuperApp',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.deepForestGreen,
-                  ),
+                  style: AppTextStyles.poppins70022
+                      .copyWith(color: AppColors.deepForestGreen),
                 ),
                 const SizedBox(height: 10),
                 Text(
                   'To use Hello Equb on the web, please open it inside Telebirr SuperApp or CBEBirr Plus.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14),
+                  style: AppTextStyles.bodyMedium,
                 ),
                 const SizedBox(height: 18),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Detection status',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.deepForestGreen,
-                    ),
+                    style: AppTextStyles.poppins70014
+                        .copyWith(color: AppColors.deepForestGreen),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -74,11 +70,8 @@ class _NotInSuperAppPageState extends State<NotInSuperAppPage> {
                   ),
                   child: SelectableText(
                     _diag.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      height: 1.25,
-                    ),
+                    style: AppTextStyles.caption
+                        .copyWith(fontFamily: 'monospace', height: 1.25),
                   ),
                 ),
                 const SizedBox(height: 14),

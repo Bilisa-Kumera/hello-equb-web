@@ -4,15 +4,14 @@ import 'package:dio/dio.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/models/transaction_history_model.dart';
 import 'package:helloequb/utils/app_localizations.dart';
-import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
 import 'package:intl/intl.dart';
 
 import '../utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class TransactionHistory extends StatefulWidget {
   const TransactionHistory({super.key});
@@ -55,7 +54,6 @@ class TransactionHistoryState extends State<TransactionHistory> {
   Future<PaymentsResponse?> getTransactionHistory(
       String paymentMethod, String equbId) async {
     final Dio dio = Dio();
-    final DataController dataController = DataController();
     String accessToken = await SecureStorageHelper.getAccessToken() ?? '';
 
     try {
@@ -87,14 +85,13 @@ class TransactionHistoryState extends State<TransactionHistory> {
   @override
   void initState() {
     super.initState();
-    getTransactionHistory('', '');
-    getEkubList(payment: 'd', ekubId: 'd');
+    _ekubListFuture = getEkubList();
   }
 
-  final DataController dataController = DataController();
   List<EkubList>? ekubLists;
-  Future<List<EkubList>> getEkubList(
-      {required String payment, required String ekubId}) async {
+  Future<List<EkubList>>? _ekubListFuture;
+
+  Future<List<EkubList>> getEkubList() async {
     final Dio dio = Dio();
     String accessToken = await SecureStorageHelper.getAccessToken() ?? '';
 
@@ -107,16 +104,12 @@ class TransactionHistoryState extends State<TransactionHistory> {
               }));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Parse the response data and extract the equbs list
         List<dynamic> equbs = response.data['data']['equbs'];
-
-        // Map the list of JSON objects to a list of EkubList objects
         List<EkubList> ekubList = equbs.map((equb) {
           return EkubList.fromJson(equb);
         }).toList();
 
         ekubLists = ekubList;
-
         return ekubList;
       } else {
         return [];
@@ -128,9 +121,40 @@ class TransactionHistoryState extends State<TransactionHistory> {
 
   String selectedPayment = '';
   String selectedEkubId = '';
-  String selectedEkubName = '';
   String totalAmount = '0';
   bool isCredit = false;
+
+  Widget _equbChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12.r),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withOpacity(0.12)
+              : const Color(0xFFF7F8FA),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: selected ? AppColors.primary : Colors.grey.shade200,
+          ),
+        ),
+        child: Text(
+          label,
+          style: selected
+              ? AppTextStyles.labelSmall.copyWith(color: AppColors.primary)
+              : AppTextStyles.captionMuted.copyWith(
+                  color: Colors.grey.shade700,
+                ),
+        ),
+      ),
+    );
+  }
 
   Future<String> getTotalAmount() async {
     await Future.delayed(const Duration(seconds: 2));
@@ -143,491 +167,357 @@ class TransactionHistoryState extends State<TransactionHistory> {
     return numberFormat.format(amount);
   }
 
+  Widget _rowItem(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.captionMuted.copyWith(
+              color: Colors.grey.shade600,
+            ),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: AppTextStyles.labelSmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16.0, top: 20),
-          child: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back_ios)),
-        ),
-        title: Padding(
-          padding: const EdgeInsets.only(top: 18.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    textScaleFactor: 1.0,
-                    AppKeys.transactionHistory.tr(context),
-                    style: TextStyle(
-                        color: AppColors.mediumDarkGray,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20.sp,
-                        fontFamily: 'Poppins'),
-                  ),
-                  Text(
-                    textScaleFactor: 1.0,
-                    AppKeys.sortOut.tr(context),
-                    style: TextStyle(
-                        color: AppColors.mediumDarkGray,
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w300,
-                        fontSize: 14.sp),
-                  ),
-                ],
-              ),
-            ],
+        elevation: 0,
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.black87,
+            size: 18,
           ),
         ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppKeys.transactionHistory.tr(context),
+              style: AppTextStyles.poppins60014,
+            ),
+            Text(
+              AppKeys.sortOut.tr(context),
+              style: AppTextStyles.captionMuted.copyWith(
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: false,
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.only(left: 23.0, right: 23, top: 10),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 4.0, right: 4, top: 8),
-                child: Container(
-                    width: double.maxFinite,
-                    decoration: const BoxDecoration(
-                        borderRadius: BorderRadius.all(Radius.circular(5)),
-                        color: AppColors.vibrantGreen),
-                    height: 85,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          textScaleFactor: 1.0,
-                          AppKeys.totalPaid.tr(context),
-                          style: TextStyle(
-                              color: AppColors.white,
-                              fontFamily: 'Poppins',
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w600),
-                        ),
-                        FutureBuilder<String>(
-                            future: getTotalAmount(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Center(
-                                    child: SpinKitCircle(
-                                  color: AppColors.white,
-                                  size: 30.0,
-                                ));
-                              } else if (snapshot.hasError) {
-                                return Center(
-                                    child: Text(
-                                        textScaleFactor: 1.0,
-                                        'Error: ${snapshot.error}'));
-                              } else if (snapshot.hasData) {
-                                return Text(
-                                  textScaleFactor: 1.0,
-                                  snapshot.data!,
-                                  style: TextStyle(
-                                    color: AppColors.white,
-                                    fontFamily: 'Poppins',
-                                    fontSize: 32.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                );
-                              } else {
-                                return const Center(
-                                    child: Text(
-                                        textScaleFactor: 1.0,
-                                        'No data available'));
-                              }
-                            })
-                      ],
-                    )),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F8FA),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppKeys.totalPaid.tr(context),
+                      style: AppTextStyles.captionMuted.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    FutureBuilder<String>(
+                      future: getTotalAmount(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return SizedBox(
+                            width: 18.w,
+                            height: 18.w,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          );
+                        } else if (snapshot.hasError) {
+                          return Text(
+                            'Error: ${snapshot.error}',
+                            style: AppTextStyles.captionMuted,
+                          );
+                        } else if (snapshot.hasData) {
+                          return Text(
+                            snapshot.data!,
+                            style: AppTextStyles.poppins70016,
+                          );
+                        } else {
+                          return Text(
+                            'No data available',
+                            style: AppTextStyles.captionMuted,
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
+              SizedBox(height: 12.h),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Toggle Buttons for isCredit
                   Row(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 3.0),
-                        child: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              isCredit = false; // Display paymentsMade
-                            });
-                          },
-                          icon: Icon(
-                            Icons.arrow_upward,
-                            color: isCredit
-                                ? AppColors.grey
-                                : AppColors.red, // Highlight active
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 2.0),
-                        child: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              isCredit = true;
-                            });
-                          },
-                          icon: Icon(
-                            Icons.arrow_downward,
-                            color:
-                                isCredit ? AppColors.primary : AppColors.grey,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Row(
-                    children: [
-                      PopupMenuButton<String>(
-                        onSelected: (String value) {
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
                           setState(() {
-                            selectedPayment = value;
+                            isCredit = false;
                           });
                         },
-                        itemBuilder: (BuildContext context) {
-                          return ['bankTransfer', 'telebirr', 'cbe', 'awash']
-                              .map((String choice) {
-                            return PopupMenuItem<String>(
-                              value: choice,
-                              child: Container(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(textScaleFactor: 1.0, choice),
-                              ),
-                            );
-                          }).toList();
-                        },
-                        child: Row(
-                          children: [
-                            Text(
-                              textScaleFactor: 1.0,
-                              selectedPayment.isNotEmpty
-                                  ? (selectedPayment.length > 7
-                                      ? selectedPayment.substring(0, 7)
-                                      : selectedPayment)
-                                  : AppKeys.payment.tr(context),
-                            ),
-                            const Icon(
-                              Icons.arrow_drop_down,
-                              color: AppColors.primary,
-                            ),
-                          ],
+                        icon: Icon(
+                          Icons.arrow_upward,
+                          size: 20,
+                          color: isCredit ? Colors.grey.shade400 : AppColors.red,
                         ),
                       ),
-                      const SizedBox(width: 10),
-
-                      // Ekub List Dropdown
-                      FutureBuilder<List<EkubList>>(
-                        future: getEkubList(ekubId: '', payment: ''),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Padding(
-                              padding: EdgeInsets.all(18.0),
-                              child: SpinKitCircle(
-                                color: AppColors.primary,
-                                size: 30.0,
-                              ),
-                            );
-                          } else if (snapshot.hasError) {
-                            return const Text(
-                              textScaleFactor: 1.0,
-                              'Error loading equb list',
-                            );
-                          } else if (!snapshot.hasData ||
-                              snapshot.data!.isEmpty) {
-                            return Text(
-                              textScaleFactor: 1.0,
-                              AppKeys.noEkubs.tr(context),
-                            );
-                          } else {
-                            List<EkubList> ekubList = snapshot.data!;
-                            return PopupMenuButton<String>(
-                              onSelected: (String value) {
-                                EkubList? selectedEkub = ekubList.firstWhere(
-                                  (ekub) => ekub.ekubName == value,
-                                  orElse: () =>
-                                      EkubList(ekubName: 'N/A', ekubId: 'N/A'),
-                                );
-
-                                setState(() {
-                                  selectedEkubId = selectedEkub.ekubId;
-                                  selectedEkubName = selectedEkub.ekubName;
-
-                                  // Fetch transaction history
-                                  getTransactionHistory(
-                                      selectedPayment, selectedEkubId);
-                                });
-                              },
-                              itemBuilder: (BuildContext context) {
-                                return ekubList.map((EkubList ekub) {
-                                  return PopupMenuItem<String>(
-                                    value: ekub.ekubName,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Text(
-                                        textScaleFactor: 1.0,
-                                        ekub.ekubName,
-                                      ),
-                                    ),
-                                  );
-                                }).toList();
-                              },
-                              child: Row(
-                                children: [
-                                  Text(
-                                    textScaleFactor: 1.0,
-                                    selectedEkubName.isNotEmpty
-                                        ? (selectedEkubName.length > 8
-                                            ? selectedEkubName.substring(0, 8)
-                                            : selectedEkubName)
-                                        : AppKeys.ekubs.tr(context),
-                                  ),
-                                  const Icon(
-                                    Icons.arrow_drop_down,
-                                    color: AppColors.primary,
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          setState(() {
+                            isCredit = true;
+                          });
                         },
+                        icon: Icon(
+                          Icons.arrow_downward,
+                          size: 20,
+                          color: isCredit
+                              ? AppColors.primary
+                              : Colors.grey.shade400,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(width: 10),
+                  PopupMenuButton<String>(
+                    onSelected: (String value) {
+                      setState(() {
+                        selectedPayment = value;
+                      });
+                    },
+                    itemBuilder: (BuildContext context) {
+                      return ['bankTransfer', 'telebirr', 'cbe', 'awash']
+                          .map((String choice) {
+                        return PopupMenuItem<String>(
+                          value: choice,
+                          child: Text(
+                            choice,
+                            style: AppTextStyles.labelSmall,
+                          ),
+                        );
+                      }).toList();
+                    },
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF7F8FA),
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            selectedPayment.isNotEmpty
+                                ? (selectedPayment.length > 7
+                                    ? selectedPayment.substring(0, 7)
+                                    : selectedPayment)
+                                : AppKeys.payment.tr(context),
+                            style: AppTextStyles.captionMuted.copyWith(
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_drop_down,
+                            size: 18,
+                            color: Colors.grey.shade600,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
+              SizedBox(height: 10.h),
+              FutureBuilder<List<EkubList>>(
+                future: _ekubListFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4.h),
+                      child: SizedBox(
+                        width: 16.w,
+                        height: 16.w,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    );
+                  }
+
+                  final ekubList = snapshot.data ?? [];
+                  if (snapshot.hasError) {
+                    return Text(
+                      'Error loading equb list',
+                      style: AppTextStyles.captionMuted,
+                    );
+                  }
+                  if (ekubList.isEmpty) {
+                    return Text(
+                      AppKeys.noEkubs.tr(context),
+                      style: AppTextStyles.captionMuted,
+                    );
+                  }
+
+                  return SizedBox(
+                    height: 36.h,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _equbChip(
+                          label: AppKeys.all.tr(context),
+                          selected: selectedEkubId.isEmpty,
+                          onTap: () {
+                            setState(() {
+                              selectedEkubId = '';
+                            });
+                          },
+                        ),
+                        ...ekubList.map((ekub) {
+                          return Padding(
+                            padding: EdgeInsets.only(left: 8.w),
+                            child: _equbChip(
+                              label: ekub.ekubName,
+                              selected: selectedEkubId == ekub.ekubId,
+                              onTap: () {
+                                setState(() {
+                                  selectedEkubId = ekub.ekubId;
+                                });
+                              },
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              SizedBox(height: 8.h),
               FutureBuilder<PaymentsResponse?>(
                 future: getTransactionHistory(selectedPayment, selectedEkubId),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Align(
+                    return Align(
                       alignment: Alignment.center,
                       child: Padding(
-                        padding: EdgeInsets.all(38.0),
-                        child: SpinKitCircle(
-                          color: AppColors.primary,
-                          size: 50.0,
+                        padding: EdgeInsets.all(38.w),
+                        child: SizedBox(
+                          width: 24.w,
+                          height: 24.w,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                     );
                   } else if (snapshot.hasError) {
                     return Center(
                       child: Text(
-                          textScaleFactor: 1.0,
-                          AppKeys.errorTryAgain.tr(context)),
+                        AppKeys.errorTryAgain.tr(context),
+                        style: AppTextStyles.captionMuted,
+                      ),
                     );
                   } else if (!snapshot.hasData ||
                       snapshot.data?.paymentsMade.isEmpty == true) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(58.0),
+                        padding: EdgeInsets.all(58.w),
                         child: Text(
-                            textScaleFactor: 1.0,
-                            'No transaction history found'),
+                          'No transaction history found',
+                          style: AppTextStyles.captionMuted,
+                        ),
                       ),
                     );
                   } else {
-                    return Center(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: isCredit
-                            ? snapshot.data?.paymentsReceived.length
-                            : snapshot.data?.paymentsMade.length,
-                        itemBuilder: (context, index) {
-                          final equb = isCredit
-                              ? snapshot.data?.paymentsReceived[index]
-                              : snapshot.data?.paymentsMade[index];
-                          return ListTile(
-                            title: Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.indigoOverlay05,
-                                borderRadius:
-                                    const BorderRadius.all(Radius.circular(8)),
-                                border: Border.all(
-                                  color: isCredit
-                                      ? AppColors.primary
-                                      : AppColors
-                                          .red, // Assume paymentsMade are not "lottery"
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: isCredit
+                          ? snapshot.data?.paymentsReceived.length ?? 0
+                          : snapshot.data?.paymentsMade.length ?? 0,
+                      separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                      itemBuilder: (context, index) {
+                        final equb = isCredit
+                            ? snapshot.data?.paymentsReceived[index]
+                            : snapshot.data?.paymentsMade[index];
+                        return Container(
+                          padding: EdgeInsets.all(12.w),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7F8FA),
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            children: [
+                              _rowItem(
+                                AppKeys.ekubName.tr(context),
+                                equb?.equb.name ?? 'N/A',
+                              ),
+                              _rowItem(
+                                AppKeys.amount.tr(context),
+                                numberFormat.format(
+                                  double.parse(
+                                      equb?.amount.toStringAsFixed(2) ?? '0'),
                                 ),
                               ),
-                              child: ListTile(
-                                title: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              right: 8, top: 0),
-                                          child: Text(
-                                            textScaleFactor: 1.0,
-                                            AppKeys.ekubName.tr(context),
-                                            style: TextStyle(
-                                              color: AppColors.darkGrayBlue,
-                                              fontFamily: 'Poppins',
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            maxLines: 2,
-                                          ),
-                                        ),
-                                        Text(
-                                          textScaleFactor: 1.0,
-                                          equb?.equb.name ?? 'N/A',
-                                          style: const TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w400,
-                                            color: AppColors.darkGrayBlue,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              right: 6.0, top: 15),
-                                          child: Text(
-                                            textScaleFactor: 1.0,
-                                            AppKeys.amount.tr(context),
-                                            style: TextStyle(
-                                              color: AppColors.darkGrayBlue,
-                                              fontFamily: 'Poppins',
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 15.0),
-                                          child: Text(
-                                            textScaleFactor: 1.0,
-                                            numberFormat.format(
-                                              double.parse(equb?.amount
-                                                      .toStringAsFixed(2) ??
-                                                  '0'),
-                                            ),
-                                            style: const TextStyle(
-                                              fontFamily: 'Poppins',
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w400,
-                                              color: AppColors.darkGrayBlue,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              right: 6.0, top: 15),
-                                          child: Text(
-                                            textScaleFactor: 1.0,
-                                            AppKeys.paymentMethod.tr(context),
-                                            style: TextStyle(
-                                              color: AppColors.darkGrayBlue,
-                                              fontFamily: 'Poppins',
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 15.0),
-                                          child: Text(
-                                            textScaleFactor: 1.0,
-                                            equb?.paymentMethod ?? 'N/A',
-                                            style: const TextStyle(
-                                              fontFamily: 'Poppins',
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w400,
-                                              color: AppColors.darkGrayBlue,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Padding(
-                                          padding: EdgeInsets.only(
-                                              right: 6.0, top: 15),
-                                          child: Text(
-                                            textScaleFactor: 1.0,
-                                            AppKeys.date.tr(context),
-                                            style: TextStyle(
-                                              color: AppColors.darkGrayBlue,
-                                              fontFamily: 'Poppins',
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 15.0),
-                                          child: Text(
-                                            textScaleFactor: 1.0,
-                                            DateFormat('MMMM d, yyyy').format(
-                                                equb?.createdAt ??
-                                                    DateTime.now()),
-                                            style: const TextStyle(
-                                              fontFamily: 'Poppins',
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w400,
-                                              color: AppColors.darkGrayBlue,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                              _rowItem(
+                                AppKeys.paymentMethod.tr(context),
+                                equb?.paymentMethod ?? 'N/A',
                               ),
-                            ),
-                          );
-                        },
-                      ),
+                              _rowItem(
+                                AppKeys.date.tr(context),
+                                DateFormat('MMMM d, yyyy').format(
+                                    equb?.createdAt ?? DateTime.now()),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     );
                   }
                 },
               ),
-              const SizedBox(
-                height: 30,
-              )
-              // Align(
-              //   alignment: Alignment.bottomCenter,
-              //   child: CustomTextButton(
-              //     onPressed: () => Navigator.pop(context),
-              //     text: 'Back',
-              //   ),
-              // )
+              SizedBox(height: 30.h),
             ],
           ),
         ),

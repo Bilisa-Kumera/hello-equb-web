@@ -22,9 +22,13 @@ import 'package:helloequb/utils/custom_bottom_nav.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/provider/joined_equbs_status_provider.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
+import 'package:provider/provider.dart';
 
 import '../utils/secure_storage.dart';
 import 'allequb_payment.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class EqubCategoryScreen extends StatefulWidget {
   final String type, id;
@@ -170,6 +174,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: Container(
         decoration: const BoxDecoration(
           color: AppColors.white,
@@ -200,20 +205,12 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                     Text(
                       textScaleFactor: 1.0,
                       dataController.retrieveData<String>('fullName') ?? '',
-                      style: const TextStyle(
-                          color: AppColors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          fontFamily: 'Poppins'),
+                      style: AppTextStyles.poppins60013.copyWith(color: AppColors.white),
                     ),
                     Text(
                       textScaleFactor: 1.0,
                       AppKeys.welcomeBack.tr(context),
-                      style: TextStyle(
-                          color: AppColors.white,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w300,
-                          fontSize: 11.sp),
+                      style: AppTextStyles.poppins40011.copyWith(color: AppColors.white),
                     ),
                   ],
                 ),
@@ -257,12 +254,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                               filled: true,
                               hintText:
                                   AppKeys.whatAreYouLookingFor.tr(context),
-                              hintStyle: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
-                                color: AppColors.mediumGrayCool,
-                              ),
+                              hintStyle: AppTextStyles.poppins50012.copyWith(color: AppColors.mediumGrayCool),
                               suffixIcon: IconButton(
                                 onPressed: () {
                                   setState(() {
@@ -352,10 +344,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                       child: Text(
                                         textScaleFactor: 1.0,
                                         ekubs.first.equbCategory.name,
-                                        style: const TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700),
+                                        style: AppTextStyles.poppins70014,
                                       ),
                                     ),
                                   ],
@@ -417,14 +406,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                     .loadMore
                                                                     .tr(context),
                                                             style:
-                                                                const TextStyle(
-                                                              fontSize: 16,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color: AppColors
-                                                                  .white,
-                                                            ),
+                                                                AppTextStyles.bodyLarge,
                                                           ),
                                                         ),
                                                 );
@@ -546,16 +528,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                           //                     .toString() ??
                                                           //                 '0',
                                                           //             style:
-                                                          //                 const TextStyle(
-                                                          //               fontFamily:
-                                                          //                   'Poppins',
-                                                          //               fontWeight:
-                                                          //                   FontWeight.w400,
-                                                          //               fontSize:
-                                                          //                   12,
-                                                          //               color: AppColors
-                                                          //                   .white,
-                                                          //             ),
+                                                          //                 AppTextStyles.poppins40014,
                                                           //           ),
                                                           //         ),
                                                           //       ],
@@ -591,17 +564,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                         .numberOfEqubers
                                                                         .toString(),
                                                                     style:
-                                                                        const TextStyle(
-                                                                      fontFamily:
-                                                                          'Poppins',
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w400,
-                                                                      fontSize:
-                                                                          12,
-                                                                      color: AppColors
-                                                                          .white,
-                                                                    ),
+                                                                        AppTextStyles.caption,
                                                                   ),
                                                                 ],
                                                               ),
@@ -619,17 +582,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                   ekubs[index]
                                                                       .name,
                                                                   style:
-                                                                      const TextStyle(
-                                                                    fontFamily:
-                                                                        'Poppins',
-                                                                    fontSize:
-                                                                        16,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w600,
-                                                                    color: AppColors
-                                                                        .white,
-                                                                  ),
+                                                                      AppTextStyles.bodyLarge,
                                                                 ),
                                                                 SizedBox(
                                                                   width: 120.w,
@@ -645,16 +598,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                           ekubs[index]
                                                                               .numberOfEqubers),
                                                                       style:
-                                                                          TextStyle(
-                                                                        fontFamily:
-                                                                            'Poppins',
-                                                                        fontSize:
-                                                                            28.sp,
-                                                                        fontWeight:
-                                                                            FontWeight.w900,
-                                                                        color: AppColors
-                                                                            .white,
-                                                                      ),
+                                                                          AppTextStyles.poppins40028,
                                                                     ),
                                                                   ),
                                                                 ),
@@ -686,7 +630,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                 1.0,
                                                                             AppKeys.join.tr(context),
                                                                             style:
-                                                                                const TextStyle(color: AppColors.black),
+                                                                                AppTextStyles.poppins40014.copyWith(color: AppColors.black),
                                                                           ),
                                                                         ),
                                                                 ),
@@ -840,11 +784,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                               1.0,
                                                                           item[
                                                                               'title'],
-                                                                          style: const TextStyle(
-                                                                              fontFamily: 'Poppins',
-                                                                              fontWeight: FontWeight.w700,
-                                                                              fontSize: 14,
-                                                                              color: AppColors.neutralGray),
+                                                                          style: AppTextStyles.poppins70014.copyWith(color: AppColors.neutralGray),
                                                                         ),
                                                                         const SizedBox(
                                                                           height:
@@ -854,11 +794,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                           textScaleFactor:
                                                                               1.0,
                                                                           "${item['amount']}/",
-                                                                          style: const TextStyle(
-                                                                              color: AppColors.vibrantGreen,
-                                                                              fontFamily: 'Poppins',
-                                                                              fontSize: 11,
-                                                                              fontWeight: FontWeight.w700),
+                                                                          style: AppTextStyles.poppins70014.copyWith(color: AppColors.vibrantGreen),
                                                                         ),
                                                                         const SizedBox(
                                                                           height:
@@ -877,7 +813,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                             Text(
                                                                               textScaleFactor: 1.0,
                                                                               "${item['cycle']}",
-                                                                              style: const TextStyle(fontFamily: 'Poppins', fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.neutralGray),
+                                                                              style: AppTextStyles.poppins50011.copyWith(color: AppColors.neutralGray),
                                                                             ),
                                                                           ],
                                                                         ),
@@ -898,7 +834,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                         //     Text(
                                                                         //       textScaleFactor: 1.0,
                                                                         //       "${item['person']}",
-                                                                        //       style: const TextStyle(fontFamily: 'Poppins', fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.neutralGray),
+                                                                        //       style: AppTextStyles.poppins50011.copyWith(color: AppColors.neutralGray),
                                                                         //     ),
                                                                         //   ],
                                                                         // ),
@@ -927,7 +863,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                 Text(
                                                                               textScaleFactor: 1.0,
                                                                               item['buttonLabel'],
-                                                                              style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.white),
+                                                                              style: AppTextStyles.poppins50012.copyWith(color: AppColors.white),
                                                                             ),
                                                                           ),
                                                                         ),
@@ -1018,15 +954,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                             .loadMore
                                                                             .tr(context),
                                                                     style:
-                                                                        const TextStyle(
-                                                                      fontSize:
-                                                                          16,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .bold,
-                                                                      color: AppColors
-                                                                          .white,
-                                                                    ),
+                                                                        AppTextStyles.bodyLarge,
                                                                   ),
                                                                 ),
                                                         );
@@ -1147,12 +1075,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                   //               Text(
                                                                   //             textScaleFactor: 1.0,
                                                                   //             ekubs[index].equbers?.length.toString() ?? '0',
-                                                                  //             style: const TextStyle(
-                                                                  //               fontFamily: 'Poppins',
-                                                                  //               fontWeight: FontWeight.w400,
-                                                                  //               fontSize: 12,
-                                                                  //               color: AppColors.white,
-                                                                  //             ),
+                                                                  //             style: AppTextStyles.poppins40012.copyWith(color: AppColors.white),
                                                                   //           ),
                                                                   //         ),
                                                                   //       ],
@@ -1186,12 +1109,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                 1.0,
                                                                             ekubs[index].numberOfEqubers.toString(),
                                                                             style:
-                                                                                const TextStyle(
-                                                                              fontFamily: 'Poppins',
-                                                                              fontWeight: FontWeight.w400,
-                                                                              fontSize: 12,
-                                                                              color: AppColors.white,
-                                                                            ),
+                                                                                AppTextStyles.poppins40012.copyWith(color: AppColors.white),
                                                                           ),
                                                                         ],
                                                                       ),
@@ -1210,16 +1128,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                           ekubs[index]
                                                                               .name,
                                                                           style:
-                                                                              const TextStyle(
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                            fontSize:
-                                                                                16,
-                                                                            fontWeight:
-                                                                                FontWeight.w600,
-                                                                            color:
-                                                                                AppColors.white,
-                                                                          ),
+                                                                              AppTextStyles.poppins60016.copyWith(color: AppColors.white),
                                                                         ),
                                                                         SizedBox(
                                                                           width:
@@ -1232,12 +1141,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                 Text(
                                                                               textScaleFactor: 1.0,
                                                                               numberFormat.format(ekubs[index].ekubAmount * ekubs[index].numberOfEqubers),
-                                                                              style: TextStyle(
-                                                                                fontFamily: 'Poppins',
-                                                                                fontSize: 28.sp,
-                                                                                fontWeight: FontWeight.w900,
-                                                                                color: AppColors.white,
-                                                                              ),
+                                                                              style: AppTextStyles.poppins40028.copyWith(color: AppColors.white),
                                                                             ),
                                                                           ),
                                                                         ),
@@ -1262,7 +1166,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                   child: Text(
                                                                                     textScaleFactor: 1.0,
                                                                                     AppKeys.join.tr(context),
-                                                                                    style: const TextStyle(color: AppColors.black),
+                                                                                    style: AppTextStyles.poppins40014.copyWith(color: AppColors.black),
                                                                                   ),
                                                                                 ),
                                                                         ),
@@ -1413,15 +1317,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                             .loadMore
                                                                             .tr(context),
                                                                     style:
-                                                                        const TextStyle(
-                                                                      fontSize:
-                                                                          16,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .bold,
-                                                                      color: AppColors
-                                                                          .black,
-                                                                    ),
+                                                                        AppTextStyles.bodyLarge,
                                                                   ),
                                                                 ),
                                                         );
@@ -1544,12 +1440,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                   //               Text(
                                                                   //             textScaleFactor: 1.0,
                                                                   //             ekubs[index].equbers?.length.toString() ?? '0',
-                                                                  //             style: const TextStyle(
-                                                                  //               fontFamily: 'Poppins',
-                                                                  //               fontWeight: FontWeight.w400,
-                                                                  //               fontSize: 12,
-                                                                  //               color: AppColors.white,
-                                                                  //             ),
+                                                                  //             style: AppTextStyles.poppins40012.copyWith(color: AppColors.white),
                                                                   //           ),
                                                                   //         ),
                                                                   //       ],
@@ -1583,12 +1474,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                 1.0,
                                                                             ekubs[index].numberOfEqubers.toString(),
                                                                             style:
-                                                                                const TextStyle(
-                                                                              fontFamily: 'Poppins',
-                                                                              fontWeight: FontWeight.w400,
-                                                                              fontSize: 12,
-                                                                              color: AppColors.white,
-                                                                            ),
+                                                                                AppTextStyles.poppins40012.copyWith(color: AppColors.white),
                                                                           ),
                                                                         ],
                                                                       ),
@@ -1607,16 +1493,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                           ekubs[index]
                                                                               .name,
                                                                           style:
-                                                                              const TextStyle(
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                            fontSize:
-                                                                                16,
-                                                                            fontWeight:
-                                                                                FontWeight.w600,
-                                                                            color:
-                                                                                AppColors.white,
-                                                                          ),
+                                                                              AppTextStyles.poppins60016.copyWith(color: AppColors.white),
                                                                         ),
                                                                         SizedBox(
                                                                           width:
@@ -1629,12 +1506,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                 Text(
                                                                               textScaleFactor: 1.0,
                                                                               numberFormat.format(ekubs[index].ekubAmount * ekubs[index].numberOfEqubers),
-                                                                              style: TextStyle(
-                                                                                fontFamily: 'Poppins',
-                                                                                fontSize: 28.sp,
-                                                                                fontWeight: FontWeight.w900,
-                                                                                color: AppColors.white,
-                                                                              ),
+                                                                              style: AppTextStyles.poppins40028.copyWith(color: AppColors.white),
                                                                             ),
                                                                           ),
                                                                         ),
@@ -1659,7 +1531,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                   child: Text(
                                                                                     textScaleFactor: 1.0,
                                                                                     AppKeys.join.tr(context),
-                                                                                    style: const TextStyle(color: AppColors.black),
+                                                                                    style: AppTextStyles.poppins40014.copyWith(color: AppColors.black),
                                                                                   ),
                                                                                 ),
                                                                         ),
@@ -1728,38 +1600,18 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
           ],
         ),
       ),
-      bottomNavigationBar: CustomBottomNavigationBar(
-        currentIndex: 1,
-        onTap: (index) async {
-          switch (index) {
-            case 0:
-              final ekubCategorys = await loadEkubCategories();
-
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const PaymentList()));
-              break;
-            case 1:
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()));
-              break;
-            case 2:
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => TransactionHistory()));
-              break;
-            case 3:
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const ProfileScreen()));
-              break;
-            default:
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()));
-              break;
-          }
-          // Handle bottom navigation tab selection
+      bottomNavigationBar: Consumer<JoinedEqubsStatusProvider>(
+        builder: (context, joinStatus, _) {
+          final currentIndex = newEqubTabIndex(context);
+          return CustomBottomNavigationBar(
+            showMyEqubTab: joinStatus.hasJoinedEqubs,
+            currentIndex: currentIndex,
+            onTap: (index) => onMainBottomNavTap(
+              context,
+              tappedIndex: index,
+              currentIndex: currentIndex,
+            ),
+          );
         },
       ),
     );
