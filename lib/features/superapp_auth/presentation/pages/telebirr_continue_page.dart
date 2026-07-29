@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -6,17 +7,15 @@ import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/superapp/superapp_bridge.dart';
-import 'package:helloequb/core/superapp/superapp_diagnostics.dart';
 import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dart';
 import 'package:helloequb/features/superapp_auth/data/repositories/superapp_auth_repository_impl.dart';
 import 'package:helloequb/features/superapp_auth/domain/usecases/attempt_superapp_auto_login.dart';
 import 'package:helloequb/features/superapp_auth/presentation/bloc/superapp_auth_bloc.dart';
 import 'package:helloequb/features/superapp_auth/presentation/bloc/superapp_auth_event.dart';
 import 'package:helloequb/features/superapp_auth/presentation/bloc/superapp_auth_state.dart';
-import 'package:helloequb/features/superapp_auth/presentation/widgets/superapp_log_panel.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
-import 'package:flutter/services.dart';
 
 SuperAppAuthRepositoryImpl _createSuperAppRepo(SuperAppAuthConfig cfg) {
   final apiBase = cfg.apiBaseUrlOverride ?? '$baseUrl/';
@@ -67,18 +66,12 @@ class _TelebirrTokenGateView extends StatefulWidget {
 
 class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
   final List<_LogStep> _steps = [];
-  String? _appToken;
   String? _error;
   bool _canRetry = false;
+  bool _isAuthenticating = true;
   bool _isFromCbeBirr = false;
 
-  String? _authApiUrl;
-  Map<String, dynamic>? _authRequestBody;
-  Map<String, dynamic>? _authResponseBody;
-
   @override
-
-
   void initState() {
     super.initState();
     _steps.addAll([
@@ -103,11 +96,8 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
     setState(() {
       _error = null;
       _canRetry = false;
-      _appToken = null;
+      _isAuthenticating = true;
       _isFromCbeBirr = false;
-      _authApiUrl = null;
-      _authRequestBody = null;
-      _authResponseBody = null;
       for (final s in _steps) {
         s.status = _StepStatus.idle;
         s.detail = null;
@@ -118,7 +108,8 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
     final cbeBridge = createCbeBirrPlusBridge();
     if (cbeBridge.isAvailable) {
       AppLogger.log('CBEBirr Plus detected on Telebirr page');
-      final loggedIn = DataController().retrieveData<bool>('isLoggedIn') == true;
+      final loggedIn =
+          DataController().retrieveData<bool>('isLoggedIn') == true;
       if (!mounted) return;
       if (loggedIn) {
         context.go('/home');
@@ -131,6 +122,7 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
     if (widget.cfg.merchantAppId.trim().isEmpty) {
       setState(() => _error =
           'Missing merchant app id (set MERCHANT_APP_ID or SUPERAPP_APP_ID in .env).');
+      setState(() => _isAuthenticating = false);
       return;
     }
 
@@ -148,6 +140,7 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
       setState(() {
         _error = 'Not running inside Telebirr super app.';
         _canRetry = true;
+        _isAuthenticating = false;
       });
       return;
     }
@@ -162,8 +155,6 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
         merchantAppId: widget.cfg.merchantAppId.trim(),
       );
       if (!mounted) return;
-      appToken = appToken.replaceFirst(RegExp(r'^InApp:'), '');
-      setState(() => _appToken = appToken);
       _updateStep(1, _StepStatus.success,
           detail: 'Received ${appToken.length} chars');
       AppLogger.success('Telebirr app token received (len=${appToken.length})');
@@ -174,6 +165,7 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
       setState(() {
         _error = 'Failed to get Telebirr token.\n$e';
         _canRetry = true;
+        _isAuthenticating = false;
       });
       return;
     }
@@ -181,17 +173,8 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
     // ── Step 2: backend auto-login ────────────────────────────────────────────
     _updateStep(2, _StepStatus.loading);
     AppLogger.log('Telebirr: sending token to Hello Equb backend');
-    setState(() {
-      _authApiUrl = widget.cfg.telebirrGatewayAuthTokenUrl;
-      _authRequestBody = {'token': appToken};
-    });
     try {
-      await widget.repo.autoLoginTelebirrMiniApp(
-        appToken: appToken,
-        onResponse: (url, reqBody, resPayload) {
-          if (mounted) setState(() => _authResponseBody = resPayload);
-        },
-      );
+      await widget.repo.autoLoginTelebirrMiniApp(appToken: appToken);
       if (!mounted) return;
       _updateStep(2, _StepStatus.success, detail: 'Login successful');
       AppLogger.success('Telebirr backend auto-login completed');
@@ -202,18 +185,18 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
       setState(() {
         _error = 'Login failed.\n$e';
         _canRetry = true;
+        _isAuthenticating = false;
       });
       return;
     }
 
     // ── Step 3: navigate ──────────────────────────────────────────────────────
-    _updateStep(3, _StepStatus.success, detail: 'Ready to continue');
+    _updateStep(3, _StepStatus.success, detail: 'Redirecting to home');
+    context.go('/home');
   }
 
   @override
   Widget build(BuildContext context) {
-    final diag = createSuperAppDiagnostics().snapshot();
-
     return Scaffold(
       backgroundColor: AppColors.white,
       body: Center(
@@ -227,19 +210,16 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                 _TelebirrLogo(),
                 SizedBox(height: 18.h),
                 Text(
-                  'Telebirr Super App',
+                  'Continue with telebirr',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.deepForestGreen,
-                  ),
+                  style: AppTextStyles.poppins70022
+                      .copyWith(color: AppColors.deepForestGreen),
                 ),
                 SizedBox(height: 6.h),
                 Text(
-                  'Setting up your Hello Equb session…',
+                  'Setting up your Hello Equb session...',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13.sp, color: Colors.black54),
+                  style: AppTextStyles.subtitleMuted,
                 ),
                 SizedBox(height: 20.h),
                 if (_isFromCbeBirr) ...[
@@ -259,11 +239,8 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                         Text(
                           'This is rendering from CBE Birr Plus',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF7B5800),
-                          ),
+                          style: AppTextStyles.poppins60014
+                              .copyWith(color: const Color(0xFF7B5800)),
                         ),
                         SizedBox(height: 14.h),
                         SizedBox(
@@ -285,20 +262,11 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                     ),
                   ),
                 ] else ...[
-                  _StepLogPanel(steps: _steps),
-                  if (_authApiUrl != null) ...[
-                    SizedBox(height: 14.h),
-                    _AuthCallPanel(
-                      apiUrl: _authApiUrl!,
-                      requestBody: _authRequestBody ?? const {},
-                      responseBody: _authResponseBody,
-                    ),
-                  ],
-                  if (_appToken != null) ...[
-                    SizedBox(height: 14.h),
-                    _TokenPanel(
-                      title: 'App Token',
-                      token: _appToken!,
+                  if (_isAuthenticating && _error == null) ...[
+                    SizedBox(
+                      height: 28.w,
+                      width: 28.w,
+                      child: const CircularProgressIndicator(strokeWidth: 2.5),
                     ),
                   ],
                   if (_error != null) ...[
@@ -314,8 +282,7 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                       child: Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13.sp,
+                        style: AppTextStyles.poppins40013.copyWith(
                           color: Colors.red.shade700,
                           height: 1.4,
                         ),
@@ -341,10 +308,6 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                     ],
                   ],
                 ],
-                SizedBox(height: 20.h),
-                _DiagnosticsPanel(diag: diag),
-                SizedBox(height: 12.h),
-                const SuperAppLogPanel(title: 'Telebirr logs'),
               ],
             ),
           ),
@@ -395,6 +358,9 @@ class _TelebirrMiniAppLoginViewState extends State<_TelebirrMiniAppLoginView> {
     final savedPhoneNumber =
         DataController().retrieveData<String>('phoneNumber')?.trim() ?? '';
     _phoneController = TextEditingController(text: savedPhoneNumber);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _startLogin(context);
+    });
   }
 
   @override
@@ -405,7 +371,6 @@ class _TelebirrMiniAppLoginViewState extends State<_TelebirrMiniAppLoginView> {
 
   @override
   Widget build(BuildContext context) {
-    final diag = createSuperAppDiagnostics().snapshot();
     return BlocConsumer<SuperAppAuthBloc, SuperAppAuthState>(
       listener: (context, state) {
         if (state is SuperAppAuthSuccess) {
@@ -432,69 +397,58 @@ class _TelebirrMiniAppLoginViewState extends State<_TelebirrMiniAppLoginView> {
                     Text(
                       'Continue with Telebirr',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 22.sp,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.deepForestGreen,
-                      ),
+                    style: AppTextStyles.poppins70022
+                        .copyWith(color: AppColors.deepForestGreen),
                     ),
                     SizedBox(height: 10.h),
                     Text(
-                      'Confirm your phone number to continue.',
+                      'Signing you in with Telebirr...',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14.sp),
-                    ),
-                    SizedBox(height: 16.h),
-                    TextField(
-                      controller: _phoneController,
-                      enabled: !isLoading,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.done,
-                      decoration: InputDecoration(
-                        labelText: 'Phone number',
-                        hintText: '+2519...',
-                        prefixIcon: const Icon(Icons.phone_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                      ),
-                      onSubmitted: (_) => _startLogin(context),
+                      style: AppTextStyles.bodyMedium,
                     ),
                     SizedBox(height: 12.h),
                     if (error != null) ...[
                       Text(
                         error,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          color: Colors.red.shade700,
-                        ),
+                        style: AppTextStyles.poppins40013
+                            .copyWith(color: Colors.red.shade700),
                       ),
                       SizedBox(height: 10.h),
                     ],
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed:
-                            isLoading ? null : () => _startLogin(context),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12.h),
-                          child: isLoading
-                              ? SizedBox(
-                                  height: 18.h,
-                                  width: 18.h,
-                                  child: const CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Continue with Telebirr'),
+                    if (isLoading || error == null)
+                      Column(
+                        children: [
+                          SizedBox(
+                            height: 18.h,
+                            width: 18.h,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                          SizedBox(height: 12.h),
+                          Text(
+                            'Redirecting to home...',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (error != null)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed:
+                              isLoading ? null : () => _startLogin(context),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12.h),
+                            child: const Text('Retry'),
+                          ),
                         ),
                       ),
-                    ),
-                    SizedBox(height: 12.h),
-                    _DiagnosticsPanel(diag: diag),
-                    SizedBox(height: 12.h),
-                    const SuperAppLogPanel(title: 'Auth / Network logs'),
                   ],
                 ),
               ),
@@ -507,7 +461,7 @@ class _TelebirrMiniAppLoginViewState extends State<_TelebirrMiniAppLoginView> {
 
   void _startLogin(BuildContext context) {
     AppLogger.log(
-      'Continue with Telebirr tapped; sending backend login phone=${_phoneController.text.trim()} tokenLen=${widget.appToken.length}',
+      'Starting Telebirr backend login phone=${_phoneController.text.trim()} tokenLen=${widget.appToken.length}',
     );
     context.read<SuperAppAuthBloc>().add(
           SuperAppAuthStarted(
@@ -558,7 +512,7 @@ class _StepRow extends StatelessWidget {
         leading = SizedBox(
           width: 16.sp,
           height: 16.sp,
-          child: CircularProgressIndicator(
+          child: const CircularProgressIndicator(
             strokeWidth: 2,
             color: AppColors.deepForestGreen,
           ),
@@ -597,19 +551,14 @@ class _StepRow extends StatelessWidget {
               children: [
                 Text(
                   step.label,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w500,
-                    color: labelColor,
-                  ),
+                  style: AppTextStyles.poppins50013.copyWith(color: labelColor),
                 ),
                 if (step.detail != null)
                   Padding(
                     padding: EdgeInsets.only(top: 2.h),
                     child: Text(
                       step.detail!,
-                      style: TextStyle(
-                        fontSize: 11.sp,
+                      style: AppTextStyles.poppins40011.copyWith(
                         color: labelColor.withOpacity(0.75),
                         height: 1.3,
                       ),
@@ -661,11 +610,8 @@ class _TokenPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black54,
-                  ),
+                  style: AppTextStyles.poppins60012
+                      .copyWith(color: Colors.black54),
                 ),
               ),
               InkWell(
@@ -681,11 +627,8 @@ class _TokenPanel extends StatelessWidget {
                       SizedBox(width: 4.w),
                       Text(
                         'Copy',
-                        style: TextStyle(
-                          fontSize: 11.sp,
-                          color: AppColors.deepForestGreen,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTextStyles.poppins60011
+                            .copyWith(color: AppColors.deepForestGreen),
                       ),
                     ],
                   ),
@@ -696,8 +639,7 @@ class _TokenPanel extends StatelessWidget {
           SizedBox(height: 6.h),
           SelectableText(
             token,
-            style: TextStyle(
-              fontSize: 12.sp,
+            style: AppTextStyles.caption.copyWith(
               fontFamily: 'monospace',
               color: AppColors.deepForestGreen,
               height: 1.35,
@@ -706,7 +648,7 @@ class _TokenPanel extends StatelessWidget {
           SizedBox(height: 4.h),
           Text(
             '${token.length} chars',
-            style: TextStyle(fontSize: 10.sp, color: Colors.black38),
+            style: AppTextStyles.captionSmall.copyWith(color: Colors.black38),
           ),
         ],
       ),
@@ -730,10 +672,8 @@ class _TelebirrLogo extends StatelessWidget {
   }
 }
 
-class _DiagnosticsPanel extends StatelessWidget {
-  const _DiagnosticsPanel({required this.diag});
 
-  final Map<String, String> diag;
+  late final Map<String, String> diag;
 
   @override
   Widget build(BuildContext context) {
@@ -747,15 +687,12 @@ class _DiagnosticsPanel extends StatelessWidget {
       ),
       child: SelectableText(
         diag.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
-        style: TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 11.sp,
-          height: 1.25,
-        ),
+        style: AppTextStyles.poppins40011
+            .copyWith(fontFamily: 'monospace', height: 1.25),
       ),
     );
   }
-}
+
 
 // ─── Auth call inspector panel ────────────────────────────────────────────────
 
@@ -860,8 +797,7 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 10.sp,
+            style: AppTextStyles.captionSmall.copyWith(
               fontWeight: FontWeight.w700,
               color: AppColors.deepForestGreen,
               letterSpacing: 0.5,
@@ -871,11 +807,8 @@ class _SectionHeader extends StatelessWidget {
             SizedBox(width: 6.w),
             Text(
               value,
-              style: TextStyle(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w600,
-                color: valueColor ?? Colors.black54,
-              ),
+              style: AppTextStyles.statusBadge
+                  .copyWith(color: valueColor ?? Colors.black54),
             ),
           ],
         ],
@@ -895,9 +828,8 @@ class _MonoBlock extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(12.w, 2.h, 12.w, 8.h),
       child: SelectableText(
         text,
-        style: TextStyle(
+        style: AppTextStyles.captionSmall.copyWith(
           fontFamily: 'monospace',
-          fontSize: 10.sp,
           color: Colors.black87,
           height: 1.45,
         ),

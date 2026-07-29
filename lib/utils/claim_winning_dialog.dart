@@ -16,7 +16,10 @@ import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:helloequb/utils/secure_storage.dart';
+
+import 'style_constants.dart';
 
 class WinningDialog extends StatefulWidget {
   const WinningDialog({
@@ -122,12 +125,7 @@ class _WinningDialogState extends State<WinningDialog> {
           AppColors.primary,
         );
         await loadEkubCategories();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ActiveEqubsScreen(),
-          ),
-        );
+        await navigateToMainShell(context, initialIndex: 0);
       } else {
         CustomSnackBar.show(context, 'Submission failed', AppColors.red);
       }
@@ -215,11 +213,8 @@ class _WinningDialogState extends State<WinningDialog> {
                     child: Text(
                       'Spin ${widget.currentSpin} / ${widget.totalSpins}',
                       textScaleFactor: 1.0,
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
-                      ),
+                      style: AppTextStyles.poppins60012
+                          .copyWith(color: AppColors.primary),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -227,20 +222,15 @@ class _WinningDialogState extends State<WinningDialog> {
                     'Congratulations!',
                     textAlign: TextAlign.center,
                     textScaleFactor: 1.0,
-                    style: TextStyle(
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
-                    ),
+                    style: AppTextStyles.screenTitle
+                        .copyWith(color: AppColors.primary),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'Winner of ${widget.ekubName}',
                     textAlign: TextAlign.center,
                     textScaleFactor: 1.0,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w700,
+                    style: AppTextStyles.poppins70014.copyWith(
                       color: AppColors.black.withOpacity(0.72),
                     ),
                   ),
@@ -261,11 +251,8 @@ class _WinningDialogState extends State<WinningDialog> {
                           '${numberFormat.format(grossAmount)} ETB',
                           textAlign: TextAlign.center,
                           textScaleFactor: 1.0,
-                          style: TextStyle(
-                            fontSize: 28.sp,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.primary,
-                          ),
+                          style: AppTextStyles.poppins70028
+                              .copyWith(color: AppColors.primary),
                         ),
                         const SizedBox(height: 12),
                         _AmountRow(
@@ -329,7 +316,7 @@ class _WinningDialogState extends State<WinningDialog> {
                           ? Text(
                               '${AppKeys.selectedBank.tr(context)} $account',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 13.sp),
+                              style: AppTextStyles.bodySmall,
                             )
                           : Text(AppKeys.noData.tr(context));
                     },
@@ -347,10 +334,7 @@ class _WinningDialogState extends State<WinningDialog> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        textStyle: TextStyle(
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        textStyle: AppTextStyles.poppins60015,
                       ),
                       child: Text(AppKeys.claim.tr(context)),
                     ),
@@ -417,20 +401,14 @@ class _AmountRow extends StatelessWidget {
         Text(
           label,
           textScaleFactor: 1.0,
-          style: TextStyle(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
+          style: AppTextStyles.poppins60013.copyWith(
             color: AppColors.black.withOpacity(0.58),
           ),
         ),
         Text(
           value,
           textScaleFactor: 1.0,
-          style: TextStyle(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w800,
-            color: AppColors.black,
-          ),
+          style: AppTextStyles.poppins60013,
         ),
       ],
     );

@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:math';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/utils/colors_constant.dart';
@@ -15,8 +16,7 @@ import 'package:helloequb/screens/guarantor_screen.dart';
 import 'package:helloequb/screens/complete_profile_screen.dart';
 import 'package:helloequb/models/financial_info.dart';
 import '../core/api_service_elper.dart';
-import 'dart:math';
-import 'package:flutter/material.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  LotteryWheel
@@ -53,7 +53,6 @@ class _LotteryWheelState extends State<LotteryWheel>
 
   double _currentAngle = 0.0;
   bool _hasSpun = false;
-  bool _showPopup = false;
 
   @override
   void initState() {
@@ -62,31 +61,34 @@ class _LotteryWheelState extends State<LotteryWheel>
       vsync: this,
       duration: const Duration(milliseconds: 5500),
     )..addStatusListener(_onStatus);
-    _anim = _ctrl; // will be replaced in _startSpin
+    _anim = _ctrl;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _maybeStartSpin();
+    });
   }
 
   @override
   void didUpdateWidget(covariant LotteryWheel old) {
     super.didUpdateWidget(old);
-
-    // A new winner was pushed in — reset so it gets its own fresh spin.
-    if (old.winnerLotteryNumber != widget.winnerLotteryNumber) {
+    if (old.winnerLotteryNumber != widget.winnerLotteryNumber ||
+        old.isTimeUp != widget.isTimeUp) {
       _hasSpun = false;
-      _showPopup = false;
-      _ctrl.reset();
-      _currentAngle = 0;
+      if (!_ctrl.isAnimating) {
+        _ctrl.reset();
+        _currentAngle = 0;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _maybeStartSpin();
+      });
     }
-
-    _maybeStartSpin();
   }
 
   void _maybeStartSpin() {
-    if (widget.isTimeUp &&
-        widget.winnerLotteryNumber != null &&
-        !_hasSpun &&
-        !_ctrl.isAnimating) {
-      _startSpin();
-    }
+    if (!widget.isTimeUp) return;
+    if (widget.winnerLotteryNumber == null) return;
+    if (_hasSpun || _ctrl.isAnimating) return;
+    if (widget.lotteryNumbers.isEmpty) return;
+    _startSpin();
   }
 
   // ── Compute the exact rotation that lands the winner under the pointer ──
@@ -126,13 +128,10 @@ class _LotteryWheelState extends State<LotteryWheel>
   void _onStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
       _currentAngle = _anim.value;
-      setState(() => _showPopup = true);
+      Future.delayed(const Duration(milliseconds: 450), () {
+        if (mounted) widget.onSpinComplete?.call();
+      });
     }
-  }
-
-  void _closePopup() {
-    setState(() => _showPopup = false);
-    widget.onSpinComplete?.call();
   }
 
   @override
@@ -165,18 +164,8 @@ class _LotteryWheelState extends State<LotteryWheel>
           },
         ),
 
-        // ── Winner popup ──
-        if (_showPopup)
-          Positioned.fill(
-            child: _WinnerPopup(
-              winnerNumber: widget.winnerLotteryNumber!,
-              hasNextWinner: widget.hasNextWinner,
-              onClose: _closePopup,
-            ),
-          ),
-
         // ── Confetti ──
-        if (_showPopup)
+        if (_ctrl.isAnimating || _ctrl.status == AnimationStatus.completed)
           Positioned.fill(
             child: IgnorePointer(
               child: _ConfettiLayer(
@@ -192,6 +181,47 @@ class _LotteryWheelState extends State<LotteryWheel>
 // ─────────────────────────────────────────────────────────────────────────────
 //  AnimatedWheelPainter  — pure CustomPainter, no state
 // ─────────────────────────────────────────────────────────────────────────────
+
+double _wheelLabelRadius(double radius, int segmentCount) {
+  if (segmentCount <= 24) return radius - 14;
+  if (segmentCount <= 48) return radius - 10;
+  if (segmentCount <= 80) return radius - 8;
+  return radius * 0.9;
+}
+
+double _wheelCenterRadius(double radius, int segmentCount) {
+  if (segmentCount <= 24) return 40;
+  if (segmentCount <= 64) return 32;
+  return max(22, radius * 0.12);
+}
+
+double _wheelLabelFontSize({
+  required int segmentCount,
+  required double labelRadius,
+  required int maxLabelLength,
+}) {
+  final seg = 2 * pi / segmentCount;
+  final arcWidth = labelRadius * seg * 0.9;
+
+  double baseSize;
+  if (segmentCount <= 12) {
+    baseSize = 13;
+  } else if (segmentCount <= 24) {
+    baseSize = 11;
+  } else if (segmentCount <= 48) {
+    baseSize = 8.5;
+  } else if (segmentCount <= 80) {
+    baseSize = 6.5;
+  } else if (segmentCount <= 100) {
+    baseSize = 5.5;
+  } else {
+    baseSize = 4.5;
+  }
+
+  final fitByArc = arcWidth / (maxLabelLength * 0.58);
+  return max(4.0, min(baseSize, fitByArc));
+}
+
 class AnimatedWheelPainter extends CustomPainter {
   final List<int> lotteryNumbers;
   final double angle;
@@ -218,6 +248,20 @@ class AnimatedWheelPainter extends CustomPainter {
         (isTimeUp && winnerLotteryNumber != null) ? angle : 0.0;
 
     final seg = 2 * pi / segmentCount;
+    final labelRadius = _wheelLabelRadius(r, segmentCount);
+    final centerRadius = _wheelCenterRadius(r, segmentCount);
+    final maxLabelLength = lotteryNumbers
+        .map((number) => number.toString().length)
+        .fold(1, max);
+    final labelFontSize = _wheelLabelFontSize(
+      segmentCount: segmentCount,
+      labelRadius: labelRadius,
+      maxLabelLength: maxLabelLength,
+    );
+    final labelStyle = AppTextStyles.poppins70014.copyWith(
+      fontSize: labelFontSize,
+      height: 1,
+    );
 
     final greenPaint = Paint()..color = const Color.fromARGB(255, 8, 162, 246);
     final whitePaint = Paint()..color = Colors.white;
@@ -249,20 +293,21 @@ class AnimatedWheelPainter extends CustomPainter {
       canvas.drawPath(path, borderPaint);
 
       final mid = start + seg / 2;
-      final tx = cx + (r - 14) * cos(mid);
-      final ty = cy + (r - 14) * sin(mid);
+      final tx = cx + labelRadius * cos(mid);
+      final ty = cy + labelRadius * sin(mid);
+      final maxLabelWidth = labelRadius * seg * 0.88;
 
       final tp = TextPainter(
         text: TextSpan(
           text: '${lotteryNumbers[i]}',
-          style: TextStyle(
-            fontSize: 7,
-            fontWeight: FontWeight.bold,
+          style: labelStyle.copyWith(
             color: i % 2 == 0 ? Colors.white : Colors.black87,
           ),
         ),
         textDirection: TextDirection.ltr,
-      )..layout();
+        textAlign: TextAlign.center,
+        maxLines: 1,
+      )..layout(maxWidth: maxLabelWidth);
 
       canvas.save();
       canvas.translate(tx, ty);
@@ -276,7 +321,7 @@ class AnimatedWheelPainter extends CustomPainter {
     // ── Center circle ──
     canvas.drawCircle(
       Offset(cx, cy),
-      40,
+      centerRadius,
       Paint()..color = const Color.fromARGB(255, 10, 159, 245),
     );
 
@@ -296,103 +341,6 @@ class AnimatedWheelPainter extends CustomPainter {
       old.lotteryNumbers != lotteryNumbers ||
       old.isTimeUp != isTimeUp ||
       old.winnerLotteryNumber != winnerLotteryNumber;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Winner popup
-// ─────────────────────────────────────────────────────────────────────────────
-class _WinnerPopup extends StatelessWidget {
-  final int winnerNumber;
-  final bool hasNextWinner;
-  final VoidCallback onClose;
-  const _WinnerPopup({
-    required this.winnerNumber,
-    required this.hasNextWinner,
-    required this.onClose,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black45,
-      alignment: Alignment.center,
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 32),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.18),
-                blurRadius: 32,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('🏆', style: TextStyle(fontSize: 52)),
-              const SizedBox(height: 8),
-              Text(
-                AppKeys.weHaveAWinner.tr(context),
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1B5E20),
-                  fontFamily: 'Poppins',
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                AppKeys.luckyLotteryNumber.tr(context),
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black54,
-                  fontFamily: 'Poppins',
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '$winnerNumber',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E7D32),
-                  fontFamily: 'Poppins',
-                  height: 1,
-                ),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
-                  ),
-                ),
-                onPressed: onClose,
-                child: Text(
-                  hasNextWinner
-                      ? AppKeys.next.tr(context)
-                      : AppKeys.close.tr(context),
-                  style: const TextStyle(fontSize: 15, fontFamily: 'Poppins'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -553,23 +501,64 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
   late Duration _remaining;
   Timer? _timer;
   BankAccount? _selectedAccount;
+  late List<Lottery> _lotteries;
 
   @override
   void initState() {
     super.initState();
     _remaining = widget.remainingTime;
     _selectedAccount = widget.selectedAccount;
+    _lotteries = List<Lottery>.from(widget.lotteries);
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() {
-        if (_remaining.inSeconds > 0) {
-          _remaining -= const Duration(seconds: 1);
-        } else {
+      if (_remaining.inSeconds > 0) {
+        final next = _remaining - const Duration(seconds: 1);
+        setState(() {
+          _remaining = next.isNegative ? Duration.zero : next;
+        });
+        if (next.inSeconds <= 0) {
           _timer?.cancel();
+          // Countdown just ended — backend may need a moment to save the winner.
+          _refreshLotteries();
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) _refreshLotteries();
+          });
+          Future.delayed(const Duration(seconds: 5), () {
+            if (mounted) _refreshLotteries();
+          });
         }
-      });
+      } else {
+        _timer?.cancel();
+      }
     });
+
+    // Always load the latest winners when opening this page.
+    _refreshLotteries();
+  }
+
+  Future<void> _refreshLotteries() async {
+    try {
+      final token = await SecureStorageHelper.getAccessToken() ?? '';
+      final res = await Dio().get(
+        ekubLotteriesUrl + widget.ekubId,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (!mounted) return;
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final lotteries = (res.data['data']['lotteries'] as List<dynamic>)
+            .map((e) => Lottery.fromJson(e))
+            .toList();
+        lotteries.sort((a, b) {
+          final aR = a.users.isNotEmpty ? a.users.first.round : 0;
+          final bR = b.users.isNotEmpty ? b.users.first.round : 0;
+          return aR.compareTo(bR);
+        });
+        setState(() => _lotteries = lotteries);
+      }
+    } catch (_) {
+      // Keep the previously loaded list on failure.
+    }
   }
 
   @override
@@ -579,7 +568,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
   }
 
   List<User> get _allUsers =>
-      widget.lotteries.expand((lottery) => lottery.users).toList();
+      _lotteries.expand((lottery) => lottery.users).toList();
 
   int? get _latestRound {
     final users = _allUsers;
@@ -650,6 +639,8 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
 
   Future<void> _handleClaim(User user) async {
     if (user.hasClaimed) return;
+    // TODO: re-enable claim flow (guarantor navigation)
+    return;
 
     final accessToken = await SecureStorageHelper.getAccessToken() ?? '';
     final apiService = ApiService();
@@ -725,18 +716,13 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.vibrantGreen),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.vibrantGreen),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           AppKeys.lotteries.tr(context),
           textScaleFactor: 1.0,
-          style: const TextStyle(
-            color: AppColors.neutralGray,
-            fontFamily: 'Poppins',
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
+          style: AppTextStyles.poppins70016.copyWith(color: AppColors.neutralGray),
         ),
       ),
       body: visibleUsers.isEmpty
@@ -812,12 +798,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                             Text(
                               user.lotteryNumber,
                               textScaleFactor: 1.0,
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.neutralGray,
-                              ),
+                              style: AppTextStyles.poppins40015.copyWith(color: AppColors.neutralGray),
                             ),
                             const SizedBox(height: 5),
                             Container(
@@ -832,12 +813,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                               child: Text(
                                 statusText,
                                 textScaleFactor: 1.0,
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: statusColor,
-                                ),
+                                style: AppTextStyles.poppins60011,
                               ),
                             ),
                           ],
@@ -871,11 +847,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                                           ? AppKeys.claimed.tr(context)
                                           : AppKeys.claim.tr(context),
                                   textScaleFactor: 1.0,
-                                  style: TextStyle(
-                                    color: AppColors.white,
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  style: AppTextStyles.poppins70014.copyWith(color: AppColors.white),
                                 ),
                               ),
                             )
@@ -891,12 +863,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                               child: Text(
                                 '${AppKeys.round.tr(context)} ${user.round}',
                                 textScaleFactor: 1.0,
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color.fromRGBO(91, 92, 92, 1),
-                                ),
+                                style: AppTextStyles.bodySmall,
                               ),
                             ),
                     ],
@@ -924,23 +891,13 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
           AppKeys.winnersWillAppearHere.tr(context),
           textScaleFactor: 1.0,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: compact ? 14 : 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.neutralGray,
-          ),
+          style: AppTextStyles.poppins40014.copyWith(color: AppColors.neutralGray),
         ),
         const SizedBox(height: 8),
         Text(
           '$minutes:$seconds',
           textScaleFactor: 1.0,
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: compact ? 20 : 28,
-            fontWeight: FontWeight.w800,
-            color: AppColors.vibrantGreen,
-          ),
+          style: AppTextStyles.poppins40014.copyWith(color: AppColors.vibrantGreen),
         ),
       ],
     );
@@ -1020,25 +977,14 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                 AppKeys.noWinnersYet.tr(context),
                 textScaleFactor: 1.0,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.neutralGray,
-                ),
+                style: AppTextStyles.poppins40018.copyWith(color: AppColors.neutralGray),
               ),
               const SizedBox(height: 8),
               Text(
                 AppKeys.winnersWillAppearHere.tr(context),
                 textScaleFactor: 1.0,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.neutralGray.withOpacity(0.65),
-                  height: 1.5,
-                ),
+                style: AppTextStyles.poppins40013.copyWith(color: AppColors.neutralGray, height: 1.5),
               ),
             ],
           ),

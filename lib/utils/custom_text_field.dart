@@ -2,6 +2,8 @@ import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'style_constants.dart';
+
 class CustomTextField extends StatelessWidget {
   final double width;
   final double height;
@@ -55,12 +57,8 @@ class CustomTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hintText,
             border: InputBorder.none,
-            hintStyle: TextStyle(
-              fontFamily: 'Urbanist',
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: AppColors.coolGray,
-            ),
+            hintStyle: AppTextStyles.poppins50014
+                .copyWith(color: AppColors.coolGray),
           ),
         ),
       ),
@@ -119,11 +117,8 @@ class _PasswordTextFieldState extends State<PasswordTextField> {
           decoration: InputDecoration(
             hintText: widget.hintText,
             border: InputBorder.none,
-            hintStyle: const TextStyle(
-              fontFamily: 'Urbanist',
-              fontSize: 15,
-              color: AppColors.coolGray,
-            ),
+            hintStyle: AppTextStyles.poppins40014
+                .copyWith(color: AppColors.coolGray),
             suffixIcon: IconButton(
               icon: Icon(
                 _obscureText ? Icons.visibility : Icons.visibility_off,

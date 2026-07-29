@@ -18,12 +18,17 @@ class PendingEqub {
   final double serviceCharge;
   final DateTime startDate;
   final DateTime? endDate;
+  final String? ethiopianStartDate;
+  final String? ethiopianEndDate;
   final String? nextRoundDate;
   final String? nextRoundTime;
   final String state;
   final String branchId;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// When the current user joined this equb (from their payments), if known.
+  final DateTime? userJoinedAt;
 
   final EqubType? equbType;
   final EqubCategoryss? equbCategory;
@@ -48,19 +53,62 @@ class PendingEqub {
     required this.serviceCharge,
     required this.startDate,
     this.endDate,
+    this.ethiopianStartDate,
+    this.ethiopianEndDate,
     this.nextRoundDate,
     this.nextRoundTime,
     required this.state,
     required this.branchId,
     required this.createdAt,
     required this.updatedAt,
+    this.userJoinedAt,
     this.equbType,
     this.equbCategory,
     this.equbers,
     this.branch,
   });
 
-  factory PendingEqub.fromJson(Map<String, dynamic> json) {
+  /// Earliest payment by [currentUserId] on this equb ≈ when they joined.
+  static DateTime? joinedAtFromJson(
+      Map<String, dynamic> json, String? currentUserId) {
+    if (currentUserId == null || currentUserId.isEmpty) return null;
+    final payments = json['Payment'] ?? json['payments'];
+    if (payments is! List) return null;
+
+    DateTime? earliestRegistering;
+    DateTime? earliestAny;
+    for (final raw in payments) {
+      if (raw is! Map) continue;
+      if (raw['userId']?.toString() != currentUserId) continue;
+      final created = DateTime.tryParse(raw['createdAt']?.toString() ?? '');
+      if (created == null) continue;
+      final type = raw['type']?.toString().toLowerCase() ?? '';
+      if (type.contains('registering')) {
+        if (earliestRegistering == null ||
+            created.isBefore(earliestRegistering)) {
+          earliestRegistering = created;
+        }
+      }
+      if (earliestAny == null || created.isBefore(earliestAny)) {
+        earliestAny = created;
+      }
+    }
+    return earliestRegistering ?? earliestAny;
+  }
+
+  /// Newest join first. Falls back to equb [createdAt] when join time is unknown.
+  static void sortByLatestJoined(List<PendingEqub> equbs) {
+    equbs.sort((a, b) {
+      final aDate = a.userJoinedAt ?? a.createdAt;
+      final bDate = b.userJoinedAt ?? b.createdAt;
+      return bDate.compareTo(aDate);
+    });
+  }
+
+  factory PendingEqub.fromJson(
+    Map<String, dynamic> json, {
+    String? currentUserId,
+  }) {
     return PendingEqub(
       id: json['id'],
       name: json['name'],
@@ -79,12 +127,15 @@ class PendingEqub {
       serviceCharge: (json['serviceCharge'] as num).toDouble(),
       startDate: DateTime.parse(json['startDate']),
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+      ethiopianStartDate: json['ethiopianStartDate'] as String?,
+      ethiopianEndDate: json['ethiopianEndDate'] as String?,
       nextRoundDate: json['nextRoundDate'],
       nextRoundTime: json['nextRoundTime'],
       state: json['state'],
       branchId: json['branchId'],
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
+      userJoinedAt: joinedAtFromJson(json, currentUserId),
       equbType:
           json['equbType'] != null ? EqubType.fromJson(json['equbType']) : null,
       equbCategory: json['equbCategory'] != null
@@ -101,13 +152,19 @@ class PendingEqub {
 class EqubType {
   final String id;
   final String name;
+  final int? interval;
 
-  EqubType({required this.id, required this.name});
+  EqubType({
+    required this.id,
+    required this.name,
+    this.interval,
+  });
 
   factory EqubType.fromJson(Map<String, dynamic> json) {
     return EqubType(
       id: json['id'],
       name: json['name'],
+      interval: json['interval'] as int?,
     );
   }
 }

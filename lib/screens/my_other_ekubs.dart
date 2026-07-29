@@ -2,21 +2,24 @@
 
 import 'package:dio/dio.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/models/ekub_category_model.dart';
 import 'package:helloequb/models/financeandothermodel.dart' as f;
-import 'package:helloequb/screens/home_screen.dart';
 import 'package:helloequb/screens/my_ekub_detail_screen.dart';
-import 'package:helloequb/screens/profile_screen.dart';
+import 'package:helloequb/screens/join_ekub_detail.dart';
+import 'package:helloequb/screens/payment_arrangement_screen.dart';
+import 'package:intl/intl.dart';
 import 'package:helloequb/screens/saving_ekub_detail.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_bottom_nav.dart';
 import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:provider/provider.dart';
+import 'package:helloequb/provider/joined_equbs_status_provider.dart';
 import 'package:helloequb/provider/equb_type_provider.dart' as type_provider;
 import 'package:helloequb/provider/equb_category_provider.dart';
 import 'package:helloequb/provider/getmyequb_provider.dart';
@@ -24,13 +27,17 @@ import 'package:helloequb/screens/my_equb_screen.dart';
 
 import 'package:helloequb/utils/getx_storage_custom.dart' show DataController;
 import 'package:helloequb/utils/lang_constants.dart' show AppKeys;
+import 'package:helloequb/utils/equb_type_localization.dart';
+import 'package:helloequb/utils/equb_date_utils.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 
 import '../utils/secure_storage.dart';
-import 'allequb_payment.dart';
 import 'pending_equbs_screen.dart';
 
 class ActiveEqubsScreen extends StatefulWidget {
-  const ActiveEqubsScreen({super.key});
+  final bool embedInShell;
+
+  const ActiveEqubsScreen({super.key, this.embedInShell = false});
 
   @override
   _ActiveEqubsScreenState createState() => _ActiveEqubsScreenState();
@@ -43,6 +50,8 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
   TabController? _categoryTabController;
   int selectedCategoryIndex = 0;
   bool _hasFetchedInitial = false;
+  bool _isBootstrapping = false;
+  bool _isOpeningQuickPayment = false;
 
   @override
   void initState() {
@@ -50,6 +59,13 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
     stopProgressAfterDelay();
     loadEkubCategories();
     _mainTabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _bootstrapScreen();
+      if (widget.embedInShell) {
+        context.read<JoinedEqubsStatusProvider>().refresh();
+      }
+    });
   }
 
   @override
@@ -136,8 +152,13 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
         if (urls == null) {}
         List<dynamic> pendingEqubsJson = response.data['data']['equbs'];
         totalEqubs = pendingEqubsJson.length;
-        List<PendingEqub> freshData =
-            pendingEqubsJson.map((json) => PendingEqub.fromJson(json)).toList();
+        List<PendingEqub> freshData = pendingEqubsJson
+            .map((json) => PendingEqub.fromJson(
+                  json as Map<String, dynamic>,
+                  currentUserId: userId,
+                ))
+            .toList();
+        PendingEqub.sortByLatestJoined(freshData);
 
         EqubCache.set(cacheKey, freshData);
         totalEqubs = freshData.length;
@@ -158,52 +179,133 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
   bool progress = true;
   void stopProgressAfterDelay() {
     Future.delayed(const Duration(seconds: 7), () {
-      setState(() {
+      // setState(() {
         progress = false;
-      });
+      // });
     });
   }
 
   int ekubTypeIndex = 0;
   int selectedEqubTypeIndex = 0;
 
-  void _fetchEqubsForCurrentSelection(
+  List<EqubCategory> _filteredCategories(
+      BuildContext context, List<EqubCategory> categories) {
+    return [
+      EqubCategory(
+        id: '',
+        name: AppKeys.all.tr(context),
+        createdAt: '',
+        description: '',
+        hasReason: false,
+        needsRequest: false,
+        state: '',
+        updatedAt: '',
+      ),
+      ...categories,
+    ];
+  }
+
+  Future<void> _bootstrapScreen() async {
+    if (_isBootstrapping || !mounted) return;
+    _isBootstrapping = true;
+
+    try {
+      final typeProvider = context.read<type_provider.EqubTypeProvider>();
+      final categoryProvider = context.read<EqubCategoryProvider>();
+
+      final bootstrapTasks = <Future<void>>[];
+      if (typeProvider.equbTypes == null || typeProvider.equbTypes!.isEmpty) {
+        bootstrapTasks.add(typeProvider.fetchEqubTypes());
+      }
+      if (categoryProvider.equbCategories == null ||
+          categoryProvider.equbCategories!.isEmpty) {
+        final categoriesFuture = categoryProvider.fetchEqubCategories();
+        if (categoriesFuture != null) {
+          bootstrapTasks.add(categoriesFuture);
+        }
+      }
+
+      if (bootstrapTasks.isNotEmpty) {
+        await Future.wait(bootstrapTasks);
+      }
+
+      if (!mounted) return;
+      await _fetchInitialEqubsIfNeeded();
+    } finally {
+      _isBootstrapping = false;
+    }
+  }
+
+  Future<void> _fetchInitialEqubsIfNeeded() async {
+    if (!mounted || _hasFetchedInitial) return;
+
+    final typeProvider = context.read<type_provider.EqubTypeProvider>();
+    final categoryProvider = context.read<EqubCategoryProvider>();
+
+    final types =
+        typeProvider.equbTypes?.where((t) => t.id != null).toList() ?? [];
+    if (types.isEmpty) return;
+
+    final categories = categoryProvider.equbCategories
+            ?.where((c) => c.id != null)
+            .toList() ??
+        [];
+    final filteredCategories = _filteredCategories(context, categories);
+
+    _hasFetchedInitial = true;
+    await _fetchEqubsForCurrentSelection(
+      context,
+      types,
+      filteredCategories,
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _fetchEqubsForCurrentSelection(
       BuildContext context, List types, List filteredCategories) async {
     final getMyEqubProvider =
         Provider.of<GetMyEqubProvider>(context, listen: false);
     final userId = await SecureStorageHelper.getUserId() ?? '';
     final typeId = types[selectedEqubTypeIndex].id ?? '';
-    
+
     // Ensure selectedCategoryIndex is valid
     final safeCategoryIndex = selectedCategoryIndex < filteredCategories.length
         ? selectedCategoryIndex
         : 0;
     final catId = filteredCategories[safeCategoryIndex].id ?? '';
-    
+
     if (typeId.isNotEmpty && userId.isNotEmpty) {
-      getMyEqubProvider.fetchEqubs(
+      await getMyEqubProvider.fetchEqubs(
         equbTypeId: typeId,
         equbCategoryId: catId,
         userId: userId,
       );
+
+      if (!mounted || !widget.embedInShell) return;
+
+      final active = getMyEqubProvider.equbs
+          .where((equb) =>
+              equb.status.trim().toLowerCase() != AppKeys.completed)
+          .toList();
+      context.read<JoinedEqubsStatusProvider>().syncFromPendingEqubs(active);
+
+      if (mounted) {
+        setState(() {});
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-        return false;
-      },
-      child: Scaffold(
+    final scaffold = Scaffold(
+        extendBody: !widget.embedInShell,
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(120),
+          preferredSize: Size.fromHeight(140.h),
           child: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -211,13 +313,13 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 16,
-                  offset: Offset(0, 4),
-                ),
-              ],
+              // boxShadow: [
+              //   BoxShadow(
+              //     color: Colors.black26,
+              //     blurRadius: 16,
+              //     offset: Offset(0, 4),
+              //   ),
+              // ],
             ),
             child: SafeArea(
               child: Padding(
@@ -227,32 +329,25 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                   children: [
                     Text(
                       AppKeys.myEkub.tr(context),
-                      style: TextStyle(
-                        fontFamily: 'Urbanist',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 32.sp,
+                      style: AppTextStyles.appBarTitle.copyWith(
                         color: Colors.white,
                         letterSpacing: 0.5,
                       ),
                     ),
                     SizedBox(height: 4.h),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Text(
                           AppKeys.trackAll.tr(context),
-                          style: TextStyle(
-                            fontFamily: 'Urbanist',
-                            fontWeight: FontWeight.w400,
-                            fontSize: 16.sp,
+                          style: AppTextStyles.appBarSubtitle.copyWith(
                             color: Colors.white70,
                           ),
                         ),
-                        Center(
+                        SizedBox(width: 20.h),
+                        Expanded(
                           child: TextButton(
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 12),
                               foregroundColor: AppColors.primary,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -270,20 +365,17 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                               children: [
                                 Icon(Icons.pending_actions,
                                     size: 20.r, color: AppColors.white),
-                                SizedBox(width: 8.w),
-                                Text(
-                                  AppKeys.pendingEkubs.tr(context).length > 10
-                                      ? AppKeys.pendingEkubs
-                                          .tr(context)
-                                          .substring(0, 10)
-                                      : AppKeys.pendingEkubs.tr(context),
-                                  style: TextStyle(
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.white,
-                                    letterSpacing: 0.3,
+                                SizedBox(width: 4.w),
+                                Expanded(
+                                  child: Text(AppKeys.pendingEkubs.tr(context),
+                                    maxLines: 1,
+                                    style: AppTextStyles.listTitle.copyWith(
+                                      color: AppColors.white,
+                                      letterSpacing: 0.3,
+                                      overflow: TextOverflow.ellipsis
+                                    ),
+                                    overflow: TextOverflow.clip,
                                   ),
-                                  overflow: TextOverflow.clip,
                                 ),
                               ],
                             ),
@@ -298,41 +390,37 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
           ),
         ),
         body: _buildTabContent(0, url: null),
-        bottomNavigationBar: CustomBottomNavigationBar(
-          currentIndex: 1,
-          onTap: (index) async {
-            switch (index) {
-              case 0:
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const HomeScreen()));
+        bottomNavigationBar: widget.embedInShell
+            ? null
+            : Consumer<JoinedEqubsStatusProvider>(
+                builder: (context, joinStatus, _) {
+                  const currentIndex = 0;
+                  return CustomBottomNavigationBar(
+                    showMyEqubTab: joinStatus.hasJoinedEqubs,
+                    currentIndex: currentIndex,
+                    onTap: (index) => onMainBottomNavTap(
+                      context,
+                      tappedIndex: index,
+                      currentIndex: currentIndex,
+                    ),
+                  );
+                },
+              ),
+      );
 
-                break;
-              case 1:
-                break;
-              case 2:
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const PaymentList()));
-                break;
-              case 3:
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const ProfileScreen()));
-                break;
-              default:
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const HomeScreen()));
-                break;
-            }
-          },
-        ),
-      ),
+    if (widget.embedInShell) {
+      return scaffold;
+    }
+
+    return WillPopScope(
+      onWillPop: () async {
+        await navigateToMainShell(
+          context,
+          initialIndex: newEqubTabIndex(context),
+        );
+        return false;
+      },
+      child: scaffold,
     );
   }
 
@@ -348,11 +436,410 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
     return null;
   }
 
+  String _formatEqubDate(DateTime? date) {
+    if (date == null) return '-';
+    return DateFormat('dd MMM yyyy').format(date.toLocal());
+  }
+
+  DateTime? _resolveEqubEndDate(PendingEqub equb) {
+    if (equb.endDate != null) return equb.endDate;
+
+    final types = context.read<type_provider.EqubTypeProvider>().equbTypes;
+    type_provider.EqubType? providerType;
+    if (types != null) {
+      for (final t in types) {
+        if (t.id == equb.equbTypeId) {
+          providerType = t;
+          break;
+        }
+      }
+    }
+
+    return calculateEqubEndDate(
+      startDate: equb.startDate,
+      numberOfRounds: equb.numberOfEqubers,
+      intervalDays: equb.equbType?.interval ?? providerType?.interval,
+      typeName: equb.equbType?.name ?? providerType?.name,
+    );
+  }
+
+  void _openEqubDetail(PendingEqub equb) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MyEkubDetailScreen(
+          ekubType: equb.equbCategory?.name ?? 'Finance',
+          serviceCharge: equb.serviceCharge.toString(),
+          nextRoundTime: equb.nextRoundTime ?? '',
+          ekubCycle: equb.numberOfEqubers,
+          nextRoundDate: equb.nextRoundDate ?? '',
+          ekubAmount: equb.equbAmount * equb.numberOfEqubers,
+          ekubName: equb.name,
+          ekubersNumber: equb.equbers?.length ?? 0,
+          nextRoundLotteryType: equb.nextRoundLotteryType,
+          ekubId: equb.id,
+          ekubRequest: equb.equbCategory?.needsRequest ?? false,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openQuickPayment(PendingEqub equb) async {
+    if (_isOpeningQuickPayment) return;
+    setState(() => _isOpeningQuickPayment = true);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: SpinKitFadingCircle(color: AppColors.primary, size: 40),
+      ),
+    );
+
+    try {
+      final token = await SecureStorageHelper.getAccessToken() ?? '';
+      final res = await Dio().get(
+        ekubPaymentsUrl + equb.id,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close loader
+
+      if (res.statusCode != 200 && res.statusCode != 201) {
+        setState(() => _isOpeningQuickPayment = false);
+        CustomSnackBar.show(
+          context,
+          AppKeys.noData.tr(context),
+          Colors.red,
+        );
+        return;
+      }
+
+      final ekubRound = res.data['data']['equbRound']?.toString() ??
+          equb.nextRound.toString();
+      final payments = ((res.data['data']['payments'] as List?) ?? [])
+          .map((e) => Payment.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+
+      final listItemss = <ListItems>[];
+      final listItems = <ListItem>[];
+      final seen = <String>{};
+      for (final p in payments) {
+        if (!seen.add(p.lotteryNumber)) continue;
+        listItemss.add(ListItems(
+          title: p.lotteryNumber,
+          subtitle: p.equbAmount.toString(),
+          userIds: p.equbersId,
+        ));
+        listItems.add(ListItem(
+          title: p.lotteryNumber,
+          subtitle: p.equbAmount.toString(),
+        ));
+      }
+
+      if (listItems.isEmpty) {
+        setState(() => _isOpeningQuickPayment = false);
+        CustomSnackBar.show(
+          context,
+          AppKeys.noData.tr(context),
+          Colors.red,
+        );
+        return;
+      }
+
+      final expected =
+          listItemss.fold<double>(0, (s, e) => s + double.parse(e.subtitle));
+
+      if (!mounted) return;
+      setState(() => _isOpeningQuickPayment = false);
+      showDialog(
+        context: context,
+        builder: (_) => PaymentArragement(
+          selectedJoinOption: listItems,
+          selectedJoinOptions: listItemss,
+          ekubAmount: equb.equbAmount.toString(),
+          ekubId: equb.id,
+          ekubName: equb.name,
+          ekubRound: ekubRound,
+          round: ekubRound,
+          expectedAmount: expected,
+          type: 'payment',
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close loader
+      setState(() => _isOpeningQuickPayment = false);
+      CustomSnackBar.show(
+        context,
+        AppKeys.enableInternet.tr(context),
+        Colors.red,
+      );
+    }
+  }
+
+  Widget _buildEqubInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    String? secondaryValue,
+  }) {
+    final secondary = secondaryValue?.trim();
+    final hasSecondary = secondary != null && secondary.isNotEmpty;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 3.h),
+      child: Row(
+        children: [
+          Icon(icon, size: 14.sp, color: AppColors.primary),
+          SizedBox(width: 6.w),
+          if (hasSecondary) ...[
+            Expanded(
+              flex: 2,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.captionMuted
+                    .copyWith(color: Colors.grey.shade700),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              flex: 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: AppTextStyles.labelSmall,
+                  ),
+                  SizedBox(width: 6.w),
+                  Expanded(
+                    child: Text(
+                      secondary,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: AppTextStyles.captionMuted.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Expanded(
+              child: Row(
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.captionMuted
+                        .copyWith(color: Colors.grey.shade700),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.labelSmall,
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEqubStatusBadge(String status, BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFC9A227),
+        borderRadius: BorderRadius.circular(6.r),
+      ),
+      child: Text(
+        status.toLowerCase().tr(context),
+        style: AppTextStyles.badge.copyWith(
+          color: Colors.white,
+          fontSize: 9.sp,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJoinedEqubCard(PendingEqub equb, int idx) {
+    final equbName =
+        (equb.name.trim().isNotEmpty) ? equb.name.trim() : (equb.equbType?.name ?? 'Equb');
+    final amountText =
+        '${numberFormat.format(equb.equbAmount)} ${AppKeys.currencyBirr.tr(context)}';
+    final totalAmount =
+        numberFormat.format(equb.equbAmount * equb.numberOfEqubers);
+    final startParts = resolveEthiopianGregorianParts(
+      ethiopianDate: equb.ethiopianStartDate,
+      gregorianDate: equb.startDate,
+      formatGregorian: _formatEqubDate,
+    );
+    final endParts = resolveEthiopianGregorianParts(
+      ethiopianDate: equb.ethiopianEndDate,
+      gregorianDate: _resolveEqubEndDate(equb),
+      formatGregorian: _formatEqubDate,
+    );
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 300 + idx * 50),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 16.h * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F8FA),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          equbName,
+                          style: AppTextStyles.poppins60014,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 8.w, vertical: 3.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6.r),
+                          border: Border.all(
+                            color: AppColors.primary.withOpacity(0.35),
+                          ),
+                        ),
+                        child: Text(
+                          amountText,
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                _buildEqubStatusBadge(equb.status, context),
+              ],
+            ),
+            SizedBox(height: 8.h),
+            _buildEqubInfoRow(
+              icon: Icons.account_balance_wallet_outlined,
+              label: AppKeys.totalAmount.tr(context),
+              value: '$totalAmount ${AppKeys.currencyBirr.tr(context)}',
+            ),
+            _buildEqubInfoRow(
+              icon: Icons.calendar_today_outlined,
+              label: AppKeys.expectedStartDate.tr(context),
+              value: startParts.ethiopian,
+              secondaryValue:
+                  startParts.gregorian == '-' ? null : startParts.gregorian,
+            ),
+            _buildEqubInfoRow(
+              icon: Icons.event_outlined,
+              label: AppKeys.expectedEndDate.tr(context),
+              value: endParts.ethiopian,
+              secondaryValue:
+                  endParts.gregorian == '-' ? null : endParts.gregorian,
+            ),
+            _buildEqubInfoRow(
+              icon: Icons.autorenew_rounded,
+              label: AppKeys.round.tr(context),
+              value: '${equb.currentRound}/${equb.numberOfEqubers}',
+            ),
+            SizedBox(height: 12.h),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: OutlinedButton(
+                    onPressed: _isOpeningQuickPayment
+                        ? null
+                        : () => _openQuickPayment(equb),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primary),
+                      backgroundColor: AppColors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                    ),
+                    child: Text(
+                      AppKeys.quickPayment.tr(context),
+                      style: AppTextStyles.button
+                          .copyWith(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  flex: 4,
+                  child: ElevatedButton(
+                    onPressed: () => _openEqubDetail(equb),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                    ),
+                    child: Text(
+                      AppKeys.lblContinue.tr(context),
+                      style: AppTextStyles.button
+                          .copyWith(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabContent(int index, {String? url}) {
-    return ChangeNotifierProvider(
-      create: (_) => GetMyEqubProvider(),
-      child: Consumer2<type_provider.EqubTypeProvider, EqubCategoryProvider>(
-        builder: (context, typeProvider, categoryProvider, _) {
+    return Consumer2<type_provider.EqubTypeProvider, EqubCategoryProvider>(
+      builder: (context, typeProvider, categoryProvider, _) {
           final types =
               typeProvider.equbTypes?.where((t) => t.id != null).toList() ?? [];
           final categories = categoryProvider.equbCategories
@@ -360,22 +847,14 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                   .toList() ??
               [];
 
-          // Build filteredCategories FIRST before any conditional returns
-          final filteredCategories = [
-            EqubCategory(
-                id: '',
-                name: AppKeys.all.tr(context),
-                createdAt: '',
-                description: '',
-                hasReason: false,
-                needsRequest: false,
-                state: '',
-                updatedAt: ""),
-            ...categories
-          ];
+          final filteredCategories = _filteredCategories(context, categories);
 
-          // Now check if types are empty
           if (types.isEmpty) {
+            if (!_isBootstrapping) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _bootstrapScreen();
+              });
+            }
             return Center(
               child: LoadingAnimationWidget.threeRotatingDots(
                 color: AppColors.vibrantGreen,
@@ -384,21 +863,17 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
             );
           }
 
-          // Ensure selected indices are valid AFTER we have data
           if (selectedEqubTypeIndex >= types.length) {
             selectedEqubTypeIndex = 0;
           }
-          
-          // CRITICAL FIX: Ensure selectedCategoryIndex is valid for filteredCategories
+
           if (selectedCategoryIndex >= filteredCategories.length) {
             selectedCategoryIndex = 0;
           }
 
-          // Fetch data once when we have both types and categories
-          if (!_hasFetchedInitial && types.isNotEmpty) {
-            _hasFetchedInitial = true;
+          if (!_hasFetchedInitial) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _fetchEqubsForCurrentSelection(context, types, filteredCategories);
+              _fetchInitialEqubsIfNeeded();
             });
           }
 
@@ -409,37 +884,43 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
           return Column(
             children: [
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  height: 40.h,
+                  padding: EdgeInsets.symmetric(horizontal: 14.w),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(5.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.12),
+                        blurRadius: 20.r,
+                         spreadRadius: 10.r
+                      ),
+                    ],
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
-                      // KEY FIX: Use a ValueKey to force rebuild when categories change
-                      key: ValueKey('category_dropdown_${filteredCategories.length}_${selectedCategoryIndex}'),
-                      value: selectedCategoryIndex < filteredCategories.length 
-                          ? selectedCategoryIndex 
+                      key: ValueKey(
+                          'category_dropdown_${filteredCategories.length}_$selectedCategoryIndex'),
+                      value: selectedCategoryIndex < filteredCategories.length
+                          ? selectedCategoryIndex
                           : 0,
                       isExpanded: true,
-                      borderRadius: BorderRadius.circular(16),
-                      icon: const Icon(Icons.keyboard_arrow_down),
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Urbanist',
-                        color: Colors.black,
+                      isDense: true,
+                      borderRadius: BorderRadius.circular(12.r),
+                      icon: Icon(Icons.keyboard_arrow_down, size: 22.sp),
+                      style: AppTextStyles.tabLabel.copyWith(
+                        color: AppColors.black,
                       ),
                       items: List.generate(
                         filteredCategories.length,
                         (index) => DropdownMenuItem(
                           value: index,
-                          child:
-                              Text(filteredCategories[index].name ?? 'Unknown'),
+                          child: Text(
+                            filteredCategories[index].name ?? 'Unknown',
+                            style: AppTextStyles.bodyMedium,
+                          ),
                         ),
                       ),
                       onChanged: (index) {
@@ -453,13 +934,12 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                 ),
               ),
               SizedBox(
-                height: 76.h,
+                height: 40.h,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
                   itemCount: types.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  separatorBuilder: (_, __) => SizedBox(width: 20.w),
                   itemBuilder: (context, idx) {
                     final type = types[idx];
                     final isSelected = idx == selectedEqubTypeIndex;
@@ -467,45 +947,45 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                       onTap: () {
                         setState(() {
                           selectedEqubTypeIndex = idx;
-                          selectedCategoryIndex = 0; // Reset to "All" when type changes
+                          selectedCategoryIndex = 0;
                         });
                         _fetchEqubsForCurrentSelection(
                             context, types, filteredCategories);
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
                         padding: EdgeInsets.symmetric(
-                            horizontal: 26.w, vertical: 10.h),
+                            horizontal: 22.w, vertical: 10.h),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppColors.primary.withOpacity(0.15)
+                              ? AppColors.primary.withOpacity(0.1)
                               : Colors.white,
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                      color:
-                                          AppColors.primary.withOpacity(0.18),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2))
-                                ]
-                              : [],
-                          border: Border.all(
-                            color: isSelected
-                                ? AppColors.primary
-                                : Colors.grey.shade300,
-                            width: 2,
-                          ),
+                          borderRadius: BorderRadius.circular(20.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary
+                                  .withOpacity(isSelected ? 0.15 : 0.08),
+                              blurRadius: isSelected ? 12.r : 8.r,
+                              offset: Offset(0, isSelected ? 4.h : 2.h),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          type.name ?? 'Unknown',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14.sp,
-                            color: isSelected
-                                ? AppColors.primary
-                                : Colors.grey.shade700,
-                            fontFamily: 'Urbanist',
+                        child: Center(
+                          child: Text(
+                            translateEqubTypeName(
+                              context,
+                              type.name,
+                              interval: type.interval,
+                            ),
+                            style: (isSelected
+                                    ? AppTextStyles.chipSelected
+                                    : AppTextStyles.chip)
+                                .copyWith(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.black,
+                            ),
                           ),
                         ),
                       ),
@@ -513,6 +993,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                   },
                 ),
               ),
+              SizedBox(height: 12.h),
 
               // Equb list
               Expanded(
@@ -522,215 +1003,30 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                       return Center(
                         child: LoadingAnimationWidget.threeRotatingDots(
                           color: AppColors.vibrantGreen,
-                          size: 30,
+                          size: 30.sp,
                         ),
                       );
                     } else if (equbProvider.errorMessage != null) {
-                      return Center(child: Text(AppKeys.errorTryAgain.tr(context)));
+                      return Center(
+                          child: Text(AppKeys.errorTryAgain.tr(context)));
                     }
 
-                    final visibleEqubs = equbProvider.equbs
+                    var visibleEqubs = equbProvider.equbs
                         .where((e) =>
                             e.status.trim().toLowerCase() != AppKeys.completed)
                         .toList();
+                    PendingEqub.sortByLatestJoined(visibleEqubs);
 
                     if (visibleEqubs.isEmpty) {
                       return Center(child: Text(AppKeys.noEkubs.tr(context)));
                     }
 
                     return ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      separatorBuilder: (_, __) => const SizedBox(height: 24),
+                      padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 16.h),
+                      separatorBuilder: (_, __) => SizedBox(height: 12.h),
                       itemCount: visibleEqubs.length,
                       itemBuilder: (context, idx) {
-                        final equb = visibleEqubs[idx];
-                        final accentColor = AppColors.primary.withOpacity(0.13);
-
-                        return TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0, end: 1),
-                          duration: Duration(milliseconds: 350 + idx * 60),
-                          builder: (context, value, child) {
-                            return Opacity(
-                              opacity: value,
-                              child: Transform.translate(
-                                  offset: Offset(0, 30 * (1 - value)),
-                                  child: child),
-                            );
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(28),
-                              gradient: LinearGradient(
-                                colors: [
-                                  accentColor,
-                                  Colors.white.withOpacity(0.92)
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                    color: accentColor,
-                                    blurRadius: 18,
-                                    offset: const Offset(0, 8))
-                              ],
-                              border: Border.all(
-                                  color: AppColors.primary.withOpacity(0.12),
-                                  width: 1.5),
-                            ),
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 14.w, vertical: 10.h),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Container(
-                                  height: 42.h,
-                                  width: 42.w,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.13),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  padding: const EdgeInsets.all(2),
-                                  child: Image.asset(
-                                    _getCategoryIcon(equb.equbCategory?.name),
-                                    height: 62.h,
-                                    width: 62.w,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Flexible(
-                                            child: Text(
-                                              equb.name,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 17,
-                                                fontFamily: 'Urbanist',
-                                                color: AppColors.primary,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          ...[
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              equb.status.toLowerCase().tr(context),
-                                              style: const TextStyle(
-                                                  fontSize: 11,
-                                                  color: Colors.white,
-                                                  fontWeight:
-                                                      FontWeight.w600),
-                                            ),
-                                          ),
-                                        ],
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.money,
-                                              size: 16,
-                                              color: AppColors.primary),
-                                          const SizedBox(width: 3),
-                                          Text(
-                                            '${equb.equbAmount}',
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          const Icon(Icons.people,
-                                              size: 15, color: Colors.grey),
-                                          const SizedBox(width: 3),
-                                          Text(
-                                            '${equb.numberOfEqubers}',
-                                            style: TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.grey[700]),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Material(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(22),
-                                  elevation: 2,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(22),
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              MyEkubDetailScreen(
-                                            ekubType: equb.equbCategory?.name ??
-                                                'Finance',
-                                            serviceCharge:
-                                                equb.serviceCharge.toString(),
-                                            nextRoundTime:
-                                                equb.nextRoundTime ?? '',
-                                            ekubCycle: equb.numberOfEqubers,
-                                            nextRoundDate:
-                                                equb.nextRoundDate ?? '',
-                                            ekubAmount: equb.equbAmount *
-                                                equb.numberOfEqubers,
-                                            ekubName: equb.name,
-                                            ekubersNumber:
-                                                equb.equbers?.length ?? 0,
-                                            nextRoundLotteryType:
-                                                equb.nextRoundLotteryType,
-                                            ekubId: equb.id,
-                                            ekubRequest: equb.equbCategory
-                                                    ?.needsRequest ??
-                                                false,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 8),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Icons.arrow_forward_ios,
-                                              color: Colors.white, size: 15),
-                                          const SizedBox(width: 5),
-                                          Text(AppKeys.details.tr(context),
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 13,
-                                                  fontFamily: 'Urbanist')),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
+                        return _buildJoinedEqubCard(visibleEqubs[idx], idx);
                       },
                     );
                   },
@@ -739,8 +1035,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
             ],
           );
         },
-      ),
-    );
+      );
   }
 
   final Dio dio = Dio();
@@ -858,8 +1153,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                           Text(
                             textScaleFactor: 1.0,
                             AppKeys.noActiveEqubs.tr(context),
-                            style: TextStyle(
-                                fontSize: 18.sp, fontWeight: FontWeight.w600),
+                            style: AppTextStyles.sectionTitle,
                           ),
                         ],
                       ),
@@ -870,6 +1164,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                       .where((e) =>
                           e.status.trim().toLowerCase() != AppKeys.completed)
                       .toList();
+                  PendingEqub.sortByLatestJoined(activeEqubs);
 
                   if (activeEqubs.isEmpty) {
                     return Padding(
@@ -886,9 +1181,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                             Text(
                               textScaleFactor: 1.0,
                               AppKeys.noActiveEqubs.tr(context),
-                              style: TextStyle(
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.w600),
+                              style: AppTextStyles.sectionTitle,
                             ),
                           ],
                         ),
@@ -942,10 +1235,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                           activeEqubs[index]
                                               .numberOfEqubers
                                               .toString(),
-                                          style: const TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                            fontSize: 12,
+                                          style: AppTextStyles.caption.copyWith(
                                             color: AppColors.white,
                                           ),
                                         ),
@@ -960,10 +1250,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                       Text(
                                         textScaleFactor: 1.0,
                                         activeEqubs[index].name,
-                                        style: TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontSize: 16.sp,
-                                          fontWeight: FontWeight.w600,
+                                        style: AppTextStyles.listTitle.copyWith(
                                           color: AppColors.white,
                                         ),
                                       ),
@@ -980,11 +1267,10 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                                 int.parse(activeEqubs[index]
                                                     .numberOfEqubers
                                                     .toString())),
-                                            style: TextStyle(
-                                              fontFamily: 'Poppins',
-                                              fontSize: 24.sp,
-                                              fontWeight: FontWeight.w900,
+                                            style: AppTextStyles.screenTitle
+                                                .copyWith(
                                               color: AppColors.white,
+                                              fontWeight: FontWeight.w900,
                                             ),
                                           ),
                                         ),
@@ -1195,7 +1481,8 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                           child: Text(
                                             textScaleFactor: 1.0,
                                             AppKeys.details.tr(context),
-                                            style: const TextStyle(
+                                            style: AppTextStyles.bodyMedium
+                                                .copyWith(
                                                 color: AppColors.black),
                                           ),
                                         ),
@@ -1244,8 +1531,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                           const SizedBox(height: 20),
                           Text(
                             AppKeys.noActiveEqubs.tr(context),
-                            style: TextStyle(
-                                fontSize: 24.sp, fontWeight: FontWeight.w600),
+                            style: AppTextStyles.screenTitle,
                           ),
                         ],
                       ),
@@ -1289,9 +1575,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                 Text(
                                   textScaleFactor: 1.0,
                                   AppKeys.noActiveEqubs.tr(context),
-                                  style: TextStyle(
-                                      fontSize: 18.sp,
-                                      fontWeight: FontWeight.w600),
+                                  style: AppTextStyles.sectionTitle,
                                 ),
                               ],
                             ),
@@ -1351,10 +1635,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                       //                 .joinedEqubs!.first
                                       //                 .equberCount
                                       //                 .toString(),
-                                      //             style: const TextStyle(
-                                      //               fontFamily: 'Poppins',
-                                      //               fontWeight: FontWeight.w400,
-                                      //               fontSize: 12,
+                                      //             style: AppTextStyles.caption.copyWith(
                                       //               color: AppColors.white,
                                       //             ),
                                       //           ),
@@ -1385,10 +1666,8 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                                         .numberOfEqubers
                                                         .toString() ??
                                                     '',
-                                                style: const TextStyle(
-                                                  fontFamily: 'Poppins',
-                                                  fontWeight: FontWeight.w400,
-                                                  fontSize: 12,
+                                                style: AppTextStyles.caption
+                                                    .copyWith(
                                                   color: AppColors.white,
                                                 ),
                                               ),
@@ -1406,10 +1685,8 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                                       .joinedEqubs?.first
                                                       .name ??
                                                   '',
-                                              style: const TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w600,
+                                              style: AppTextStyles.listTitle
+                                                  .copyWith(
                                                 color: AppColors.white,
                                               ),
                                             ),
@@ -1432,11 +1709,10 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                                               .numberOfEqubers
                                                               .toString() ??
                                                           '0')),
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 24,
-                                                    fontWeight: FontWeight.w900,
+                                                  style: AppTextStyles.screenTitle
+                                                      .copyWith(
                                                     color: AppColors.white,
+                                                    fontWeight: FontWeight.w900,
                                                   ),
                                                 ),
                                               ),
@@ -1678,7 +1954,8 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                                                 },
                                                 child: Text(
                                                   AppKeys.details.tr(context),
-                                                  style: const TextStyle(
+                                                  style: AppTextStyles.bodyMedium
+                                                      .copyWith(
                                                       color: AppColors.black),
                                                 ),
                                               ),

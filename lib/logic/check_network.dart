@@ -7,6 +7,7 @@ import 'package:helloequb/utils/custom_button.dart';
 import 'package:helloequb/utils/lang_constants.dart';
 
 import 'open_device_settings.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class CheckNetwork extends StatefulWidget {
   final VoidCallback onRetry;
@@ -67,22 +68,12 @@ class _CheckNetworkState extends State<CheckNetwork> {
               const SizedBox(height: 15),
               Text(
                 AppKeys.enableInternet.tr(context),
-                style: TextStyle(
-                  fontFamily: 'Urbanists',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18.sp,
-                  color: AppColors.black,
-                ),
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.black),
               ),
               const SizedBox(height: 8),
               Text(
                 AppKeys.yourInternetSeems.tr(context),
-                style: TextStyle(
-                  fontFamily: 'Urbanists',
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.grey,
-                ),
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey),
               ),
               const SizedBox(height: 20),
               CustomTextButton(
@@ -96,7 +87,7 @@ class _CheckNetworkState extends State<CheckNetwork> {
                 onPressed: widget.onRetry,
                 child: Text(
                   AppKeys.retry.tr(context),
-                  style: TextStyle(color: Theme.of(context).primaryColor),
+                  style: AppTextStyles.poppins40014.copyWith(color: Theme.of(context).primaryColor),
                 ),
               ),
             ],

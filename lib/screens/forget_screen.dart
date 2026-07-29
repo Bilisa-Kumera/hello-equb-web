@@ -14,6 +14,7 @@ import 'package:helloequb/utils/custom_progress_screen.dart';
 import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class ForgetScreen extends StatefulWidget {
   const ForgetScreen({super.key});
@@ -102,7 +103,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
                   child: const Center(
                     child: Padding(
                       padding: EdgeInsets.only(left: 8.0),
-                      child: Icon(Icons.arrow_back_ios, color: AppColors.black),
+                      child: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.black),
                     ),
                   ),
                 ),
@@ -113,11 +114,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
               child: Text(
                 textScaleFactor: 1.0,
                 AppKeys.forgetPassword.tr(context),
-                style: TextStyle(
-                    color: AppColors.darkBlueGray,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Urbanist',
-                    fontSize: 30.sp),
+                style: AppTextStyles.poppins70032.copyWith(color: AppColors.darkBlueGray),
               ),
             ),
             Padding(
@@ -125,11 +122,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
               child: Text(
                 textScaleFactor: 1.0,
                 AppKeys.dontWorry.tr(context),
-                style: TextStyle(
-                    color: AppColors.coolGray,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'Urbanist',
-                    fontSize: 16.sp),
+                style: AppTextStyles.poppins50016.copyWith(color: AppColors.coolGray),
               ),
             ),
             SizedBox(height: 20.h),
@@ -172,45 +165,54 @@ class _ForgetScreenState extends State<ForgetScreen> {
                 textColor: AppColors.white,
               ),
             ),
-            SizedBox(height: 240.h),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      AppKeys.rememberPassword.tr(context),
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        color: AppColors.darkBlueGray,
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                LoginScreenWithPin(phoneNumber: ''),
-                          ),
-                        );
-                      },
-                      child: Text(
-                        AppKeys.login.tr(context),
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
+            SizedBox(height: 24.h),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 26),
+              child: Text(
+                AppKeys.rememberPassword.tr(context),
+                textAlign: TextAlign.center,
+                style: AppTextStyles.poppins50014.copyWith(
+                  color: AppColors.grey600,
                 ),
               ),
-            )
+            ),
+            SizedBox(height: 10.h),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 26),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48.h,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => LoginScreenWithPin(
+                          phoneNumber: contactController.text.trim(),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    AppKeys.login.tr(context),
+                    style: AppTextStyles.poppins60015.copyWith(
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 32.h),
           ],
         ),
       ),

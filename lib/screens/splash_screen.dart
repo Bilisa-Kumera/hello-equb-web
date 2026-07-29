@@ -2,12 +2,13 @@ import 'dart:async';
 import 'package:helloequb/features/app_update/presentation/providers/update_provider.dart';
 import 'package:helloequb/features/app_update/presentation/providers/update_state.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/screens/LoginScreenWithPin.dart';
-import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/main_navigation_screen.dart';
 import 'package:helloequb/screens/language_screen.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/telebirr/telebirr.dart';
@@ -181,7 +182,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (dataController.retrieveData<bool>('isLoggedIn') == true) {
-      _go('/home', fallback: const HomeScreen());
+      _go('/home', fallback: const MainNavigationScreen());
       return;
     }
 
@@ -223,11 +224,8 @@ class _SplashScreenState extends State<SplashScreen> {
             Text(
               textScaleFactor: 1.0,
               'Hello Equb',
-              style: TextStyle(
-                fontSize: 26.sp,
-                fontWeight: FontWeight.bold,
-                color: AppColors.deepForestGreen,
-              ),
+              style: AppTextStyles.splashTitle
+                  .copyWith(color: AppColors.deepForestGreen),
             ),
             if (updateState is UpdateChecking) ...[
               SizedBox(height: 18.h),

@@ -30,6 +30,8 @@ class AppKeys {
   static const String companyBankAccounts = 'lbl_company_bank_accounts';
   static const String totalTobePaid = 'lbl_total_tobe_paid';
   static const String paymentArrangement = 'lbl_payment_arrangement';
+  static const String selectAtLeastOnePaymentAmount =
+      'lbl_select_at_least_one_payment_amount';
   static const String acceptTerms = 'lbl_accept_terms';
   static const String pleaseChoosePaymentMethod =
       "please_choose_payment_method";
@@ -183,7 +185,24 @@ class AppKeys {
   static const String ekubDetail = 'lbl_ekub_detail';
   static const String description = 'lbl_description';
   static const String joinedMembers = 'lbl_joined_members';
+  static const String joinedBadge = 'lbl_joined_badge';
+  static const String joinAgain = 'lbl_join_again';
+  static const String membersFilled = 'lbl_members_filled';
+  static const String alreadyFilled = 'lbl_already_filled';
+  static const String every = 'lbl_every';
+  static const String filled = 'lbl_filled';
+  static const String spotsToGo = 'lbl_spots_to_go';
+  static const String spotLeft = 'lbl_spot_left';
+  static const String spotsLeft = 'lbl_spots_left';
+  static const String days = 'lbl_days';
+  static const String equbType = 'lbl_equb_type';
+  static const String category = 'lbl_category';
+  static const String lotteryNumbers = 'lbl_lottery_numbers';
+  static const String lotteryNumber = 'lbl_lottery_number';
   static const String expectedStartDate = 'lbl_expected_start_date';
+  static const String expectedEndDate = 'lbl_expected_end_date';
+  static const String roundAndMembers = 'lbl_round_and_members';
+  static const String quickPayment = 'lbl_quick_payment';
   static const String serviceCharge = 'lbl_service_charge';
   static const String yourShare = 'lbl_your_share';
   static const String equivalent = 'lbl_equivalent_etb';
@@ -193,9 +212,11 @@ class AppKeys {
   static const String number = 'lbl_numbers';
   static const String share = 'lbl_share';
   static const String amount = 'lbl_amount';
+  static const String amountIsRequired = 'lbl_amount_is_required';
 
   // Ekub (Savings Group)
   static const String myEkub = 'lbl_my_ekub';
+  static const String newEqub = 'lbl_new_ekub';
   static const String nextWinner = 'lbl_next_winner';
   static const String theWinnerIs = 'lbl_the_winner_is';
   static const String winnerAnnouncement = 'lbl_winner_announcement';

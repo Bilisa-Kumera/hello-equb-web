@@ -48,6 +48,7 @@ String get addGuarantorInfoUrl => '$baseUrl/user/equb/guarantee/';
 String get claimEqubUrl => '$baseUrl/user/equb/claim/';
 String get joinEkubUrl => '$baseUrl/user/equb/join/';
 String get joinMiniAppEkubUrl => '$baseUrl/user/equb/joinMiniApp/';
+String get makePaymentMiniAppUrl => '$baseUrl/user/equb/paymentMiniApp/';
 String get companyBankUrl => '$baseUrl/company-bank?_page&_limit';
 String get paymentUrl => '$baseUrl/user/payment/confirm/';
 String get makePaymentUrl => '$baseUrl/user/equb/payment/';
@@ -74,7 +75,7 @@ String get validateCooperateUrl =>
     "$baseUrl/user/cooperate/checkValidCoopreateCode";
 String get checkJoinUrl => "$baseUrl/user/equb/check-join";
 
-// Equb history (completed/past equbs per user)
+// Equb history (joined equbs per user; Active = registering|started)
 String get getEqubHistoryUrl => "$baseUrl/user/equb/get-history-equbs";
 
 final NumberFormat numberFormat = NumberFormat('#,##0.00');

@@ -1,6 +1,8 @@
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 
+import 'style_constants.dart';
+
 class FinancialDialog extends StatefulWidget {
   final String title;
   final String selectedBank;
@@ -67,25 +69,18 @@ class _FinancialDialogState extends State<FinancialDialog> {
             child: Text(
               widget.title,
               textScaleFactor: 1.0,
-              style: const TextStyle(
-                color: AppColors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: AppTextStyles.poppins70020
+                  .copyWith(color: AppColors.white),
             ),
           ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Select Bank',
                   textScaleFactor: 1.0,
-                  style: TextStyle(
-                    color: AppColors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.sectionTitle,
                 ),
                 const SizedBox(height: 5),
                 DropdownButtonFormField<int>(
@@ -109,7 +104,7 @@ class _FinancialDialogState extends State<FinancialDialog> {
                       child: Text(
                         widget.banks[index],
                         textScaleFactor: 1.0,
-                        style: const TextStyle(color: AppColors.black),
+                        style: AppTextStyles.bodyMedium,
                       ),
                     );
                   }),
@@ -121,14 +116,10 @@ class _FinancialDialogState extends State<FinancialDialog> {
                   },
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Account Holder Name',
                   textScaleFactor: 1.0,
-                  style: TextStyle(
-                    color: AppColors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.sectionTitle,
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -145,17 +136,13 @@ class _FinancialDialogState extends State<FinancialDialog> {
                       borderSide: const BorderSide(color: AppColors.primary),
                     ),
                   ),
-                  style: const TextStyle(color: AppColors.black),
+                  style: AppTextStyles.bodyMedium,
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Enter Account No.',
                   textScaleFactor: 1.0,
-                  style: TextStyle(
-                    color: AppColors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTextStyles.sectionTitle,
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -173,7 +160,7 @@ class _FinancialDialogState extends State<FinancialDialog> {
                       borderSide: const BorderSide(color: AppColors.primary),
                     ),
                   ),
-                  style: const TextStyle(color: AppColors.black),
+                  style: AppTextStyles.bodyMedium,
                 ),
                 const SizedBox(height: 20),
                 TextButton(
@@ -195,8 +182,7 @@ class _FinancialDialogState extends State<FinancialDialog> {
                   child: Text(
                     widget.isUpdate ?? false ? 'Update' : 'Submit',
                     textScaleFactor: 1.0,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+                    style: AppTextStyles.buttonLarge,
                   ),
                 ),
               ],

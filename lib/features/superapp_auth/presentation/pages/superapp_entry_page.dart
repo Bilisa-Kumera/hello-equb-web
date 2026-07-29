@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class SuperAppEntryPage extends StatelessWidget {
   const SuperAppEntryPage({super.key});
@@ -33,18 +34,14 @@ class SuperAppEntryPage extends StatelessWidget {
                   Text(
                     'Hello Equb',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.deepForestGreen,
-                    ),
+                    style: AppTextStyles.poppins70024
+                        .copyWith(color: AppColors.deepForestGreen),
                   ),
                   SizedBox(height: 8.h),
                   Text(
                     'Choose how you want to continue.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14.sp,
+                    style: AppTextStyles.bodyMedium.copyWith(
                       color: Colors.black54,
                       height: 1.35,
                     ),
@@ -93,10 +90,7 @@ class _EntryButton extends StatelessWidget {
         label: Text(
           label,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTextStyles.buttonMedium,
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.deepForestGreen,

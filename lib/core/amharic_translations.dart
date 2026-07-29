@@ -2,17 +2,17 @@ final Map<String, String> amET = {
   "lbl_equb_history": "የዕቁብ ታሪክ",
   'failed_to_fetch_time': 'የአገልጋይ ሰዓትን ማግኘት አልተሳካም',
   'no_categories': 'ምድቦች የሉም',
-  'track_all': 'ሁሉንም እቁቦችዎን ይከታተሉ',
-  "join_equbs_today": "እቁቦችን ዛሬ ይቀላቀሉ!",
+  'track_all': 'ሁሉንም ዕቁብዎችዎን ይከታተሉ',
+  "join_equbs_today": "ዕቁብዎችን ዛሬ ይቀላቀሉ!",
   "invite_friends_earn": "ጓደኞችዎን ይጋብዙ እና ብሎንስ ያግኙ!",
   "use_my_code_to_join_and_get_rewards": "እኔን ኮድ በመጠቀም ይቀላቀሉ እና ሽልማት ያግኙ፦ ",
-  "share_text": "ኮዱን አጋራትና በመቀላቀል ሽልማት ያግኙ፦ ",
-  "other_equb_type": "ሌሎች የእቁብ ዓይነቶች",
-  "referral_code_copied": "የአጋራት ኮድ ተገልብጧል!",
+  "share_text": "በስልክ ቁጥሬ Hello Equb ይቀላቀሉ እና ሽልማት ያግኙ፦ ",
+  "other_equb_type": "ሌሎች የዕቁብ ዓይነቶች",
+  "referral_code_copied": "ስልክ ቁጥር ተገልብጧል!",
   "share_and_invite": "አጋራት እና ጋብዙ",
   "copied_to_clipboard": "ወደ ቅንብሩ ተቀይሯል",
-  "cooperateEqubsTitle": "የድርጅት እቁቦች",
-  "enterCodeTitle": "ኮድ አስገብተው ወደ እቁብ ይግቡ",
+  "cooperateEqubsTitle": "የድርጅት ዕቁብዎች",
+  "enterCodeTitle": "ኮድ አስገብተው ወደ ዕቁብ ይግቡ",
   "codeLabel": "ኮድ",
   "codeRequired": "ኮድ ግግው",
   "cancel": "ይቅር",
@@ -23,14 +23,14 @@ final Map<String, String> amET = {
   "failedTitle": "አልተሳካም",
   "errorTitle": "ስህተት",
   "successTitle": "ተሳክቷል",
-  "validationSuccessMessage": "ማረጋገጡ ተሳክቷል። ወደዚህ እቁብ ተቀላቅለዋል!",
+  "validationSuccessMessage": "ማረጋገጡ ተሳክቷል። ወደዚህ ዕቁብ ተቀላቅለዋል!",
   "validationFailedMessage": "ኮዱን ማረጋገጥ አልተሳካም።",
   "genericErrorMessage": "ችግር ተፈጥሯል። እባክዎ ደግመው ይሞክሩ።",
   "timeoutErrorMessage": "ጥያቄው ጊዜ አልፏል። አገናኝዎን ይፈትሹና ዳግመው ይሞክሩ።",
   "sessionExpiredMessage": "ጊዜውን አልፎበታል። እባክዎ ድጋሚ ይግቡ።",
   "exceptionErrorPrefix": "ስህተት ተፈጥሯል፦ ",
   'you_have_joined': 'ከዚህ በፊት',
-  'lotteries_before': 'የእጣ ብዛት ተቀላቅለዋል።',
+  'lotteries_before': 'የዕጣ ብዛት ተቀላቅለዋል።',
   "waiting_for_approval": "ለፈቃድ በመጠበቅ ላይ",
   "you_have_already_submitted": "ክፍያውን አስገብተዋል እና አስተዳዳሪው በቅርቡ ያፀድቀዋል",
   "payment_info": "የክፍያ መረጃ",
@@ -45,29 +45,29 @@ final Map<String, String> amET = {
   "frequently_asked_questions": "ተደጋጋሚ ጥያቄዎች",
   "contact_support": "ድጋፍን ያግኙ",
   "call_us": "ይደውሉልን",
-  'lottery': 'እጣ:',
+  'lottery': 'ዕጣ.ቁ',
   "available_24_7": "በሁሉም ሰዓት በ +251946494949 ላይ ይገኛል",
   "email_us": "ኢሜይል ይላኩልን",
   "whatsapp_us": "ዋትስአፕ ይላኩልን",
   "chat_with_support": "በዋትስአፕ ላይ ከድጋፍ ተወካይ ጋር ይወያዩ",
-  "how_to_join_special_equb": "ልዩ እኩብ እንዴት ልቀላቀል እችላለሁ?",
+  "how_to_join_special_equb": "ልዩ ዕቁብ እንዴት ልቀላቀል እችላለሁ?",
   "join_special_equb_answer":
-      "ልዩ እኩብ ለመቀላቀል፣ ወደ መነሻ ገጹ ይሂዱ፣ ልዩ እኩብ (ዕለታዊ፣ ሳምንታዊ ወይም ወርሃዊ) ይምረጡ እና \"ተቀላቀል\" ላይ ይጫኑ።",
+      "ልዩ ዕቁብ ለመቀላቀል፣ ወደ መነሻ ገጹ ይሂዱ፣ ልዩ ዕቁብ (ዕለታዊ፣ ሳምንታዊ ወይም ወርሃዊ) ይምረጡ እና \"ተቀላቀል\" ላይ ይጫኑ።",
   "view_transaction_history": "የግብይት ታሪኬን የት ማየት እችላለሁ?",
   "transaction_history_answer":
       "የግብይት ታሪክዎን በመለያ መገለጫዎ ውስጥ \"የግብይት ታሪክ\" ላይ ማግኘት ይችላሉ።",
   "view_lottery_winners": "የመስመር ላይ ሎተሪ አሸናፊዎችን እንዴት ማየት እችላለሁ?",
   "lottery_winners_answer":
-      "እኩቡ ከሚሸነፍ በፊት \"የእኩቤ ዝርዝሮች\" ላይ የሎተሪ አሸናፊዎችን ማየት ይችላሉ።",
-  "what_is_request": "በልዩ እኩቦች ውስጥ \"ጥያቄ\" ምንድን ነው?",
+      "ዕቁቡ ከሚሸነፍ በፊት \"የዕቁቤ ዝርዝሮች\" ላይ የሎተሪ አሸናፊዎችን ማየት ይችላሉ።",
+  "what_is_request": "በልዩ ዕቁቦች ውስጥ \"ጥያቄ\" ምንድን ነው?",
   "request_answer":
-      "\"ጥያቄ\" ባህሪው በአደጋ ላይ እኩቡን እንዲሸነፍ አስተዳደሩን እንዲያስተውሉ ያስችልዎታል።",
+      "\"ጥያቄ\" ባህሪው በአደጋ ላይ ዕቁቡን እንዲሸነፍ አስተዳደሩን እንዲያስተውሉ ያስችልዎታል።",
   "seems_like_no_account": "በዚህ ስልክ ቁጥር የተመዘገበ መለያ የለዎትም።",
   "by_logging_in": "በመግባት ውስጥ፣ ለእኛ ይስማማሉ",
   "terms_of_service": "የአገልግሎት ውሎች",
   "lbl_view_last_paid": "መጨረሻ የተከፈለውን ",
-  "lbl_sort_out": "በክፍያ ወይንም በእቁብ ",
-  "lbl_ekub_name": "የእቁብ ስም",
+  "lbl_sort_out": "በክፍያ ወይንም በዕቁብ ",
+  "lbl_ekub_name": "የዕቁብ ስም",
   'lbl_total_tobe_paid': "የሚከፈል ድምር",
   "lbl_dont_have_account": "አካውንት የሎትም?",
   "lbl_register": "ምዝገባ",
@@ -140,14 +140,15 @@ final Map<String, String> amET = {
   "lbl_forget_password": "የሚስጥር ቁጥሮን ረስተዋል?",
   "lbl_elligible_users_should_be_more_than1": "ብቁ ተጠቃሚዎች ከ1 በላይ መሆን አለባቸው፡፡",
   "lbl_spinning": "እየዞረ...",
-  "lbl_my_ekub": "የእኔ እቁብ",
+  "lbl_my_ekub": "የእኔ ዕቁብ",
+  "lbl_new_ekub": "አዲስ ዕቁብ",
   "lbl_next_winner": "ቀጣይ አሸናፊ",
   "lbl_the_winner_is": "አሸናፊው",
   "lbl_winner_announcement": "የአሸናፊው መግለጫ",
   "lbl_it_seems_there_was_an_error":
       "የአሸናፊውን መረጃ አስመልክቶ ስህተት የነበረ ይመስላል፡፡ እባክዎ እንደገና ይሞክሩ",
   "lbl_were_sorry": "ይቅርታ እንጠይቃለን!",
-  "lbl_guarantor_information": "የፋይናንስ እቁቦች",
+  "lbl_guarantor_information": "የፋይናንስ ዕቁብዎች",
   "lbl_upload_guarantee_id_card_image": "ከቶክኑ ጊዜው አልፏል፡፡ እባክዎን ይግቡ!",
   "lbl_token_expired": "ቶክን ጊዜው አልፏል፡፡ እባክዎን ይግቡ!",
   "lbl_profile": "ፕሮፋይል",
@@ -155,7 +156,7 @@ final Map<String, String> amET = {
   "lbl_finance_equbs": "ፋይናንስ + ሌሎች",
   "lbl_special_finance_equbs": "ልዩ ፋይናንስ",
   "lbl_see_all": "ሁሉንም ይመልከቱ",
-  "lbl_no_ekubs": "እቁብ የለም",
+  "lbl_no_ekubs": "ዕቁብ የለም",
   "lbl_join_equb": "ተቀላቀል",
   "lbl_finance_and_other": "ፋይናንስ እና ሌሎች",
   "nb_only_one_person_will_be_winner": "ማስታወሻ: _አሸናፊ የሚሆነው አንድ ሰው ብቻ ነው፡",
@@ -164,15 +165,31 @@ final Map<String, String> amET = {
   "lbl_close": "ዝጋ",
   "lbl_equb_confirmation": "የዕቁብ ማረጋገጫ",
   "lbl_description": "መግለጫ",
-  "lbl_total_number_of_shares": "አጠቃላይ የእጣ ብዛት",
+  "lbl_total_number_of_shares": "አጠቃላይ የዕጣ ብዛት",
   "lbl_expected_amount": "የሚጠበቀው መጠን",
   "lbl_list_of_shares": "የዕቁብ ዝርዝር",
   "lbl_numbers": "ቁጥሮች",
   "lbl_ammount": "መጠን",
   "lbl_ekub_detail": "የዕቁብ ዝርዝር",
   "lbl_joined_members": "የተቀላቀለ አባላትን",
+  "lbl_joined_badge": "ተቀላቅለዋል",
+  "lbl_join_again": "እንደገና ተቀላቀል",
+  "lbl_members_filled": "የተሞሉ አባላት",
+  "lbl_already_filled": "ቦታው ሞልቷል",
+  "lbl_every": "በየ",
+  "lbl_filled": "ተሞልቷል",
+  "lbl_spots_to_go": "ቦታ ይቀራል",
+  "lbl_spot_left": "ቦታ ቀርቷል",
+  "lbl_spots_left": "ቦታዎች ቀርተዋል",
+  "lbl_equb_type": "የዕቁብ አይነት",
+  "lbl_category": "ምድብ",
+  "lbl_lottery_numbers": "የዕጣ ቁጥሮች",
+  "lbl_lottery_number": "የዕጣ ቁጥር",
   'started': 'የተጀመረ',
   "lbl_expected_start_date": "መጀመሪያ ቀን",
+  "lbl_expected_end_date": "የሚጠናቀቅበት ቀን",
+  "lbl_round_and_members": "ዙር (የዕቁበኞች ብዛት)",
+  "lbl_quick_payment": "ወደ ክፍያ",
   "lbl_service_charge": "የአገልግሎት ክፍያ",
   "lbl_your_share": "ዕቁብ",
   "lbl_equivalent_etb": "ተመጣጣኝ ብር",
@@ -183,7 +200,7 @@ final Map<String, String> amET = {
   "lbl_please_enter_your_pin": "እባክዎ ሚስጥር ቁጥርዎን ያስገቡ",
   "lbl_pin": "ሚስጥር ቁጥር",
   "lbl_sign_up": "ማስመዝገብ",
-  "lbl_welcome_to_hello_equb": "እንኳን ወደ ሄሎ እቁብ በደህና መጡ",
+  "lbl_welcome_to_hello_equb": "እንኳን ወደ ሄሎ ዕቁብ በደህና መጡ",
   "lbl_enter_phone_number": "ስልክ ቁጥር ያስገቡ",
   "lbl_invalid_phone_number": "የማያገለግል ስልክ ቁጥር",
   "lbl_already_have_account": "ቀድሞውኑ አካውንት አለዎት?",
@@ -216,10 +233,10 @@ final Map<String, String> amET = {
   "lbl_taken": "ተወስዷል",
   "lbl_claimed": "ይገባኛል ብሏል",
   "lbl_not_claimed": "የይገባኛል ጥያቄ አይደለም",
-  "lbl_my_active_equbs": "የኔ አክቲቭ እቁብ",
-  "lbl_pending_ekubs": "በመጠባበቅ ላይ ያለ እቁቦች",
-  "lbl_daily": "በየቀኑ",
-  "daily": "በየቀኑ",
+  "lbl_my_active_equbs": "የኔ አክቲቭ ዕቁብ",
+  "lbl_pending_ekubs": "በመጠባበቅ ላይ ያለ ዕቁብዎች",
+  "lbl_daily": "የቀን",
+  "daily": "የቀን",
   "lbl_weekly": "ሳምንታዊ",
   "weekly": "ሳምንታዊ",
   "monthly": "ወርሃዊ",
@@ -237,11 +254,14 @@ final Map<String, String> amET = {
   "lbl_share": "አጋራ",
   "lbl_amount": "መጠን",
   "lbl_amount_is_required": "የሚፈለግ መጠን",
+  "lbl_select_at_least_one_payment_amount":
+      "እባክዎን ቢያንስ አንድ የክፍያ መጠን ይምረጡ።",
   "lbl_total_to_be_paid": "የሚከፈል ድምር",
   "lbl_personal": "የግል",
   "lbl_financial": "የፋይናንስ",
   "lbl_please_complete_profile": "እባክዎ ፕሮፋይሉን ይጨርሱ",
   "lbl_account": "አካውንት",
+  "lbl_my_account": "የእኔ አካውንት",
   "lbl_edit_profile": "ፕሮፋይል ያስተካክሉ",
   "lbl_security": "ደህነት",
   "lbl_notifications": "ማሳወቂያ",
@@ -255,13 +275,13 @@ final Map<String, String> amET = {
   "lbl_your_new_pin_mustbe_unique": "የእርስዎ የሚስጥር ቁጥር ልዩ እና የግል መሆን አለበት",
   "lbl_next": "ቀጥል",
   "lbl_agree_to_terms_conditions": "በደንቦች እና ሁኔታዎች ተስማማ",
-  "lbl_split_equb_payments": "የእቁብ ክፍያዎችን ለይተ አውጣ",
+  "lbl_split_equb_payments": "የዕቁብ ክፍያዎችን ለይተ አውጣ",
   "lbl_total_amount_paid": "የተከፈለ ጠቅላላ መጠን",
   "lbl_split": "ለይ",
-  "lbl_equbs": "እቁቦች",
+  "lbl_equbs": "ዕቁብዎች",
   "lbl_no_transaction_history": "የዝውውር ታሪክ የለም",
   "lbl_date": "ቀን",
-  "lbl_equb_categories": "የእቁብ ምድቦች",
+  "lbl_equb_categories": "የዕቁብ ምድቦች",
   "lbl_unable_to_fetch_requests": "ጥያቄዎችን ለማምጣት አልቻልንም",
   "lbl_no_requests": "ጥያቄ የለም",
   "lbl_order_id": "የትዕዛዝ መለያ",
@@ -276,12 +296,12 @@ final Map<String, String> amET = {
   "lbl_leave": "ተው",
   "lbl_total_amount": "ጠቅላላ መጠን",
   "lbl_pending": "እየተጠበቀ ያለ",
-  "lbl_equb_status": "እቁቡ ያለበት ሁኔታ",
-  "lbl_no_pending_equbs": "እየተጠበቀ ያለ እቁብ የለም",
+  "lbl_equb_status": "ዕቁቡ ያለበት ሁኔታ",
+  "lbl_no_pending_equbs": "እየተጠበቀ ያለ ዕቁብ የለም",
   "lbl_no_pending_payment": "እየተጠበቀ ያለ ክፍያ የለም",
   "lbl_payment_status": "የክፍያ ሁኔታ",
   "lbl_confirm_payment": "ክፍያ ያረጋግጡ",
-  "lbl_my_equbs": "የእኔ እቁቦች",
+  "lbl_my_equbs": "የእኔ ዕቁብዎች",
   "lbl_home": "መነሻ",
   "lbl_send_list": "ዝርዝር ላክ",
   "lbl_unexpected_error_occurred": "ያልተጠበቀ ስህተት ተፈጥሯል",
@@ -297,10 +317,10 @@ final Map<String, String> amET = {
   "lbl_reason_required": "ምክንያት ጠይቅ",
   "lbl_reason_cannot_be_empty": "ምክንያት ባዶ መሆን አይችልም",
   "lbl_select_language": "ቋንቋ ምረጥ",
-  "lbl_no_active_equbs": "እቁብ የለም",
+  "lbl_no_active_equbs": "ዕቁብ የለም",
   "lbl_information": "መረጃ",
   "lbl_you_can_claim":
-      " የወጣሎትን እቁብ 'የኔ እቁብ> ሎተሪ በሚለው' ምርጫ ውስጥ በመግባት እቁቡን ለመውሰድ ማመልከት ይችላሉ.",
+      " የወጣሎትን ዕቁብ 'የኔ ዕቁብ> ዕጣ በሚለው' ምርጫ ውስጥ በመግባት ዕቁቡን ለመውሰድ ማመልከት ይችላሉ.",
   "lbl_selected_bank": "የተመረጠው ባንከ ",
   "lbl_select_bank_account": "የባንክ አካውንት ይምረጡ",
   "lbl_copied_to_clipboard": "ኮፒ ተደርጓል",
@@ -315,7 +335,7 @@ final Map<String, String> amET = {
   "lbl_choose_guarantor": "ዋስትናዎን ይምረጡ",
   "lbl_dont_get_your_guarantee": "ለዋስትና የሚሆን አላገኙም?",
   "lbl_house_equbs": "የቤት አቁብ",
-  "lbl_car_equbs": "የመኪና እቁብ",
+  "lbl_car_equbs": "የመኪና ዕቁብ",
   "lbl_guarantee_request": "ዋስትና ያመልክቱ",
   "lbl_do_you_accept": "የዋስትና ጥያቂውን ይቀበላሉ?",
   "lbl_guarantee_needy": "ዋስትና ፈላጊ",
@@ -326,24 +346,24 @@ final Map<String, String> amET = {
   "lbl_request_declined": "ጥያቂው ተቀባይነት አላገኘም ",
   "lbl_you_have_successfully_accepted": "ጥያቂውን በአግባቡ ተቀብለዋል",
   "lbl_you_have_successfully_declined": "ጥያቂው ተቀባይነት አላገኘም",
-  "lbl_all_equbs": "ሁሉም እቁቦች",
+  "lbl_all_equbs": "ሁሉም ዕቁብዎች",
   "lbl_finance": "የገንዘብ",
   "lbl_car": "የመኪና",
   "lbl_house": "የቤት",
   "lbl_travel": "የጉዞ",
-  "lbl_active_equbs": "በሂደት ላይ ያለ እቁብ ",
+  "lbl_active_equbs": "በሂደት ላይ ያለ ዕቁብ ",
   "lbl_you_have": "ያሎት",
   "lbl_special_finance": "ልዩ የገንዘብ ",
   "lbl_total_savings": "አጠቃላይ ቁጠባ ",
   'lbl_report': 'ሪፖርት',
   'lbl_lottery_history': 'ዕጣ የወጣላቸው',
   'lbl_we_have_a_winner': 'አሸናፊ አለን!',
-  'lbl_lucky_lottery_number': 'የዕድለኛው የሎተሪ ቁጥር',
+  'lbl_lucky_lottery_number': 'የዕድለኛው የዕጣ ቁጥር',
   'lbl_winner': 'አሸናፊ',
   'lbl_no_winners_yet': 'እስካሁን አሸናፊ የለም',
   'lbl_winners_will_appear_here': 'የሎተሪ ውጤት ሲገኝ አሸናፊዎች እዚህ ይታያሉ።',
   "lbl_you_can_claim":
-      "የወጣሎትን እቁብ 'የኔ እቁብ> ሎተሪ በሚለው' ምርጫ ውስጥ በመግባት እቁቡን ለመውሰድ ማመልከት ይችላሉ.",
+      "የወጣሎትን ዕቁብ 'የኔ ዕቁብ> ሎተሪ በሚለው' ምርጫ ውስጥ በመግባት ዕቁቡን ለመውሰድ ማመልከት ይችላሉ.",
   "lbl_selected_bank": "የተመረጠው ባንከ ",
   "lbl_select_bank_account": "የባንክ አካውንት ይምረጡ",
   "lbl_copied_to_clipboard": "ኮፒ ተደርጓል",
@@ -358,7 +378,7 @@ final Map<String, String> amET = {
   "lbl_choose_guarantor": "ዋስትናዎን ይምረጡ",
   "lbl_dont_get_your_guarantee": "ለዋስትና የሚሆን አላገኙም?",
   "lbl_house_equbs": "የቤት አቁብ",
-  "lbl_car_equbs": "የመኪና እቁብ",
+  "lbl_car_equbs": "የመኪና ዕቁብ",
   "lbl_guarantee_request": "ዋስትና ያመልክቱ",
   "lbl_do_you_accept": "የዋስትና ጥያቂውን ይቀበላሉ?",
   "lbl_guarantee_needy": "ዋስትና ፈላጊ",
@@ -369,12 +389,12 @@ final Map<String, String> amET = {
   "lbl_request_declined": "ጥያቂው ተቀባይነት አላገኘም ",
   "lbl_you_have_successfully_accepted": "ጥያቂውን በአግባቡ ተቀብለዋል",
   "lbl_you_have_successfully_declined": "ጥያቂው ተቀባይነት አላገኘም",
-  "lbl_all_equbs": "ሁሉም እቁቦች",
+  "lbl_all_equbs": "ሁሉም ዕቁብዎች",
   "lbl_finance": "የገንዘብ",
   "lbl_car": "የመኪና",
   "lbl_house": "የቤት",
   "lbl_travel": "የጉዞ",
-  "lbl_active_equbs": "በሂደት ላይ ያለ እቁብ ",
+  "lbl_active_equbs": "በሂደት ላይ ያለ ዕቁብ ",
   "lbl_you_have": "ያሎት",
   "lbl_special_finance": "ልዩ የገንዘብ ",
   "lbl_total_savings": "አጠቃላይ ቁጠባ ",
@@ -388,15 +408,15 @@ final Map<String, String> amET = {
   'reference_number': "የማጠቀሻ ቁጥር",
   'all': "ሁሉም",
   'terms_conditions': """
-ሃገርኛ ክላውድ እቁብ - የአጠቃቀም መመሪያ እና ውሎች
+ሃገርኛ ክላውድ ዕቁብ - የአጠቃቀም መመሪያ እና ውሎች
 
-እንኳን ወደ ሃገርኛ ክላውድ እቁብ በደህና መጡ! ይህ የአጠቃቀም መመሪያ እና ውሎች የሞባይል መተግበሪያችንን እና አገልግሎቶቻችንን ሲጠቀሙ የሚመሩ ህጎች  ናቸው። መተግበሪያችንን በመጠቀም እነዚህን ውሎች ተስማምተው መሆኑን ያሳውቁ። 
+እንኳን ወደ ሃገርኛ ክላውድ ዕቁብ በደህና መጡ! ይህ የአጠቃቀም መመሪያ እና ውሎች የሞባይል መተግበሪያችንን እና አገልግሎቶቻችንን ሲጠቀሙ የሚመሩ ህጎች  ናቸው። መተግበሪያችንን በመጠቀም እነዚህን ውሎች ተስማምተው መሆኑን ያሳውቁ። 
 
 1. መግቢያ
-ሃገርኛ ክላውድ እቁብ የገንዘብ ቆጠባ እና የማህበረሰብ-ላይ የተመሰረተ የእቁብ ግብይት ለማስቻል የሚያገለግል ዲጂታል መድረክ ነው። መተግበሪያውን በመጠቀም እነዚህን ውሎች እንደተቀበሉና እንደምትስማሙ ያረጋግጣሉ። ካልተስማሙ እባክዎን መተግበሪያውን አይጠቀሙ።
+ሃገርኛ ክላውድ ዕቁብ የገንዘብ ቆጠባ እና የማህበረሰብ-ላይ የተመሰረተ የዕቁብ ግብይት ለማስቻል የሚያገለግል ዲጂታል መድረክ ነው። መተግበሪያውን በመጠቀም እነዚህን ውሎች እንደተቀበሉና እንደምትስማሙ ያረጋግጣሉ። ካልተስማሙ እባክዎን መተግበሪያውን አይጠቀሙ።
 
 2. የተጠቃሚነት መስፈርቶች
-ሃገርኛ ክላውድ እቁብን ለመጠቀም፡
+ሃገርኛ ክላውድ ዕቁብን ለመጠቀም፡
 ዕድሜዎ ቢያንስ 18 ዓመት ሊሆን ይገባል።
 በምዝገባ ጊዜ ትክክለኛ እና እውነተኛ መረጃ ማቅረብ አለብዎት።
 ከሚፈልጉት ህጎች እና ደንቦች ጋር ሙሉ በሙሉ መስማማት አለብዎት።
@@ -408,7 +428,7 @@ final Map<String, String> amET = {
 
 4. ግብይቶች እና ክፍያ
 በመተግበሪያው ውስጥ የሚደረጉ ግብይቶች ከሁሉም የገንዘብ ደንቦች ጋር መስማማት አለባቸው።
-ሃገርኛ ክላውድ እቁብ በተጠቃሚዎች መካከል የሚከሰቱ የገንዘብ ኪሳራዎች ወይም ስህተታዊ እንቅስቃሴዎች ላይ ሃላፊነት አይወስድም።
+ሃገርኛ ክላውድ ዕቁብ በተጠቃሚዎች መካከል የሚከሰቱ የገንዘብ ኪሳራዎች ወይም ስህተታዊ እንቅስቃሴዎች ላይ ሃላፊነት አይወስድም።
 ሁሉም ክፍያዎች እና የገንዘብ ማውጣት በህጋዊ መንገድ መከናወን አለባቸው።
 
 5. የተጠቃሚ ባህሪ
@@ -423,7 +443,7 @@ final Map<String, String> amET = {
 7. የአገልግሎት ተገኝነት
 ያለማቋረጥ አገልግሎት ለመስጠት እንሥራለን፣ ሆኖም በሁሉም ጊዜ ሊገኝ እንደሚችል አናረጋግጥም። አገልግሎቱን ለመለወጥ፣ ለማቆም ወይም ለመዝጋት ሙሉ መብት አለን።
 8. ኃላፊነቶች
-ሃገርኛ ክላውድ እቁብ ተጥቃሚዎች ክመተግበሪያው ውጪ የሚደርሱባቸው የገንዘብ ኪሳራዎች ወይም ክርክሮች ላይ ሃላፊነት አይወስድም።
+ሃገርኛ ክላውድ ዕቁብ ተጥቃሚዎች ክመተግበሪያው ውጪ የሚደርሱባቸው የገንዘብ ኪሳራዎች ወይም ክርክሮች ላይ ሃላፊነት አይወስድም።
 የቢዝነስ ማማከር አገልግሎት አንሰጥም፤ ተጠቃሚዎች በራሳቸው ተገቢ ውሳኔ ሊወስኑ ይገባል።
 መተግበሪያው አሁን ባለው የዘት 'እንዳለው' ይሰጣል። በማንኛውም ዓይነት ዋስትና ሳይሰጥ ይቀርባል።"
 9. የ መለያዎችን (አካውንቶች) መዘጋት
@@ -437,7 +457,7 @@ final Map<String, String> amET = {
 11. ለጥያቄ የመገኛ መረጃ
 ስለእነዚህ ውሎች ጥያቄ ወይም አስተያየት ካላችሁ፡
 +251 93 333 4040 ይደውሉ።
-የሃገርኛ ክላውድ እኩብን መተግበሪያ በመጠቀምዎ እነዚህን ውሎች አንብበዋቸው፣ ተረድተዋቸው እና እንደተቀበሉ ያረጋግጣሉ።
+የሃገርኛ ክላውድ ዕቁብን መተግበሪያ በመጠቀምዎ እነዚህን ውሎች አንብበዋቸው፣ ተረድተዋቸው እና እንደተቀበሉ ያረጋግጣሉ።
 """,
   'add_new_stake': 'አዲስ ዕቁብ ጨምር',
   "tap_to_view_details": "ዝርዝሩን ለማየት ይንኩ",

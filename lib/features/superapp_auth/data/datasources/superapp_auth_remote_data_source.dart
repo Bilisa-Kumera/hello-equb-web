@@ -94,23 +94,41 @@ class SuperAppAuthRemoteDataSource {
     final user = _getPath(payload, 'user') ?? _getPath(payload, 'data.user');
     if (user is Map<String, dynamic>) return user;
     if (user is Map) return Map<String, dynamic>.from(user);
+    if (user is String) {
+      final parsedUser = _parseLooseMapString(user);
+      if (parsedUser.isNotEmpty) return parsedUser;
+    }
 
     final openId = _stringAt(payload, [
-      'open_id',
-      'openId',
-      'data.open_id',
-      'data.openId',
-      'biz_content.open_id',
-      'biz_content.openId',
-    ]);
+          'open_id',
+          'openId',
+          'data.open_id',
+          'data.openId',
+          'biz_content.open_id',
+          'biz_content.openId',
+        ]) ??
+        _stringInLooseMapAt(
+            payload,
+            [
+              'authRes',
+              'data.authRes',
+            ],
+            'open_id');
     final identityId = _stringAt(payload, [
-      'identityId',
-      'identity_id',
-      'data.identityId',
-      'data.identity_id',
-      'biz_content.identityId',
-      'biz_content.identity_id',
-    ]);
+          'identityId',
+          'identity_id',
+          'data.identityId',
+          'data.identity_id',
+          'biz_content.identityId',
+          'biz_content.identity_id',
+        ]) ??
+        _stringInLooseMapAt(
+            payload,
+            [
+              'authRes',
+              'data.authRes',
+            ],
+            'identityId');
     if (openId != null || identityId != null) {
       return <String, dynamic>{
         if (openId != null) 'open_id': openId,
@@ -144,6 +162,51 @@ class SuperAppAuthRemoteDataSource {
       if (v is String && v.trim().isNotEmpty) return v.trim();
     }
     return null;
+  }
+
+  String? _stringInLooseMapAt(
+    Map<String, dynamic> payload,
+    List<String> paths,
+    String key,
+  ) {
+    for (final path in paths) {
+      final v = _getPath(payload, path);
+      if (v is! String || v.trim().isEmpty) continue;
+      final parsed = _parseLooseMapString(v);
+      final value = parsed[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return null;
+  }
+
+  Map<String, dynamic> _parseLooseMapString(String value) {
+    final trimmed = value.trim();
+    if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+      return const <String, dynamic>{};
+    }
+
+    final content = trimmed.substring(1, trimmed.length - 1);
+    final map = <String, dynamic>{};
+    final entryPattern = RegExp(
+      r'([A-Za-z_][A-Za-z0-9_]*):\s*(.*?)(?=,\s*[A-Za-z_][A-Za-z0-9_]*:\s*|$)',
+    );
+
+    for (final match in entryPattern.allMatches(content)) {
+      final key = match.group(1);
+      final rawValue = match.group(2)?.trim();
+      if (key == null || rawValue == null) continue;
+      map[key] = _parseLooseValue(rawValue);
+    }
+    return map;
+  }
+
+  dynamic _parseLooseValue(String value) {
+    if (value == 'null') return null;
+    if (value == 'true') return true;
+    if (value == 'false') return false;
+    final intValue = int.tryParse(value);
+    if (intValue != null) return intValue;
+    return value;
   }
 
   dynamic _getPath(Map<String, dynamic> map, String path) {

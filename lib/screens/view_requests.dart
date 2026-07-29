@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class ViewRequests extends StatefulWidget {
   @override
@@ -62,13 +63,10 @@ class _ViewRequestsState extends State<ViewRequests> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           textScaleFactor: 1.0,
           'Equb Categories',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTextStyles.poppins70014,
         ),
         backgroundColor: AppColors.primary,
       ),
@@ -80,19 +78,21 @@ class _ViewRequestsState extends State<ViewRequests> {
               ),
             )
           : hasError
-              ? const Center(
+              ? Center(
                   child: Text(
                     textScaleFactor: 1.0,
                     'Failed to load requests',
-                    style: TextStyle(color: AppColors.red),
+                    style: AppTextStyles.poppins40014
+                        .copyWith(color: AppColors.red),
                   ),
                 )
               : categories.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         textScaleFactor: 1.0,
                         'No requests available',
-                        style: TextStyle(color: AppColors.grey),
+                        style: AppTextStyles.poppins40014
+                            .copyWith(color: AppColors.grey),
                       ),
                     )
                   : ListView.builder(
@@ -127,22 +127,13 @@ class CategoryCard extends StatelessWidget {
               Text(
                 textScaleFactor: 1.0,
                 category.name,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: AppColors.primary,
-                ),
+                style: AppTextStyles.poppins70018.copyWith(color: AppColors.primary),
               ),
               const SizedBox(height: 10),
               Text(
                 textScaleFactor: 1.0,
                 category.description,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
-                  color: AppColors.grey,
-                ),
+                style: AppTextStyles.poppins40014.copyWith(color: AppColors.grey),
               ),
               const SizedBox(height: 10),
               Row(
@@ -151,22 +142,12 @@ class CategoryCard extends StatelessWidget {
                   Text(
                     textScaleFactor: 1.0,
                     'Order ID: ${category.orderId}',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                      color: AppColors.black54,
-                    ),
+                    style: AppTextStyles.poppins50012.copyWith(color: AppColors.black54),
                   ),
                   Text(
                     textScaleFactor: 1.0,
                     'Created: ${category.createdAt.toLocal()}',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                      color: AppColors.black54,
-                    ),
+                    style: AppTextStyles.poppins50012.copyWith(color: AppColors.black54),
                   ),
                 ],
               ),

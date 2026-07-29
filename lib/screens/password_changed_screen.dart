@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:helloequb/screens/complete_profile_screen.dart';
 import 'package:helloequb/screens/home_screen.dart';
 import 'package:helloequb/utils/custom_button.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 // ignore: must_be_immutable
 class JinEkubDetail extends StatelessWidget {
@@ -29,7 +30,7 @@ class JinEkubDetail extends StatelessWidget {
                   child: const Center(
                     child: Padding(
                       padding: EdgeInsets.only(left: 8.0),
-                      child: Icon(Icons.arrow_back_ios, color: AppColors.black),
+                      child: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.black),
                     ), // Set icon color to black
                   ),
                 ),
@@ -44,34 +45,28 @@ class JinEkubDetail extends StatelessWidget {
                       child: Image.asset('assets/almost.png')),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 10, left: 46.0, right: 46),
+              Padding(
+                padding: const EdgeInsets.only(top: 10, left: 46.0, right: 46),
                 child: SizedBox(
                   child: Center(
                     child: Text(
                       textScaleFactor: 1.0,
                       'Almost Done!',
-                      style: TextStyle(
-                          color: AppColors.darkBlueGray,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Urbanist',
-                          fontSize: 30),
+                      style: AppTextStyles.poppins70032
+                          .copyWith(color: AppColors.darkBlueGray),
                     ),
                   ),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(top: 20, left: 46.0, right: 46),
+              Padding(
+                padding: const EdgeInsets.only(top: 20, left: 46.0, right: 46),
                 child: Center(
                   child: SizedBox(
                     child: Text(
                       textScaleFactor: 1.0,
                       "You're almost done. Please complete your profile to get full experience.",
-                      style: TextStyle(
-                          color: AppColors.coolGray,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'Urbanist',
-                          fontSize: 16),
+                      style: AppTextStyles.poppins50016
+                          .copyWith(color: AppColors.coolGray),
                     ),
                   ),
                 ),
@@ -114,12 +109,10 @@ class JinEkubDetail extends StatelessWidget {
                             const MaterialStatePropertyAll(AppColors.white),
                         foregroundColor:
                             const MaterialStatePropertyAll(AppColors.white)),
-                    child: const Text(
+                    child: Text(
                       textScaleFactor: 1.0,
                       "Skip To Homepage",
-                      style: TextStyle(
-                        color: AppColors.vibrantGreen,
-                      ),
+                      style: AppTextStyles.poppins40014.copyWith(color: AppColors.vibrantGreen),
                     ),
                     onPressed: () {
                       Navigator.push(

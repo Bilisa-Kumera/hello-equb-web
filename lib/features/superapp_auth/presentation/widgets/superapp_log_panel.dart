@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class SuperAppLogPanel extends StatelessWidget {
   const SuperAppLogPanel({super.key, this.title});
@@ -30,7 +31,7 @@ class SuperAppLogPanel extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title ?? 'Logs',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: AppTextStyles.poppins70014,
                     ),
                   ),
                   TextButton(
@@ -51,11 +52,8 @@ class SuperAppLogPanel extends StatelessWidget {
                 child: SingleChildScrollView(
                   child: SelectableText(
                     text,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      height: 1.25,
-                    ),
+                    style: AppTextStyles.caption
+                        .copyWith(fontFamily: 'monospace', height: 1.25),
                   ),
                 ),
               ),

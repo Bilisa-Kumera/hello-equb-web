@@ -12,6 +12,7 @@ import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_button.dart';
 import 'package:helloequb/utils/custom_progress_screen.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   String code;
@@ -139,7 +140,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   child: const Center(
                     child: Padding(
                       padding: EdgeInsets.only(left: 8.0),
-                      child: Icon(Icons.arrow_back_ios, color: AppColors.black),
+                      child: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.black),
                     ),
                   ),
                 ),
@@ -150,12 +151,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               child: Text(
                 textScaleFactor: 1.0,
                 AppKeys.otpVerification.tr(context),
-                style: TextStyle(
-                  color: AppColors.darkBlueGray,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Urbanist',
-                  fontSize: 24.sp,
-                ),
+                style: AppTextStyles.poppins70024.copyWith(color: AppColors.darkBlueGray),
               ),
             ),
             Padding(
@@ -163,12 +159,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               child: Text(
                 textScaleFactor: 1.0,
                 AppKeys.enterVerificationCode.tr(context),
-                style: TextStyle(
-                  color: AppColors.coolGray,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'Urbanist',
-                  fontSize: 15.sp,
-                ),
+                style: AppTextStyles.poppins50014.copyWith(color: AppColors.coolGray),
               ),
             ),
             Padding(
@@ -179,7 +170,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 20, color: AppColors.black),
+                style: AppTextStyles.poppins40020.copyWith(color: AppColors.black),
                 decoration: const InputDecoration(
                   counterText: "", // Hide counter
                   border: UnderlineInputBorder(),
@@ -194,12 +185,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ),
             ),
             if (showError)
-              const Center(
+              Center(
                 child: Text(
                   textScaleFactor: 1.0,
                   'Incorrect OTP, please try again.',
-                  style:
-                      TextStyle(color: AppColors.red, fontFamily: 'Urbanist'),
+                  style: AppTextStyles.poppins40014
+                      .copyWith(color: AppColors.red),
                 ),
               ),
             Padding(
@@ -221,12 +212,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     child: Text(
                       textScaleFactor: 1.0,
                       AppKeys.didntReceiveCode.tr(context),
-                      style: TextStyle(
-                        color: AppColors.darkBlueGray,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Urbanist',
-                        fontSize: 14.sp,
-                      ),
+                      style: AppTextStyles.poppins50014.copyWith(color: AppColors.darkBlueGray),
                     ),
                   ),
                   Padding(
@@ -238,12 +224,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ? '$countdown seconds'
                             : AppKeys.resend.tr(context),
                         textScaleFactor: 1.0,
-                        style: const TextStyle(
-                          color: AppColors.darkBlueGray,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Urbanist',
-                          fontSize: 14,
-                        ),
+                        style: AppTextStyles.poppins70015.copyWith(color: AppColors.darkBlueGray),
                       ),
                     ),
                   ),

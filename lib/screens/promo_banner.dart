@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class PromoBanner extends StatelessWidget {
   const PromoBanner({super.key});
@@ -23,11 +24,11 @@ class PromoBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("SUZUKI DEZIRE 2022",
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text("SUZUKI DEZIRE 2022",
+                    style: AppTextStyles.poppins70016.copyWith(color: Colors.white)),
                 const SizedBox(height: 6),
-                const Text("Start car equb today",
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                Text("Start car equb today",
+                    style: AppTextStyles.poppins40014.copyWith(color: Colors.white70)),
                 const Spacer(),
                 ElevatedButton(
                   onPressed: null,

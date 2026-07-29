@@ -5,22 +5,20 @@ import 'package:helloequb/screens/my_ekub_detail_screen.dart';
 import 'package:helloequb/screens/payment_arrangement_screen.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:provider/provider.dart';
 
 import '../models/ekub_category_model.dart';
 import '../utils/colors_constant.dart';
-import '../utils/custom_bottom_nav.dart';
+import '../utils/style_constants.dart';
 import '../utils/getx_storage_custom.dart';
 import '../utils/lang_constants.dart';
-import 'home_screen.dart';
-import 'my_other_ekubs.dart';
-import 'profile_screen.dart';
 import 'transaction_history.dart';
 
 class PaymentList extends StatefulWidget {
-  const PaymentList({super.key});
+  final bool embedInShell;
+
+  const PaymentList({super.key, this.embedInShell = false});
 
   @override
   State<PaymentList> createState() => _PaymentListState();
@@ -34,13 +32,10 @@ class _PaymentListState extends State<PaymentList> {
   void initState() {
     super.initState();
     _setupScrollListener();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Refresh data every time the page is visited
-    _refreshData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _refreshData();
+    });
   }
 
   void _setupScrollListener() {
@@ -57,14 +52,8 @@ class _PaymentListState extends State<PaymentList> {
 
   Future<void> _refreshData() async {
     final provider = Provider.of<EqubPaymentProvider>(context, listen: false);
-    
-    // Only show loading indicator on initial load, not during refresh
-    if (_isInitializing) {
-      setState(() {});
-    }
-    
     await provider.refreshEqubs();
-    
+
     if (mounted) {
       setState(() {
         _isInitializing = false;
@@ -99,7 +88,13 @@ class _PaymentListState extends State<PaymentList> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(AppKeys.payment.tr(context))),
+      backgroundColor: Colors.white,
+      extendBody: !widget.embedInShell,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(AppKeys.payment.tr(context)),
+      ),
       body: Consumer<EqubPaymentProvider>(
         builder: (context, provider, child) {
           // Show loading only on initial load when data is empty
@@ -128,8 +123,7 @@ class _PaymentListState extends State<PaymentList> {
                     provider.lastError == null
                         ? AppKeys.noEkubs.tr(context)
                         : AppKeys.errorTryAgain.tr(context),
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: AppTextStyles.bodyLarge.copyWith(
                       fontWeight: FontWeight.w500,
                       color: AppColors.black,
                     ),
@@ -143,10 +137,7 @@ class _PaymentListState extends State<PaymentList> {
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style: AppTextStyles.greyCaption,
                       ),
                     ),
                   ],
@@ -197,11 +188,12 @@ class _PaymentListState extends State<PaymentList> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Card(
+                    color: const Color(0xFFF7F8FA),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade200),
                     ),
-                    elevation: 3,
-                    shadowColor: Colors.grey.withOpacity(0.3),
+                    elevation: 0,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
@@ -214,9 +206,7 @@ class _PaymentListState extends State<PaymentList> {
                               Expanded(
                                 child: Text(
                                   equb.name ?? "No Name",
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                  style: AppTextStyles.poppins60014.copyWith(
                                     color: AppColors.primary,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -232,9 +222,7 @@ class _PaymentListState extends State<PaymentList> {
                                 ),
                                 child: Text(
                                   "${AppKeys.round.tr(context)}: ${equb.currentRound}",
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                                  style: AppTextStyles.badge.copyWith(
                                     color: AppColors.primary,
                                   ),
                                 ),
@@ -243,20 +231,20 @@ class _PaymentListState extends State<PaymentList> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Equb Type and Category
+                          // Category left, type (daily/monthly) right
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: _buildInfoChip(
-                                  Icons.category_outlined,
-                                  equb.equbType?.name ?? 'N/A',
-                                ),
-                              ),
                               Expanded(
                                 child: _buildInfoChip(
                                   Icons.label_outline,
                                   equb.equbCategory?.name ?? 'N/A',
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildInfoChip(
+                                  Icons.category_outlined,
+                                  equb.equbType?.name ?? 'N/A',
+                                  alignEnd: true,
                                 ),
                               ),
                             ],
@@ -267,8 +255,9 @@ class _PaymentListState extends State<PaymentList> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.grey[50],
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade200),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -278,17 +267,13 @@ class _PaymentListState extends State<PaymentList> {
                                   children: [
                                     Text(
                                       AppKeys.amount.tr(context),
-                                      style: TextStyle(
-                                        fontSize: 11.sp,
-                                        color: Colors.grey[600],
-                                      ),
+                                      style: AppTextStyles.captionMuted,
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       numberFormat.format(equb.equbAmount ?? 0),
-                                      style: TextStyle(
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.bold,
+                                      style: AppTextStyles.labelSmall.copyWith(
+                                        fontWeight: FontWeight.w700,
                                         color: AppColors.black,
                                       ),
                                     ),
@@ -299,21 +284,19 @@ class _PaymentListState extends State<PaymentList> {
                                   children: [
                                     Text(
                                       AppKeys.totalAmount.tr(context),
-                                      style: TextStyle(
-                                        fontSize: 11.sp,
-                                        color: Colors.grey[600],
-                                      ),
+                                      style: AppTextStyles.captionMuted,
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       numberFormat.format(
-                                        (equb.equbAmount ?? 0) * 
-                                        (int.tryParse(equb.numberOfEqubers.toString()) ?? 0)
+                                        (equb.equbAmount ?? 0) *
+                                            (int.tryParse(equb.numberOfEqubers
+                                                    .toString()) ??
+                                                0),
                                       ),
-                                      style: TextStyle(
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.vibrantGreen,
+                                      style: AppTextStyles.labelSmall.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
                                       ),
                                     ),
                                   ],
@@ -323,56 +306,74 @@ class _PaymentListState extends State<PaymentList> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Lottery Numbers
-                          if (equb.equbers != null && equb.equbers!.isNotEmpty) ...[
-                            Text(
-                              'Your Lottery Numbers:',
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey[700],
+                          // Lottery Numbers — label left, chips right
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${AppKeys.lotteryNumbers.tr(context)}:',
+                                style: AppTextStyles.captionMuted.copyWith(
+                                  color: Colors.grey.shade700,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: equb.equbers!
-                                  .map((e) => Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(
-                                            color: AppColors.primary.withOpacity(0.3),
-                                          ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: (equb.equbers != null &&
+                                        equb.equbers!.isNotEmpty)
+                                    ? Wrap(
+                                        alignment: WrapAlignment.end,
+                                        spacing: 6,
+                                        runSpacing: 6,
+                                        children: equb.equbers!
+                                            .map((e) => Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 5),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.primary
+                                                        .withOpacity(0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            20),
+                                                    border: Border.all(
+                                                      color: AppColors.primary
+                                                          .withOpacity(0.3),
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    e.lotteryNumber ?? "",
+                                                    style: AppTextStyles
+                                                        .labelSmall
+                                                        .copyWith(
+                                                      color: AppColors.primary,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ))
+                                            .toList(),
+                                      )
+                                    : Text(
+                                        AppKeys.noData.tr(context),
+                                        textAlign: TextAlign.end,
+                                        style:
+                                            AppTextStyles.captionMuted.copyWith(
+                                          fontStyle: FontStyle.italic,
                                         ),
-                                        child: Text(
-                                          e.lotteryNumber ?? "",
-                                          style: const TextStyle(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ))
-                                  .toList(),
-                            ),
-                          ] else
-                            Text(
-                              "No Lottery Numbers",
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontStyle: FontStyle.italic,
+                                      ),
                               ),
-                            ),
+                            ],
+                          ),
                           const SizedBox(height: 16),
 
                           // Go to Payment Button
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              icon: const Icon(Icons.payment, size: 20),
+                              icon: const Icon(Icons.payment,
+                                  size: 18, color: Colors.white),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
@@ -380,20 +381,24 @@ class _PaymentListState extends State<PaymentList> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                elevation: 2,
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                elevation: 0,
                               ),
                               onPressed: () {
                                 listItems.clear();
                                 listItemss.clear();
-                                for (int i = 0; i < (equb.equbers?.length ?? 0); i++) {
+                                for (int i = 0;
+                                    i < (equb.equbers?.length ?? 0);
+                                    i++) {
                                   listItemss.add(ListItems(
-                                    title: equb.equbers?[i].lotteryNumber ?? '',
+                                    title:
+                                        equb.equbers?[i].lotteryNumber ?? '',
                                     subtitle: equb.equbAmount.toString(),
                                     userIds: equb.equbers?[i].id ?? '',
                                   ));
                                   listItems.add(ListItem(
-                                    title: equb.equbers?[i].lotteryNumber ?? '',
+                                    title:
+                                        equb.equbers?[i].lotteryNumber ?? '',
                                     subtitle: equb.equbAmount.toString(),
                                   ));
                                 }
@@ -419,9 +424,8 @@ class _PaymentListState extends State<PaymentList> {
                               },
                               label: Text(
                                 AppKeys.makePayment.tr(context),
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold),
+                                style: AppTextStyles.button
+                                    .copyWith(color: Colors.white),
                               ),
                             ),
                           ),
@@ -435,54 +439,33 @@ class _PaymentListState extends State<PaymentList> {
           );
         },
       ),
-      bottomNavigationBar: CustomBottomNavigationBar(
-        currentIndex: 2,
-        onTap: (index) async {
-          switch (index) {
-            case 0:
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()));
-              break;
-            case 1:
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const ActiveEqubsScreen()));
-              break;
-            case 2:
-              break;
-            case 3:
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const ProfileScreen()));
-              break;
-            default:
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()));
-              break;
-          }
-        },
-      ),
+      bottomNavigationBar: null,
     );
   }
 
-  Widget _buildInfoChip(IconData icon, String label) {
+  Widget _buildInfoChip(IconData icon, String label, {bool alignEnd = false}) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment:
+          alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 4),
+        if (!alignEnd) ...[
+          Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 4),
+        ],
         Flexible(
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 13.sp,
-              color: Colors.grey[800],
+            style: AppTextStyles.captionMuted.copyWith(
+              color: Colors.grey.shade800,
             ),
             overflow: TextOverflow.ellipsis,
+            textAlign: alignEnd ? TextAlign.end : TextAlign.start,
           ),
         ),
+        if (alignEnd) ...[
+          const SizedBox(width: 4),
+          Icon(icon, size: 14, color: AppColors.primary),
+        ],
       ],
     );
   }

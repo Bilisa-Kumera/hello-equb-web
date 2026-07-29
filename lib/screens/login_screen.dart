@@ -14,6 +14,7 @@ import 'package:helloequb/utils/lang_constants.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen>
   String errorMessage = '';
   bool progress = false;
   bool _isFieldFocused = false;
+  bool _isPhoneTabActive = true;
 
   late Connectivity _connectivity;
   late List<ConnectivityResult> _connectionStatus;
@@ -142,6 +144,23 @@ class _LoginScreenState extends State<LoginScreen>
       return input;
     }
   }
+
+  void _switchInputTab(bool isPhoneTab) {
+    if (_isPhoneTabActive == isPhoneTab) return;
+    _inputFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isPhoneTabActive = isPhoneTab;
+      showError = false;
+      errorMessage = '';
+      inputController.clear();
+    });
+    Future.delayed(const Duration(milliseconds: 120), () {
+      if (!mounted) return;
+      _inputFocusNode.requestFocus();
+    });
+  }
+
 Future<void> _sendOtpRequest(BuildContext context, String to) async {
   setState(() {
     showError = false;
@@ -215,6 +234,13 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
 
   @override
   Widget build(BuildContext context) {
+    final inputLabel = _isPhoneTabActive
+        ? AppKeys.phoneNumber.tr(context)
+        : AppKeys.email.tr(context);
+    final inputHint = _isPhoneTabActive
+        ? AppKeys.pleaseEnterPhoneNumber.tr(context)
+        : AppKeys.pleaseEnterEmail.tr(context);
+
     return Scaffold(
       backgroundColor: AppColors.grey100,
       body: SafeArea(
@@ -269,12 +295,7 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
                         Center(
                           child: Text(
                             AppKeys.welcomeToHello.tr(context),
-                            style: TextStyle(
-                              fontSize: 28.sp,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.black87,
-                              letterSpacing: -0.5,
-                            ),
+                            style: AppTextStyles.poppins70028.copyWith(color: AppColors.black87),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -282,22 +303,47 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
                         Center(
                           child: Text(
                             AppKeys.loginToContinue.tr(context),
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: AppColors.grey600,
-                              fontWeight: FontWeight.w400,
-                            ),
+                            style: AppTextStyles.poppins40014.copyWith(color: AppColors.grey600),
                           ),
                         ),
                         SizedBox(height: 40.h),
-                        // Input Field Label
-                        Text(
-                          AppKeys.enterPhoneEmail.tr(context),
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.grey800,
+                        Container(
+                          padding: EdgeInsets.all(4.w),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(16.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.black.withOpacity(0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildInputTypeTab(
+                                  label: AppKeys.phoneNumber.tr(context),
+                                  isSelected: _isPhoneTabActive,
+                                  onTap: () => _switchInputTab(true),
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: _buildInputTypeTab(
+                                  label: AppKeys.email.tr(context),
+                                  isSelected: !_isPhoneTabActive,
+                                  onTap: () => _switchInputTab(false),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 20.h),
+                        Text(
+                          inputLabel,
+                          style: AppTextStyles.poppins60014.copyWith(color: AppColors.grey800),
                         ),
                         SizedBox(height: 8.h),
                         // Enhanced TextField
@@ -325,12 +371,10 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
                           child: TextFormField(
                             controller: inputController,
                             focusNode: _inputFocusNode,
-                            keyboardType: TextInputType.emailAddress,
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              color: AppColors.black87,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            keyboardType: _isPhoneTabActive
+                                ? TextInputType.phone
+                                : TextInputType.emailAddress,
+                            style: AppTextStyles.poppins50016.copyWith(color: AppColors.black87),
                             decoration: InputDecoration(
                               prefixIcon: Container(
                                 margin: EdgeInsets.all(12.w),
@@ -341,19 +385,17 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 child: Icon(
-                                  Icons.person_outline,
+                                  _isPhoneTabActive
+                                      ? Icons.phone_outlined
+                                      : Icons.email_outlined,
                                   color: _isFieldFocused
                                       ? AppColors.primary
                                       : AppColors.grey600,
                                   size: 20.sp,
                                 ),
                               ),
-                              hintText: AppKeys.pleaseEnterEmail.tr(context),
-                              hintStyle: TextStyle(
-                                color: AppColors.grey400,
-                                fontSize: 15.sp,
-                                fontWeight: FontWeight.w400,
-                              ),
+                              hintText: inputHint,
+                              hintStyle: AppTextStyles.poppins40015.copyWith(color: AppColors.grey400),
                               filled: true,
                               fillColor: AppColors.white,
                               contentPadding: EdgeInsets.symmetric(
@@ -410,11 +452,7 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
                                           ? errorMessage
                                           : AppKeys.invalidCredentials
                                               .tr(context),
-                                      style: TextStyle(
-                                        color: AppColors.red,
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                      style: AppTextStyles.poppins50013.copyWith(color: AppColors.red),
                                     ),
                                   ),
                                 ],
@@ -423,6 +461,81 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
                           ),
                         ),
                         SizedBox(height: 24.h),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48.h,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              side: const BorderSide(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16.r),
+                              ),
+                            ),
+                            onPressed: () {
+                              final input = inputController.text.trim();
+                              if (input.isEmpty) {
+                                setState(() {
+                                  showError = true;
+                                  errorMessage = inputHint;
+                                });
+                                return;
+                              }
+
+                              if (_isPhoneTabActive) {
+                                if (!isValidPhone(input)) {
+                                  setState(() {
+                                    showError = true;
+                                    errorMessage = AppKeys.pleaseEnterPhoneNumber
+                                        .tr(context);
+                                  });
+                                  return;
+                                }
+                                final formattedPhone =
+                                    formatPhoneNumber(input);
+                                setState(() => progress = true);
+                                stopProgressAfterDelay();
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => const WaitingProgressPage(),
+                                );
+                                _sendOtpRequest(context, formattedPhone);
+                              } else {
+                                if (!isValidEmail(input)) {
+                                  setState(() {
+                                    showError = true;
+                                    errorMessage =
+                                        AppKeys.pleaseEnterEmail.tr(context);
+                                  });
+                                  return;
+                                }
+                                setState(() => progress = true);
+                                stopProgressAfterDelay();
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => const WaitingProgressPage(),
+                                );
+                                _sendOtpRequest(context, input);
+                              }
+                            },
+                            child: Text(
+                              AppKeys.sendCode.tr(context),
+                              style: AppTextStyles.poppins60015
+                                  .copyWith(color: AppColors.primary),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                        Text(
+                          AppKeys.alreadyHaveAccount.tr(context),
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.poppins50014
+                              .copyWith(color: AppColors.grey600),
+                        ),
+                        SizedBox(height: 10.h),
                         Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16.r),
@@ -447,52 +560,23 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16.r),
                               onTap: () {
-                                final input = inputController.text.trim();
-                                if (input.isEmpty) {
-                                  setState(() {
-                                    showError = true;
-                                    errorMessage =
-                                        AppKeys.pleaseEnterEmail.tr(context);
-                                  });
-                                  return;
-                                }
-                                if (isValidEmail(input)) {
-                                  setState(() => progress = true);
-                                  stopProgressAfterDelay();
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => const WaitingProgressPage(),
-                                  );
-                                  _sendOtpRequest(context, input);
-                                } else if (isValidPhone(input)) {
-                                  final formattedPhone =
-                                      formatPhoneNumber(input);
-                                  setState(() => progress = true);
-                                  stopProgressAfterDelay();
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => const WaitingProgressPage(),
-                                  );
-                                  _sendOtpRequest(context, formattedPhone);
-                                } else {
-                                  setState(() {
-                                    showError = true;
-                                    errorMessage = AppKeys
-                                        .pleaseEnterPhoneNumber
-                                        .tr(context);
-                                  });
-                                }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LoginScreenWithPin(
+                                      phoneNumber: inputController.text.trim(),
+                                    ),
+                                  ),
+                                );
                               },
                               child: Container(
                                 width: double.infinity,
                                 padding: EdgeInsets.symmetric(vertical: 16.h),
                                 child: Center(
                                   child: Text(
-                                    AppKeys.sendCode.tr(context),
-                                    style: TextStyle(
+                                    AppKeys.login.tr(context),
+                                    style: AppTextStyles.poppins60016.copyWith(
                                       color: AppColors.white,
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w600,
                                       letterSpacing: 0.5,
                                     ),
                                   ),
@@ -501,71 +585,42 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
                             ),
                           ),
                         ),
-                        SizedBox(height: 24.h),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16.w,
-                            vertical: 12.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(
-                              color: AppColors.grey200,
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                AppKeys.alreadyHaveAccount.tr(context),
-                                style: TextStyle(
-                                  fontSize: 14.sp,
-                                  color: AppColors.grey600,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              SizedBox(width: 8.w),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => LoginScreenWithPin(
-                                        phoneNumber: '',
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 12.w,
-                                    vertical: 6.h,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                  child: Text(
-                                    AppKeys.login.tr(context),
-                                    style: TextStyle(
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                         SizedBox(height: 20.h),
                       ],
                     ),
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputTypeTab({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12.r),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : AppColors.transparent,
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: AppTextStyles.poppins60014.copyWith(
+                color: isSelected ? AppColors.white : AppColors.grey700,
+              ),
             ),
           ),
         ),
