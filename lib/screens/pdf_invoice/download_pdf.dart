@@ -16,6 +16,7 @@ import '../../utils/secure_storage.dart';
 import 'file_handle_api.dart';
 import 'pdf_invoice_api.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:helloequb/utils/style_constants.dart';
 
 class DownloadPdf extends StatefulWidget {
   final String type, date, result, image;
@@ -87,16 +88,16 @@ class _HomePageState extends State<DownloadPdf> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(
-            Icons.arrow_back_ios,
+            Icons.arrow_back_ios_new_rounded,
             color: AppColors.white,
           ),
           onPressed: () => Navigator.pop(context),
         ),
         backgroundColor: AppColors.green,
-        title: const Text(
+        title: Text(
           textScaleFactor: 1.0,
           'Download PDF',
-          style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.white),
+          style: AppTextStyles.poppins70014.copyWith(color: AppColors.white),
         ),
         centerTitle: true,
       ),
@@ -106,10 +107,10 @@ class _HomePageState extends State<DownloadPdf> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Dropdown for selecting text color
-            const Text(
+            Text(
               textScaleFactor: 1.0,
               'Text Color',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: AppTextStyles.poppins60016,
             ),
             const SizedBox(height: 8.0),
             DropdownButtonFormField(
@@ -159,10 +160,10 @@ class _HomePageState extends State<DownloadPdf> {
             const SizedBox(height: 24.0),
 
             // Dropdown for selecting font type
-            const Text(
+            Text(
               textScaleFactor: 1.0,
               'Font Style',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: AppTextStyles.poppins60016,
             ),
             const SizedBox(height: 8.0),
             DropdownButtonFormField(
@@ -264,11 +265,10 @@ class _HomePageState extends State<DownloadPdf> {
                         ),
                       )
                     : const Icon(Icons.download, color: AppColors.white),
-                label: const Text(
+                label: Text(
                   textScaleFactor: 1.0,
                   'Download and Open',
-                  style: TextStyle(
-                      color: AppColors.white, fontWeight: FontWeight.bold),
+                  style: AppTextStyles.poppins70014.copyWith(color: AppColors.white),
                 ),
               ),
             ),

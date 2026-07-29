@@ -17,6 +17,7 @@ import 'package:helloequb/utils/lang_constants.dart';
 import 'package:intl/intl.dart';
 
 import '../utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class SavingEkubDetail extends StatefulWidget {
   final String savingEkubName, ekubId;
@@ -134,11 +135,7 @@ class _SavingEkubDetailState extends State<SavingEkubDetail> {
         title: Text(
           textScaleFactor: 1.0,
           widget.savingEkubName,
-          style: TextStyle(
-            color: AppColors.white,
-            fontSize: 24.sp,
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTextStyles.poppins70024.copyWith(color: AppColors.white),
         ),
         centerTitle: true,
       ),
@@ -172,10 +169,7 @@ class _SavingEkubDetailState extends State<SavingEkubDetail> {
                                     Text(
                                       textScaleFactor: 1.0,
                                       AppKeys.totalSavings.tr(context),
-                                      style: TextStyle(
-                                        color: AppColors.white60,
-                                        fontSize: 18.sp,
-                                      ),
+                                      style: AppTextStyles.poppins40018.copyWith(color: AppColors.white60),
                                     ),
                                     Text(
                                       textScaleFactor: 1.0,
@@ -188,11 +182,7 @@ class _SavingEkubDetailState extends State<SavingEkubDetail> {
                                               int.parse(widget.ekubersNumber
                                                   .toString()))
                                           : "Goal: ${numberFormat.format(equbResponse?.data?.payments?.equb?.goal)}",
-                                      style: TextStyle(
-                                        color: AppColors.white,
-                                        fontSize: 16.sp,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: AppTextStyles.poppins70016.copyWith(color: AppColors.white),
                                     ),
                                   ],
                                 ),
@@ -203,11 +193,7 @@ class _SavingEkubDetailState extends State<SavingEkubDetail> {
                                       .format(equbResponse
                                           ?.data?.payments?.equb?.totalPaid)
                                       .toString(),
-                                  style: TextStyle(
-                                    color: AppColors.white,
-                                    fontSize: 36.sp,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: AppTextStyles.poppins70032.copyWith(color: AppColors.white),
                                 ),
                                 const SizedBox(height: 20),
                                 Row(
@@ -258,9 +244,7 @@ class _SavingEkubDetailState extends State<SavingEkubDetail> {
                                                       .toString()) *
                                                   int.parse(widget.ekubersNumber
                                                       .toString())),
-                                      style: const TextStyle(
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.bold),
+                                      style: AppTextStyles.poppins70014.copyWith(color: AppColors.white),
                                     ),
                                   ],
                                 ),
@@ -286,11 +270,7 @@ class _SavingEkubDetailState extends State<SavingEkubDetail> {
                                 Text(
                                   textScaleFactor: 1.0,
                                   AppKeys.paymentHistory.tr(context),
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.green900,
-                                  ),
+                                  style: AppTextStyles.poppins70020.copyWith(color: AppColors.green900),
                                 ),
                                 const SizedBox(height: 15),
                                 Expanded(
@@ -391,11 +371,7 @@ class _SavingEkubDetailState extends State<SavingEkubDetail> {
                               child: Text(
                                 textScaleFactor: 1.0,
                                 AppKeys.addNewSaving.tr(context),
-                                style: TextStyle(
-                                  color: AppColors.white,
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: AppTextStyles.poppins70018.copyWith(color: AppColors.white),
                               ),
                             ),
                           ),
@@ -419,21 +395,17 @@ class _SavingEkubDetailState extends State<SavingEkubDetail> {
         title: Text(
           textScaleFactor: 1.0,
           title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          style: AppTextStyles.poppins60016,
         ),
         subtitle: Text(
           textScaleFactor: 1.0,
           date,
-          style: const TextStyle(color: AppColors.grey600),
+          style: AppTextStyles.poppins40014.copyWith(color: AppColors.grey600),
         ),
         trailing: Text(
           textScaleFactor: 1.0,
           amount,
-          style: TextStyle(
-            color: amountColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: AppTextStyles.poppins70016,
         ),
       ),
     );

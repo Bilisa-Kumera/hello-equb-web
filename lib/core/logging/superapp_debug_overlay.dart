@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'telebirr_superapp_detector.dart';
@@ -266,13 +267,11 @@ class _Panel extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'SuperApp Console',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: AppTextStyles.poppins70014
+                                .copyWith(color: Colors.white),
                           ),
                         ),
                         Semantics(
@@ -329,10 +328,9 @@ class _Panel extends StatelessWidget {
                         lastLine,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: AppTextStyles.caption.copyWith(
                           color: _colorForLine(lastLine, context),
                           fontFamily: 'monospace',
-                          fontSize: 12,
                           height: 1.25,
                         ),
                       ),
@@ -350,10 +348,9 @@ class _Panel extends StatelessWidget {
                               final line = lines[index];
                               return SelectableText(
                                 line,
-                                style: TextStyle(
+                                style: AppTextStyles.caption.copyWith(
                                   color: _colorForLine(line, context),
                                   fontFamily: 'monospace',
-                                  fontSize: 12,
                                   height: 1.25,
                                 ),
                               );

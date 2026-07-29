@@ -6,6 +6,8 @@ import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'style_constants.dart';
+
 // ignore: must_be_immutable
 class CarouselCard extends StatelessWidget {
   int? currentIndex;
@@ -33,20 +35,16 @@ class CarouselCard extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.only(right: 5.0, left: 5),
           child: Card(
+            color: Colors.transparent,
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            margin: EdgeInsets.zero,
             child: Container(
-              decoration: const BoxDecoration(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
-                gradient: LinearGradient(
-                  begin: Alignment.center,
-                  end: Alignment.centerLeft,
-
-                  colors: [
-                    Color.fromARGB(255, 2, 174, 37), // Start color
-                    AppColors.lightGreen,
-                    // End color
-                  ],
-                  //stops: [0.016, 0.4143], // Gradient stops
-                ),
+              decoration:  BoxDecoration(
+                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                border: Border.all(color: AppColors.white60),
+                color: Colors.transparent,
               ),
               height: 106,
               width: 305,
@@ -73,11 +71,8 @@ class CarouselCard extends StatelessWidget {
                   //           child: Text(
                   //             textScaleFactor: 1.0,
                   //             ekubersNumber ?? '',
-                  //             style: const TextStyle(
-                  //                 fontFamily: 'Poppins',
-                  //                 fontWeight: FontWeight.w400,
-                  //                 fontSize: 12,
-                  //                 color: AppColors.white),
+                  //             style: AppTextStyles.caption
+                  //                 .copyWith(color: AppColors.white),
                   //           ),
                   //         ),
                   //       ],
@@ -85,34 +80,30 @@ class CarouselCard extends StatelessWidget {
                   //   ),
                   // ),
                   // Right: Cycle icon and number
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    bottom: 50,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.loop_rounded,
-                            size: 18,
-                            color: AppColors.white,
-                          ),
-                          Text(
-                            textScaleFactor: 1.0,
-                            cycle ?? '0',
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w400,
-                              fontSize: 12,
-                              color: AppColors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  // Positioned(
+                  //   right: 0,
+                  //   top: 0,
+                  //   bottom: 50,
+                  //   child: Padding(
+                  //     padding: const EdgeInsets.only(right: 8.0),
+                  //     child: Row(
+                  //       mainAxisAlignment: MainAxisAlignment.center,
+                  //       children: [
+                  //         const Icon(
+                  //           Icons.loop_rounded,
+                  //           size: 18,
+                  //           color: AppColors.white,
+                  //         ),
+                  //         Text(
+                  //           textScaleFactor: 1.0,
+                  //           cycle ?? '0',
+                  //           style: AppTextStyles.caption
+                  //               .copyWith(color: AppColors.white),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
                   // Center: Column of three words
                   Center(
                     child: Column(
@@ -121,11 +112,8 @@ class CarouselCard extends StatelessWidget {
                         Text(
                             textScaleFactor: 1.0,
                             ekubName ?? '',
-                            style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.white)),
+                            style: AppTextStyles.poppins60012
+                                .copyWith(color: AppColors.white)),
                         SizedBox(
                           width: 120.w,
                           child: FittedBox(
@@ -133,12 +121,8 @@ class CarouselCard extends StatelessWidget {
                             child: Text(
                               textScaleFactor: 1.0,
                               numberFormat.format(total),
-                              style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 28,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.white,
-                              ),
+                              style: AppTextStyles.poppins70028
+                                  .copyWith(color: AppColors.white),
                             ),
                           ),
                         ),
@@ -150,11 +134,12 @@ class CarouselCard extends StatelessWidget {
                                   style: const ButtonStyle(
                                       backgroundColor: WidgetStatePropertyAll(
                                           AppColors.white)),
-                                  child: const Text(
+                                  child: Text(
                                       textScaleFactor: 1.0,
                                       'Join Equb',
-                                      style: TextStyle(
-                                          color: AppColors.vibrantGreen)),
+                                      style: AppTextStyles.buttonMedium
+                                          .copyWith(
+                                              color: AppColors.vibrantGreen)),
                                 ),
                               )
                             : const SizedBox.shrink(),

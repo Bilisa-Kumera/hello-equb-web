@@ -13,6 +13,7 @@ import 'package:helloequb/utils/custom_button.dart';
 import 'package:helloequb/utils/lang_constants.dart';
 
 import '../utils/custom_appbar.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class JoinEkubConfirmation extends StatefulWidget {
   final String ekubId,
@@ -77,126 +78,61 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
 
     return Scaffold(
       appBar: CurvedAppBar(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Card(
-              elevation: 4,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: const BoxDecoration(
-                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                  gradient: LinearGradient(
-                    begin: Alignment.center,
-                    end: Alignment.centerLeft,
-                    colors: [
-                      AppColors.forestGreenDark,
-                      AppColors.richDeepGreen,
-                    ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+              Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.all(Radius.circular(8)),
+                    border: Border.all(color: AppColors.white60),
+                    color: Colors.transparent,
+                  ),
+                  height: 106,
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.only(top: 7.0, bottom: 8),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          textScaleFactor: 1.0,
+                          widget.ekubName,
+                          style: AppTextStyles.poppins60012
+                              .copyWith(color: AppColors.white),
+                        ),
+                        SizedBox(
+                          width: 160.w,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              textScaleFactor: 1.0,
+                              numberFormat.format(
+                                (int.tryParse(widget.ekubAmount.toString()) ??
+                                        0) *
+                                    (int.tryParse(widget.numberOfEkubers
+                                            .toString()) ??
+                                        0),
+                              ),
+                              style: AppTextStyles.poppins70028
+                                  .copyWith(color: AppColors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                height: 96,
-                width: double.infinity,
-                padding: const EdgeInsets.only(top: 7.0, bottom: 8),
-                child: Stack(
-                  children: [
-                    // 👥 People Count (Left)
-                    // Positioned(
-                    //   left: 0,
-                    //   top: 0,
-                    //   bottom: 50,
-                    //   child: Padding(
-                    //     padding: const EdgeInsets.only(left: 8.0),
-                    //     child: Row(
-                    //       children: [
-                    //         const Icon(
-                    //           Icons.people_alt_outlined,
-                    //           size: 18,
-                    //           color: AppColors.white,
-                    //         ),
-                    //         const SizedBox(width: 5),
-                    //         Text(
-                    //           widget.joinedAmount.toString(),
-                    //           style: TextStyle(
-                    //             fontFamily: 'Poppins',
-                    //             fontWeight: FontWeight.w400,
-                    //             fontSize: 12.sp,
-                    //             color: AppColors.white,
-                    //           ),
-                    //         ),
-                    //       ],
-                    //     ),
-                    //   ),
-                    // ),
-
-                    // 🔁 Cycle Count (Right)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      bottom: 50,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.loop_rounded,
-                              size: 18,
-                              color: AppColors.white,
-                            ),
-                            Text(
-                              widget.numberOfEkubers.toString(),
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w400,
-                                fontSize: 12.sp,
-                                color: AppColors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // 🔠 Name + Amount (Center)
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            widget.ekubName,
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.white,
-                            ),
-                          ),
-                          SizedBox(
-                            width: 120.w,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                numberFormat.format(
-                                  int.tryParse(widget.ekubAmount.toString())! *
-                                      int.tryParse(
-                                          widget.numberOfEkubers.toString())!,
-                                ),
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 28.sp,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -212,7 +148,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
               ),
               Text(
                 AppKeys.ekubConfirmation.tr(context),
-                style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.w600),
+                style: AppTextStyles.dialogTitle,
               ),
               SizedBox(
                 height: 13.h,
@@ -220,11 +156,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
               Text(
                 textScaleFactor: 1.0,
                 AppKeys.description.tr(context),
-                style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF5B5C5C),
-                    fontSize: 14.sp),
+                style: AppTextStyles.poppins60014.copyWith(color: const Color(0xFF5B5C5C)),
               ),
               const SizedBox(
                 height: 4,
@@ -232,11 +164,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
               Text(
                 textScaleFactor: 1.0,
                 widget.ekubDescription.isEmpty ? 'N/A' : widget.ekubDescription,
-                style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF5B5C5C),
-                    fontSize: 11),
+                style: AppTextStyles.poppins50011.copyWith(color: Color(0xFF5B5C5C)),
               ),
               const SizedBox(
                 height: 13,
@@ -244,11 +172,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
               Text(
                 textScaleFactor: 1.0,
                 AppKeys.totalShare.tr(context),
-                style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF5B5C5C),
-                    fontSize: 14),
+                style: AppTextStyles.poppins60014.copyWith(color: Color(0xFF5B5C5C)),
               ),
               const SizedBox(
                 height: 4,
@@ -256,11 +180,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
               Text(
                 textScaleFactor: 1.0,
                 '${widget.items.length}',
-                style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF5B5C5C),
-                    fontSize: 11),
+                style: AppTextStyles.poppins50011.copyWith(color: Color(0xFF5B5C5C)),
               ),
               const SizedBox(
                 height: 13,
@@ -268,11 +188,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
               Text(
                 textScaleFactor: 1.0,
                 AppKeys.expectedAmount.tr(context),
-                style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF5B5C5C),
-                    fontSize: 14),
+                style: AppTextStyles.poppins60014.copyWith(color: Color(0xFF5B5C5C)),
               ),
               const SizedBox(
                 height: 4,
@@ -281,11 +197,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
                   textScaleFactor: 1.0,
                   numberFormat.format(double.parse(
                       widget.expectedAmount.toString()..replaceAll(',', ''))),
-                  style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF5B5C5C),
-                      fontSize: 11)),
+                  style: AppTextStyles.poppins50011.copyWith(color: Color(0xFF5B5C5C))),
               const SizedBox(
                 height: 8,
               ),
@@ -306,11 +218,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
                         child: Text(
                           textScaleFactor: 1.0,
                           AppKeys.listOfShares.tr(context),
-                          style: TextStyle(
-                              color: AppColors.neutralGray,
-                              fontFamily: 'Inter',
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w700),
+                          style: AppTextStyles.poppins70016.copyWith(color: AppColors.neutralGray),
                         ),
                       ),
                       widget.financeAmount != null
@@ -324,20 +232,12 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
                                   Text(
                                     textScaleFactor: 1.0,
                                     AppKeys.listOfShares.tr(context),
-                                    style: TextStyle(
-                                        color: AppColors.neutralGray,
-                                        fontFamily: 'Poppins',
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w600),
+                                    style: AppTextStyles.poppins60012.copyWith(color: AppColors.neutralGray),
                                   ),
                                   Text(
                                     textScaleFactor: 1.0,
                                     '${AppKeys.expectedAmount.tr(context)} ${widget.type.toUpperCase() == 'weekly' ? AppKeys.weekly.tr(context) : widget.type.toUpperCase() == 'daily' ? AppKeys.daily.tr(context) : widget.type.toUpperCase() == 'monthly' ? AppKeys.monthly.tr(context) : widget.type}',
-                                    style: TextStyle(
-                                        color: AppColors.neutralGray,
-                                        fontFamily: 'Poppins',
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w600),
+                                    style: AppTextStyles.poppins60012.copyWith(color: AppColors.neutralGray),
                                   ),
                                 ],
                               ),
@@ -373,11 +273,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
                                         child: Text(
                                           textScaleFactor: 1.0,
                                           '${widget.items[index].title}($percentageString)',
-                                          style: const TextStyle(
-                                              color: AppColors.neutralGray,
-                                              fontFamily: 'Poppins',
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w300),
+                                          style: AppTextStyles.poppins40011.copyWith(color: AppColors.neutralGray),
                                         ),
                                       ),
                                       Padding(
@@ -388,11 +284,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
                                           numberFormat.format(double.parse(
                                               widget.items[index].subtitle
                                                   .replaceAll(',', ''))),
-                                          style: const TextStyle(
-                                              color: AppColors.neutralGray,
-                                              fontFamily: 'Poppins',
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w300),
+                                          style: AppTextStyles.poppins40011.copyWith(color: AppColors.neutralGray),
                                         ),
                                       ),
                                     ],

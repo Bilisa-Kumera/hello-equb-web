@@ -11,6 +11,7 @@ import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
 
 import '../utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class AcceptDeclineScreen extends StatefulWidget {
   final String? guaranteeNeedyId;
@@ -181,11 +182,7 @@ class _AcceptDeclineScreenState extends State<AcceptDeclineScreen> {
         ),
         title: Text(
           AppKeys.guaranteeRequest.tr(context),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 22.sp,
-            color: AppColors.white,
-          ),
+          style: AppTextStyles.poppins70020.copyWith(color: AppColors.white),
         ),
         centerTitle: true,
       ),
@@ -206,11 +203,7 @@ class _AcceptDeclineScreenState extends State<AcceptDeclineScreen> {
                   Text(
                     AppKeys.doYouAccept.tr(context),
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22.sp,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.black87,
-                    ),
+                    style: AppTextStyles.poppins70020.copyWith(color: AppColors.black87),
                   ),
                   const SizedBox(height: 20),
                   // Guarantee Details
@@ -227,9 +220,7 @@ class _AcceptDeclineScreenState extends State<AcceptDeclineScreen> {
                         title: AppKeys.equbAmount.tr(context),
                         value:
                             "${numberFormat.format(double.tryParse(widget.equbAmount ?? '0') ?? 0)} ETB",
-                        valueStyle: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold),
+                        valueStyle: AppTextStyles.poppins70014.copyWith(color: AppColors.primary),
                       ),
                     ],
                   ),
@@ -264,9 +255,7 @@ class _AcceptDeclineScreenState extends State<AcceptDeclineScreen> {
                         icon: const Icon(Icons.check, color: AppColors.white),
                         label: Text(
                           AppKeys.accept.tr(context),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.white),
+                          style: AppTextStyles.poppins70014.copyWith(color: AppColors.white),
                         ),
                         style: TextButton.styleFrom(
                           backgroundColor: AppColors.primary,
@@ -305,9 +294,7 @@ class _AcceptDeclineScreenState extends State<AcceptDeclineScreen> {
                         icon: const Icon(Icons.close, color: AppColors.white),
                         label: Text(
                           AppKeys.decline.tr(context),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.white),
+                          style: AppTextStyles.poppins70014.copyWith(color: AppColors.white),
                         ),
                         style: TextButton.styleFrom(
                           backgroundColor: AppColors.redAccent,
@@ -350,17 +337,14 @@ class DetailRow extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-                color: AppColors.black54),
+            style: AppTextStyles.poppins60016.copyWith(color: AppColors.black54),
           ),
           const SizedBox(width: 5),
           Expanded(
             child: Text(
               value,
               style: valueStyle ??
-                  TextStyle(fontSize: 16.sp, color: AppColors.black87),
+                  AppTextStyles.poppins40016.copyWith(color: AppColors.black87),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -391,10 +375,7 @@ class GradientButton extends StatelessWidget {
       icon: Icon(icon, color: AppColors.white),
       label: Text(
         label,
-        style: TextStyle(
-            color: AppColors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16.sp),
+        style: AppTextStyles.poppins70016.copyWith(color: AppColors.white),
       ),
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 30),
@@ -433,8 +414,7 @@ class ConfirmationDialog extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: iconColor, fontSize: 18),
+              style: AppTextStyles.poppins70018,
             ),
           ),
         ],
@@ -445,14 +425,13 @@ class ConfirmationDialog extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16),
+            style: AppTextStyles.bodyLarge,
           ),
           const SizedBox(height: 10),
           Text(
             details,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, color: AppColors.black87),
+            style: AppTextStyles.poppins70014.copyWith(color: AppColors.black87),
           ),
         ],
       ),
@@ -461,8 +440,7 @@ class ConfirmationDialog extends StatelessWidget {
           onPressed: () => Navigator.push(context,
               MaterialPageRoute(builder: (context) => const HomeScreen())),
           child: Text(AppKeys.ok.tr(context),
-              style: const TextStyle(
-                  color: AppColors.primary, fontWeight: FontWeight.bold)),
+              style: AppTextStyles.poppins70014.copyWith(color: AppColors.primary)),
         ),
       ],
     );

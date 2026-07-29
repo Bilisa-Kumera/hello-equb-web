@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../models/equb_model.dart';
 import 'package:provider/provider.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class CustomEqubList extends StatelessWidget {
   final List<EqubModel> equbs;
@@ -58,12 +59,7 @@ class CustomEqubList extends StatelessWidget {
                   child: Text(
                     textScaleFactor: 1.0,
                     AppKeys.seeAll.tr(context),
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.lightNeutralGray,
-                    ),
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.lightNeutralGray),
                   ),
                 ),
               ),
@@ -102,7 +98,7 @@ class CustomEqubList extends StatelessWidget {
                   Text(
                     equbCategories?[currentCategoryIndex].name ?? 'N/A',
                     style:
-                        TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600),
+                        AppTextStyles.sectionTitle,
                   ),
                   SizedBox(width: 20.w),
                   Container(
@@ -220,18 +216,14 @@ class CustomEqubList extends StatelessWidget {
                                       // SizedBox(width: 4.w),
                                       // Text(
                                       //   equb.numberOfEqubers.toString(),
-                                      //   style: TextStyle(
-                                      //       fontSize: 12.sp,
-                                      //       fontWeight: FontWeight.w500),
+                                      //   style: AppTextStyles.poppins50012,
                                       // ),
                                       SizedBox(width: 18.w),
                                       const Icon(Icons.loop_rounded, size: 14),
                                       SizedBox(width: 4.w),
                                       Text(
                                         "${equb.currentRound} Cycle",
-                                        style: TextStyle(
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w500),
+                                        style: AppTextStyles.poppins50012,
                                       ),
                                     ],
                                   ),
@@ -244,9 +236,7 @@ class CustomEqubList extends StatelessWidget {
                                             RegExp(
                                                 r"(\d{1,3})(?=(\d{3})+(?!\d))"),
                                             (m) => "${m[1]},"),
-                                    style: TextStyle(
-                                        fontSize: 28.sp,
-                                        fontWeight: FontWeight.w900),
+                                    style: AppTextStyles.poppins40028,
                                   ),
                                   SizedBox(height: 2.h),
                                   Row(
@@ -258,11 +248,7 @@ class CustomEqubList extends StatelessWidget {
                                           (equb.name?.length ?? 0) > 10
                                               ? '${equb.name?.substring(0, 10)}...'
                                               : (equb.name ?? ''),
-                                          style: TextStyle(
-                                            fontSize: 15.sp,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
-                                          ),
+                                          style: AppTextStyles.poppins60015.copyWith(color: Colors.black87),
                                         ),
                                       Padding(
                                         padding: const EdgeInsets.all(9),
@@ -281,13 +267,8 @@ class CustomEqubList extends StatelessWidget {
                                                 children: [
                                                   Text(
                                                     AppKeys.join.tr(context),
-                                                    style: TextStyle(
-                                                      color: const Color(
-                                                          0xff178dc1),
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 16.sp,
-                                                    ),
+                                                    style: AppTextStyles.poppins70016.copyWith(color: const Color(
+                                                          0xff178dc1)),
                                                   ),
                                                   SizedBox(width: 4.w),
                                                 ],

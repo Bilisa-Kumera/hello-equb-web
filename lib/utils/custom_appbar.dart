@@ -1,43 +1,25 @@
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 
 class CurvedAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget? child;
+  final double height;
 
-  const CurvedAppBar({super.key, this.child});
+  const CurvedAppBar({super.key, this.child, this.height = 200});
 
   @override
-  Size get preferredSize => const Size.fromHeight(200);
+  Size get preferredSize => Size.fromHeight(height);
 
   @override
   Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: BottomCurveClipper(),
-      child: Container(
-        height: preferredSize.height,
-        width: double.infinity,
-        color: AppColors.primary,
-        child: Stack(
-          children: [
-            // Back Button
-            Positioned(
-              top: 10, // adjust for safe area
-              left: 6,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-
-            // Child content (center or custom)
-            if (child != null)
-              Center(
-                child: child,
-              ),
-          ],
-        ),
+    return Container(
+      height: preferredSize.height,
+      width: double.infinity,
+      color: AppColors.primary,
+      padding: EdgeInsets.only(top: 25.r),
+      child: Center(
+        child: child,
       ),
     );
   }

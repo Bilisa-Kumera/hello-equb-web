@@ -11,6 +11,7 @@ import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dar
 import 'package:helloequb/features/superapp_auth/data/repositories/superapp_auth_repository_impl.dart';
 import 'package:helloequb/features/superapp_auth/presentation/widgets/superapp_log_panel.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 // ─── Step types ──────────────────────────────────────────────────────────────
 
@@ -198,17 +199,14 @@ ${e.response?.data}
                   Text(
                     'CBEBirr Plus',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22.sp,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.deepForestGreen,
-                    ),
+                    style: AppTextStyles.poppins70022
+                        .copyWith(color: AppColors.deepForestGreen),
                   ),
                   SizedBox(height: 6.h),
                   Text(
                     'Setting up your Hello Equb session…',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13.sp, color: Colors.black54),
+                    style: AppTextStyles.subtitleMuted,
                   ),
                   SizedBox(height: 20.h),
                   _StepLogPanel(steps: _steps),
@@ -232,8 +230,7 @@ ${e.response?.data}
                       child: Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13.sp,
+                        style: AppTextStyles.poppins40013.copyWith(
                           color: Colors.red.shade700,
                           height: 1.4,
                         ),
@@ -370,19 +367,14 @@ class _StepRow extends StatelessWidget {
               children: [
                 Text(
                   step.label,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w500,
-                    color: labelColor,
-                  ),
+                  style: AppTextStyles.poppins50013.copyWith(color: labelColor),
                 ),
                 if (step.detail != null)
                   Padding(
                     padding: EdgeInsets.only(top: 2.h),
                     child: Text(
                       step.detail!,
-                      style: TextStyle(
-                        fontSize: 11.sp,
+                      style: AppTextStyles.poppins40011.copyWith(
                         color: labelColor.withOpacity(0.75),
                         height: 1.3,
                       ),
@@ -434,11 +426,8 @@ class _TokenPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black54,
-                  ),
+                  style: AppTextStyles.poppins60012
+                      .copyWith(color: Colors.black54),
                 ),
               ),
               InkWell(
@@ -454,11 +443,8 @@ class _TokenPanel extends StatelessWidget {
                       SizedBox(width: 4.w),
                       Text(
                         'Copy',
-                        style: TextStyle(
-                          fontSize: 11.sp,
-                          color: AppColors.deepForestGreen,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTextStyles.poppins60011
+                            .copyWith(color: AppColors.deepForestGreen),
                       ),
                     ],
                   ),
@@ -469,8 +455,7 @@ class _TokenPanel extends StatelessWidget {
           SizedBox(height: 6.h),
           SelectableText(
             token,
-            style: TextStyle(
-              fontSize: 12.sp,
+            style: AppTextStyles.caption.copyWith(
               fontFamily: 'monospace',
               color: AppColors.deepForestGreen,
               height: 1.35,
@@ -479,7 +464,7 @@ class _TokenPanel extends StatelessWidget {
           SizedBox(height: 4.h),
           Text(
             '${token.length} chars',
-            style: TextStyle(fontSize: 10.sp, color: Colors.black38),
+            style: AppTextStyles.captionSmall.copyWith(color: Colors.black38),
           ),
         ],
       ),
@@ -504,11 +489,8 @@ class _DiagnosticsPanel extends StatelessWidget {
       ),
       child: SelectableText(
         diag.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
-        style: TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 11.sp,
-          height: 1.25,
-        ),
+        style: AppTextStyles.poppins40011
+            .copyWith(fontFamily: 'monospace', height: 1.25),
       ),
     );
   }

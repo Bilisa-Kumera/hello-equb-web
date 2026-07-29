@@ -11,7 +11,6 @@ import 'package:confetti/confetti.dart';
 import 'package:helloequb/core/api_service_elper.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/models/financial_info.dart';
-import 'package:helloequb/screens/fortune_wheel_screen.dart';
 import 'package:helloequb/screens/join_ekub_detail.dart';
 import 'package:helloequb/screens/payment_arrangement_screen.dart';
 import 'package:helloequb/screens/pdf_invoice/download_pdf.dart';
@@ -32,6 +31,7 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../provider/lottery_provider.dart';
 import '../utils/secure_storage.dart';
 import 'lottery_history_screen.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 // ── Data models (unchanged) ──────────────────────────────────────────────────
 
@@ -129,6 +129,16 @@ class CurrentWinner {
             .map((e) => UserStake.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
+}
+
+class RevealedWinnerItem {
+  final int lotteryNumber;
+  final String userFullName;
+
+  const RevealedWinnerItem({
+    required this.lotteryNumber,
+    required this.userFullName,
+  });
 }
 
 class ResponseModel {
@@ -282,6 +292,42 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   DateTime targetDateTime = DateTime.now().add(const Duration(minutes: 1));
   Duration remainingTime = const Duration(minutes: 2);
   Timer? _timer;
+  Timer? _scheduleSyncTimer;
+  Duration _timeOffset = Duration.zero;
+
+  /// counting → revealing → idle
+  bool _isRevealing = false;
+  bool _revealStarted = false;
+  bool _showNoWinnerState = false;
+
+  int? _currentWinnerNumber;
+  List<int> _pendingWinnerNumbers = [];
+  int _spinGeneration = 0; // bumps LotteryWheel key so it always remounts & spins
+  final Set<int> _revealedWinnerNumbers = {};
+  final List<RevealedWinnerItem> _revealedCurrentDrawWinners = [];
+
+  /// False from 1 min before draw until all winner spins finish.
+  bool _allDrawWinnersSpun = false;
+
+  /// After a reveal finishes, skip early-draw hold so next-round time can stick.
+  bool _suppressEarlyDrawHold = false;
+
+  /// Server may advance nextRoundDate after an early draw; apply after spin.
+  DateTime? _postRevealTarget;
+
+  /// True while holding a short local countdown after an early backend draw.
+  /// Winners stay hidden until this window hits 0:00 and the wheel spins.
+  bool _holdingEarlyDrawReveal = false;
+
+  /// Current-draw lottery numbers that must stay on the spinner until spun.
+  /// (Backend may already mark them hasWonEqub during the early-draw window.)
+  final Set<int> _wheelKeepWinnerNumbers = {};
+
+  List<dynamic> currentRoundWinnersSocket = [];
+  List<dynamic> eligibleMembersSocket = [];
+  List<dynamic> equbEligibleMembersSocket = [];
+
+  bool _socketListenersAttached = false;
 
   final Dio dio = Dio();
   final DataController dataController = DataController();
@@ -294,7 +340,6 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   bool _isLoading = true;
   bool _hasNavigated = false;
-  bool _showNoWinnerState = false;
   bool _isOpeningLotteryHistory = false;
   bool isRefreshed = false;
   bool isLoading = true;
@@ -305,10 +350,6 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   List<String> currentWinnersList = [];
   List<String> currentWinnersIdList = [];
 
-  List<dynamic> equbEligibleMembersSocket = [];
-  List<dynamic> currentRoundWinnersSocket = [];
-  List<dynamic> eligibleMembersSocket = [];
-
   List<String> lotteryNumbers = [];
   List<double> paidPerEachLottery = [];
   List<String> equbUserIds = [];
@@ -318,23 +359,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   List<ListItems> listItemss = [];
   List<ListItem> listItems = [];
 
-  DateTime? _cachedServerTime;
-  Duration? _timeOffset;
-
   IO.Socket? socket;
-
-  // ── Wheel spin state ───────────────────────────────────────────────────────
-  late AnimationController _wheelController;
-  late Animation<double> _wheelAnimation;
-  bool _wheelSpinning = false;
-  double _wheelStopAngle = 0;
-
-  // ── Multi-winner queue ─────────────────────────────────────────────────────
-  // Parsed int version of winnersList — populated after getElligbleUsers() returns.
-  // The wheel spins one winner at a time; _pendingWinnerNumbers holds the rest.
-  List<int> _pendingWinnerNumbers = [];
-  int?
-      _currentWinnerNumber; // null → wheel stays still; non-null → spin to this number
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -346,159 +371,658 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
       context.read<LotteryProvider>().fetchLotteries(widget.ekubId);
     });
 
-    _wheelController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 6),
-    );
-    _wheelAnimation = CurvedAnimation(
-      parent: _wheelController,
-      curve: Curves.decelerate,
-    );
-    _wheelController.addListener(() => setState(() {}));
-    _wheelController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        setState(() => _wheelSpinning = false);
-        // Show winner popup is handled inside LotteryWheelWidget / AnimatedWheelPainter
-        // via onSpinComplete. If you use raw CustomPaint, trigger it here instead.
-      }
-    });
-
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_handleTabSelection);
 
-    String updatedDateTime =
-        '${widget.nextRoundDate.substring(0, 11)}${widget.nextRoundTime}:00Z';
-    targetDateTime = DateTime.parse(updatedDateTime);
+    try {
+      final updatedDateTime =
+          '${widget.nextRoundDate.substring(0, 11)}${widget.nextRoundTime}:00Z';
+      targetDateTime = DateTime.parse(updatedDateTime);
+    } catch (_) {}
 
     initializePage();
     getListOfFinancialInfo();
     tokenUpdate();
-    getMyEkubs(widget.ekubId);
 
     socket = IO.io(socketServer, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });
+    _initSocketListeners();
 
     getEkubLotteries();
     getEkubPayments();
-    _startCountdown();
+    _startCountdownSystem();
   }
 
   @override
   void dispose() {
-    _wheelController.dispose();
-    _tabController.dispose();
+    _scheduleSyncTimer?.cancel();
     _timer?.cancel();
+    _tabController.dispose();
+    socket?.disconnect();
+    socket?.dispose();
     super.dispose();
   }
 
-  // ── Winner helpers ─────────────────────────────────────────────────────────
+  /// When more than 2 days remain, show every round slot (1..total rounds)
+  /// so the wheel looks fully filled. Within 2 days (and during reveal), show
+  /// the real joined-equber list.
+  ///
+  /// Note: [ekubCycle] carries API `numberOfEqubers` (total rounds).
+  /// [ekubersNumber] is the joined equbers count.
+  List<int> _wheelSlotNumbers(LotteryProvider provider) {
+    final showAllRoundSlots = remainingTime > const Duration(days: 2) &&
+        !_isRevealing &&
+        !_holdingEarlyDrawReveal &&
+        _currentWinnerNumber == null &&
+        _wheelKeepWinnerNumbers.isEmpty;
 
-  /// Called when the countdown hits zero.
-  /// Fetches eligible users, parses winnersList into ints, seeds the queue,
-  /// and kicks off the first spin.
-  Future<void> _onCountdownFinished() async {
-    debugPrint('Countdown finished. Fetching eligible users and winners...');
-    await getElligbleUsers(); // populates winnersList (List<String>)
+    if (showAllRoundSlots) {
+      final totalRounds = widget.ekubCycle;
+      if (totalRounds <= 0) return const <int>[];
+      return List<int>.generate(totalRounds, (i) => i + 1);
+    }
 
-    if (!mounted) {
-      debugPrint('Widget not mounted after fetching winners.');
+    final keepOnWheel = {
+      if (_currentWinnerNumber != null) _currentWinnerNumber!,
+      ..._pendingWinnerNumbers,
+      // Keep early-draw winners on the spinner until their result spins.
+      ..._wheelKeepWinnerNumbers
+          .where((n) => !_revealedWinnerNumbers.contains(n)),
+    };
+
+    final numbers = provider.eligibleMembers
+        .where((m) =>
+            !m.hasWonEqub || keepOnWheel.contains(m.lotteryNumber))
+        .map((m) => m.lotteryNumber)
+        .where((n) => n > 0)
+        .where((n) =>
+            !_revealedWinnerNumbers.contains(n) || keepOnWheel.contains(n))
+        .toSet()
+        .toList();
+
+    for (final n in keepOnWheel) {
+      if (n > 0 && !numbers.contains(n)) numbers.add(n);
+    }
+    numbers.sort();
+    return numbers;
+  }
+
+  /// Latest draw only: highest winRound (and matching winningDate cluster).
+  List<int> _latestDrawLotteryNumbers(List<dynamic> raw) {
+    if (raw.isEmpty) return [];
+
+    DateTime? latest;
+    for (final w in raw) {
+      final d = DateTime.tryParse(w['winningDate']?.toString() ?? '');
+      if (d != null && (latest == null || d.isAfter(latest))) latest = d;
+    }
+
+    var rows = raw;
+    if (latest != null) {
+      rows = raw.where((w) {
+        final d = DateTime.tryParse(w['winningDate']?.toString() ?? '');
+        return d != null &&
+            d.difference(latest!).abs() <= const Duration(minutes: 3);
+      }).toList();
+    } else {
+      var maxRound = 0;
+      for (final w in raw) {
+        final r = int.tryParse(
+                (w['winRound'] ?? w['generalWinRound'])?.toString() ?? '') ??
+            0;
+        if (r > maxRound) maxRound = r;
+      }
+      if (maxRound > 0) {
+        rows = raw.where((w) {
+          final r = int.tryParse(
+                  (w['winRound'] ?? w['generalWinRound'])?.toString() ?? '') ??
+              0;
+          return r == maxRound;
+        }).toList();
+      }
+    }
+
+    final out = <int>{};
+    for (final w in rows) {
+      final n = int.tryParse(w['lotteryNumber']?.toString() ?? '');
+      if (n != null && n > 0 && !_revealedWinnerNumbers.contains(n)) {
+        out.add(n);
+      }
+    }
+    return out.toList()..sort();
+  }
+
+  RevealedWinnerItem _winnerDisplayForNumber(int lotteryNumber) {
+    for (final raw in currentRoundWinnersSocket) {
+      final n = int.tryParse(raw['lotteryNumber']?.toString() ?? '');
+      if (n == lotteryNumber) {
+        return RevealedWinnerItem(
+          lotteryNumber: lotteryNumber,
+          userFullName: _firstAndMiddleName(raw['userFullName']?.toString()),
+        );
+      }
+    }
+
+    return RevealedWinnerItem(
+      lotteryNumber: lotteryNumber,
+      userFullName: '',
+    );
+  }
+
+  // ── Countdown + reveal (simple) ────────────────────────────────────────────
+
+  Future<void> _startCountdownSystem() async {
+    await _syncClockAndSchedule(forceTarget: true);
+    if (!mounted) return;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
+    _scheduleSyncTimer?.cancel();
+    _scheduleSyncTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _syncClockAndSchedule(),
+    );
+  }
+
+  DateTime get _nowServer => DateTime.now().add(_timeOffset);
+
+  bool get _shouldHideLotteryHistoryButton =>
+      _holdingEarlyDrawReveal ||
+      _isRevealing ||
+      (!_allDrawWinnersSpun &&
+          remainingTime <= const Duration(minutes: 1));
+
+  void _onTick() {
+    if (!mounted || _isRevealing) return;
+
+    final left = targetDateTime.difference(_nowServer);
+    final clamped = left.isNegative ? Duration.zero : left;
+
+    if (clamped != remainingTime) {
+      setState(() => remainingTime = clamped);
+    }
+
+    // Final minute of the next draw: allow early-draw hold again and hide history.
+    if (left > Duration.zero &&
+        left <= const Duration(minutes: 1) &&
+        !_holdingEarlyDrawReveal) {
+      if (_suppressEarlyDrawHold || _allDrawWinnersSpun) {
+        setState(() {
+          _suppressEarlyDrawHold = false;
+          _allDrawWinnersSpun = false;
+        });
+      }
+    }
+
+    // Don't re-start reveal while applying / holding next-round sync.
+    if (left <= Duration.zero &&
+        !_revealStarted &&
+        !_suppressEarlyDrawHold) {
+      _beginReveal();
+    }
+  }
+
+  DateTime? _parseEqubTarget(String? date, String? time) {
+    if (date == null || time == null || date.length < 11) return null;
+    try {
+      return DateTime.parse('${date.substring(0, 11)}$time:00Z');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// True when left time is "N days + less than 1 minute" (early-draw artifact
+  /// after nextRoundDate jumps to the next cycle — daily, weekly, etc.).
+  bool _isDaysPlusSubMinute(Duration left) {
+    if (left.inDays < 1) return false;
+    final subDay = left - Duration(days: left.inDays);
+    return subDay < const Duration(minutes: 1);
+  }
+
+  /// Pick a local 0:00 deadline of at most 1 minute for the early-draw hold.
+  DateTime _localRevealDeadline(DateTime? preferred) {
+    final now = _nowServer;
+    if (preferred != null) {
+      final left = preferred.difference(now);
+      if (left > Duration.zero && left <= const Duration(minutes: 1)) {
+        return preferred;
+      }
+      if (left <= Duration.zero && left > const Duration(minutes: -1)) {
+        // Already at/ past scheduled time — spin ASAP.
+        return now;
+      }
+    }
+    // Unknown exact second: count down almost 1 minute, then spin.
+    return now.add(const Duration(seconds: 55));
+  }
+
+  Future<void> _prefetchWheelKeepWinners() async {
+    final winners = await _fetchCurrentDrawWinners();
+    if (!mounted) return;
+    setState(() {
+      _wheelKeepWinnerNumbers
+        ..addAll(winners)
+        ..addAll(_latestDrawLotteryNumbers(currentRoundWinnersSocket));
+    });
+  }
+
+  Future<void> _armEarlyDrawHold({
+    required DateTime nextRoundTarget,
+    DateTime? preferredLocalReveal,
+  }) async {
+    final localRevealAt =
+        _localRevealDeadline(preferredLocalReveal ?? targetDateTime);
+    final left = localRevealAt.difference(_nowServer);
+    final clamped = left.isNegative ? Duration.zero : left;
+
+    _postRevealTarget = nextRoundTarget;
+    _holdingEarlyDrawReveal = true;
+    _allDrawWinnersSpun = false;
+    _revealedCurrentDrawWinners.clear();
+
+    // Load winners onto the spinner now — hide results only, not wheel slots.
+    await _prefetchWheelKeepWinners();
+
+    if (!mounted) return;
+    setState(() {
+      targetDateTime = localRevealAt;
+      remainingTime = clamped;
+      isLoading = false;
+      // Hide draw *results* until spin — keep numbers on the wheel.
+      _revealStarted = false;
+      _showNoWinnerState = false;
+      _currentWinnerNumber = null;
+      _pendingWinnerNumbers = [];
+    });
+
+    if (clamped == Duration.zero && !_isRevealing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_revealStarted && !_isRevealing) {
+          _beginReveal();
+        }
+      });
+    }
+  }
+
+  Future<void> _syncClockAndSchedule({bool forceTarget = false}) async {
+    if (!mounted || _isRevealing) return;
+    try {
+      final requestTime = DateTime.now();
+      final timeRes = await dio.get(getServerTimeUrl);
+      if (timeRes.statusCode == 200) {
+        final responseTime = DateTime.now();
+        final serverTime = DateTime.parse(timeRes.data['date']);
+        final rtt = responseTime.difference(requestTime).inMilliseconds ~/ 2;
+        _timeOffset =
+            serverTime.add(Duration(milliseconds: rtt)).difference(DateTime.now());
+      }
+
+      final token = await SecureStorageHelper.getAccessToken() ?? '';
+      final res = await dio.get(
+        '$ekubsUrl/${widget.ekubId}',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (res.statusCode != 200 && res.statusCode != 201) return;
+
+      final equb = res.data['data']['equb'];
+      final newTarget = _parseEqubTarget(
+        equb['nextRoundDate']?.toString(),
+        equb['nextRoundTime']?.toString(),
+      );
+      if (newTarget == null || !mounted) return;
+
+      final widgetTarget =
+          _parseEqubTarget(widget.nextRoundDate, widget.nextRoundTime);
+      final serverLeft = newTarget.difference(_nowServer);
+      final jumpedAhead =
+          newTarget.isAfter(targetDateTime.add(const Duration(minutes: 5)));
+      final jumpedPastWidget = widgetTarget != null &&
+          newTarget.isAfter(widgetTarget.add(const Duration(minutes: 5)));
+
+      DateTime? preferredLocal;
+      if (widgetTarget != null) {
+        final wLeft = widgetTarget.difference(_nowServer);
+        if (wLeft <= const Duration(minutes: 1) &&
+            wLeft > const Duration(minutes: -1)) {
+          preferredLocal = widgetTarget;
+        }
+      }
+      if (preferredLocal == null) {
+        final cLeft = targetDateTime.difference(_nowServer);
+        if (cLeft <= const Duration(minutes: 1) &&
+            cLeft > const Duration(minutes: -1)) {
+          preferredLocal = targetDateTime;
+        }
+      }
+      // "N days + X seconds" → X seconds is the real time left until local 0:00.
+      if (preferredLocal == null && _isDaysPlusSubMinute(serverLeft)) {
+        final subDay = serverLeft - Duration(days: serverLeft.inDays);
+        preferredLocal = _nowServer.add(subDay);
+      }
+
+      final preferredLeft = preferredLocal?.difference(_nowServer);
+      final inLastMinute = preferredLeft != null &&
+          preferredLeft <= const Duration(minutes: 1) &&
+          preferredLeft > const Duration(minutes: -1);
+
+      // Early draw: next round already advanced (N days + seconds).
+      // Hold a <1 min local countdown, hide winners, then spin → real next left.
+      // Skip after a completed reveal until the next last-minute window.
+      if (!_suppressEarlyDrawHold &&
+          !_holdingEarlyDrawReveal &&
+          (jumpedAhead ||
+              jumpedPastWidget ||
+              _isDaysPlusSubMinute(serverLeft)) &&
+          (inLastMinute ||
+              _isDaysPlusSubMinute(serverLeft) ||
+              (forceTarget && await _hasPendingRecentDrawReveal()))) {
+        await _armEarlyDrawHold(
+          nextRoundTarget: newTarget,
+          preferredLocalReveal: preferredLocal,
+        );
+        return;
+      }
+
+      // Already holding — don't overwrite with the far next-round time.
+      if (_holdingEarlyDrawReveal) {
+        _postRevealTarget = newTarget;
+        return;
+      }
+
+      if (forceTarget || newTarget != targetDateTime) {
+        setState(() {
+          targetDateTime = newTarget;
+          final left = targetDateTime.difference(_nowServer);
+          remainingTime = left.isNegative ? Duration.zero : left;
+          isLoading = false;
+          if (remainingTime > Duration.zero) {
+            _revealStarted = false;
+            _showNoWinnerState = false;
+            // Next round is live — hide history until the last minute again.
+            // Keep the floating winners stack until history tap / leave page.
+            if (_suppressEarlyDrawHold &&
+                remainingTime > const Duration(minutes: 1)) {
+              _allDrawWinnersSpun = false;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('schedule sync failed: $e');
+    }
+  }
+
+  /// Recent winners whose draw should still be revealed on this visit.
+  Future<bool> _hasPendingRecentDrawReveal() async {
+    final token = await SecureStorageHelper.getAccessToken() ?? '';
+    final headers = Options(headers: {'Authorization': 'Bearer $token'});
+
+    List<dynamic> raw = currentRoundWinnersSocket;
+    try {
+      final res =
+          await dio.get(getEligibleUsers + widget.ekubId, options: headers);
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        raw = (res.data['data']?['currentRoundWinners'] as List?) ?? raw;
+        if (raw.isNotEmpty) {
+          currentRoundWinnersSocket = List<dynamic>.from(raw);
+        }
+      }
+    } catch (_) {}
+
+    final nums = _latestDrawLotteryNumbers(raw);
+    if (nums.isEmpty) return false;
+
+    DateTime? latestWin;
+    for (final w in raw) {
+      final d = DateTime.tryParse(w['winningDate']?.toString() ?? '');
+      if (d != null && (latestWin == null || d.isAfter(latestWin))) {
+        latestWin = d;
+      }
+    }
+
+    if (latestWin == null) return true;
+
+    final age = _nowServer.difference(latestWin.toUtc());
+    return age >= const Duration(minutes: -2) &&
+        age <= const Duration(minutes: 5);
+  }
+
+  Future<void> _beginReveal() async {
+    if (_revealStarted || _isRevealing) return;
+    _revealStarted = true;
+    _isRevealing = true;
+    _allDrawWinnersSpun = false;
+    _timer?.cancel();
+
+    if (mounted) {
+      setState(() {
+        remainingTime = Duration.zero;
+        _showNoWinnerState = false;
+      });
+    }
+
+    List<int> winners = _wheelKeepWinnerNumbers.isNotEmpty
+        ? _wheelKeepWinnerNumbers
+            .where((n) => !_revealedWinnerNumbers.contains(n))
+            .toList()
+        : <int>[];
+
+    if (winners.isEmpty) {
+      for (var i = 0; i < 15; i++) {
+        if (!mounted) return;
+        winners = await _fetchCurrentDrawWinners();
+        debugPrint('Reveal attempt ${i + 1}: $winners');
+        if (winners.isNotEmpty) break;
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    }
+
+    if (!mounted) return;
+
+    if (winners.isEmpty) {
+      _holdingEarlyDrawReveal = false;
+      setState(() {
+        _isRevealing = false;
+        _showNoWinnerState = true;
+        _revealStarted = false;
+        _suppressEarlyDrawHold = true;
+        _revealedCurrentDrawWinners.clear();
+      });
+      _applyPostRevealTarget();
+      _restartCountdownTimer();
       return;
     }
 
-    // Parse winnersList → List<int>, drop anything that isn't a valid number.
-    final List<int> parsed =
-        winnersList.map((s) => int.tryParse(s)).whereType<int>().toList();
+    _wheelKeepWinnerNumbers.addAll(winners);
 
-    debugPrint('Parsed winner numbers: $parsed');
+    // Refresh segments, then spin (LotteryWheel remounts via key).
+    // Keep winners on the wheel across this refresh (hasWonEqub may be true).
+    try {
+      await context.read<LotteryProvider>().fetchLotteries(widget.ekubId);
+    } catch (_) {}
 
-    if (parsed.isEmpty) {
-      debugPrint('No winner found. Wheel will not spin.');
-      debugPrint(
-          'Showing no-winner state because parsed winners list is empty.');
-      setState(() => _showNoWinnerState = true);
-      return; // no winner yet — wheel stays still
+    if (!mounted) return;
+
+    _holdingEarlyDrawReveal = false;
+    setState(() {
+      _revealedCurrentDrawWinners.clear();
+      _pendingWinnerNumbers = List<int>.from(winners);
+      _currentWinnerNumber = _pendingWinnerNumbers.removeAt(0);
+      _spinGeneration++;
+      remainingTime = Duration.zero;
+      _showNoWinnerState = false;
+    });
+  }
+
+  Future<List<int>> _fetchCurrentDrawWinners() async {
+    final token = await SecureStorageHelper.getAccessToken() ?? '';
+    final headers = Options(headers: {'Authorization': 'Bearer $token'});
+
+    // Primary: live current-round winners (backend draws ~1 min early).
+    try {
+      final res =
+          await dio.get(getEligibleUsers + widget.ekubId, options: headers);
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final raw =
+            (res.data['data']?['currentRoundWinners'] as List?) ?? const [];
+        currentRoundWinnersSocket = List<dynamic>.from(raw);
+        final nums = _latestDrawLotteryNumbers(raw);
+        if (nums.isNotEmpty) {
+          winnersList
+            ..clear()
+            ..addAll(nums.map((e) => e.toString()));
+          return nums;
+        }
+      }
+    } catch (e) {
+      debugPrint('winner poll (lottery) failed: $e');
+    }
+
+    // Socket cache from equb-eligible (still hidden until 0:00).
+    if (currentRoundWinnersSocket.isNotEmpty) {
+      final nums = _latestDrawLotteryNumbers(currentRoundWinnersSocket);
+      if (nums.isNotEmpty) return nums;
+    }
+
+    return [];
+  }
+
+  void _onWheelSpinComplete() {
+    if (_currentWinnerNumber != null) {
+      _revealedWinnerNumbers.add(_currentWinnerNumber!);
+      _revealedCurrentDrawWinners.add(
+        _winnerDisplayForNumber(_currentWinnerNumber!),
+      );
+      _wheelKeepWinnerNumbers.remove(_currentWinnerNumber!);
+    }
+
+    if (_pendingWinnerNumbers.isEmpty) {
+      setState(() {
+        _currentWinnerNumber = null;
+        _isRevealing = false;
+        _allDrawWinnersSpun = true;
+        _suppressEarlyDrawHold = true;
+        _wheelKeepWinnerNumbers.clear();
+      });
+      getEkubLotteries();
+      context.read<LotteryProvider>().fetchLotteries(widget.ekubId);
+      _applyPostRevealTarget();
+      _restartCountdownTimer();
+      return;
+    }
+
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      setState(() {
+        _currentWinnerNumber = _pendingWinnerNumbers.removeAt(0);
+        _spinGeneration++;
+        remainingTime = Duration.zero;
+      });
+    });
+  }
+
+  Future<void> _applyPostRevealTarget() async {
+    final cachedNext = _postRevealTarget;
+    _postRevealTarget = null;
+    _holdingEarlyDrawReveal = false;
+    _wheelKeepWinnerNumbers.clear();
+    _suppressEarlyDrawHold = true;
+    winnersList.clear();
+
+    DateTime? next = cachedNext;
+    try {
+      final token = await SecureStorageHelper.getAccessToken() ?? '';
+      final res = await dio.get(
+        '$ekubsUrl/${widget.ekubId}',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final equb = res.data['data']['equb'];
+        next = _parseEqubTarget(
+              equb['nextRoundDate']?.toString(),
+              equb['nextRoundTime']?.toString(),
+            ) ??
+            next;
+      }
+    } catch (e) {
+      debugPrint('post-reveal schedule fetch failed: $e');
+    }
+
+    if (!mounted) return;
+
+    if (next == null) {
+      await _syncClockAndSchedule(forceTarget: true);
+      return;
     }
 
     setState(() {
+      targetDateTime = next!;
+      final left = targetDateTime.difference(_nowServer);
+      remainingTime = left.isNegative ? Duration.zero : left;
+      isLoading = false;
+      _revealStarted = false;
       _showNoWinnerState = false;
-      _pendingWinnerNumbers = List.from(parsed);
-      _currentWinnerNumber = _pendingWinnerNumbers.removeAt(0);
-    });
-
-    debugPrint(
-        'Set current winner number: $_currentWinnerNumber. Starting wheel spin.');
-    // The wheel will react to _currentWinnerNumber becoming non-null
-    // because LotteryWheelWidget / _spinToWinner checks it.
-    _spinToWinner();
-  }
-
-  /// Called by the winner popup's Close button (via onSpinComplete) to spin
-  /// the next winner when there are multiple winners in the queue.
-  void _onWheelSpinComplete() {
-    debugPrint('Wheel spin complete.');
-    if (_pendingWinnerNumbers.isEmpty) {
-      debugPrint('No more winners in queue.');
-      return;
-    }
-
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (!mounted) {
-        debugPrint('Widget not mounted on spin complete.');
-        return;
+      // Next round countdown is live — hide history until the next last-minute
+      // window. Keep floating winners until history tap / leave page.
+      if (remainingTime > const Duration(minutes: 1)) {
+        _allDrawWinnersSpun = false;
       }
-      setState(() {
-        _currentWinnerNumber = _pendingWinnerNumbers.removeAt(0);
-      });
-      debugPrint(
-          'Next winner number: $_currentWinnerNumber. Spinning wheel again.');
-      _spinToWinner();
     });
   }
 
-  // ── Spin logic (uses _currentWinnerNumber) ─────────────────────────────────
-
-  void _spinToWinner() {
-    if (_wheelSpinning) {
-      debugPrint('Wheel is already spinning.');
-      return;
-    }
-    if (_currentWinnerNumber == null) {
-      debugPrint('No winner number set. Wheel will not spin.');
-      return;
-    }
-
-    final provider = context.read<LotteryProvider>();
-    final segmentNumbers = provider.lotteries
-        .map((e) => e.lotteryNumber)
-        .whereType<int>()
-        .toList();
-
-    final int totalSegments =
-        segmentNumbers.isNotEmpty ? segmentNumbers.length : 1;
-    final double segAngle = 2 * pi / totalSegments;
-
-    // Find the index of the winner in the wheel segment list.
-    // Falls back to (winnerNumber - 1) if lotteryNumber matches positionally.
-    int idx = segmentNumbers.indexOf(_currentWinnerNumber!);
-    if (idx < 0) idx = (_currentWinnerNumber! - 1).clamp(0, totalSegments - 1);
-
-    final double targetSegMid = idx * segAngle + segAngle / 2;
-    // Rotate so the winner segment midpoint lands under the top pointer (−π/2).
-    final double baseAngle = -pi / 2 - targetSegMid;
-    // Add 8 full rotations for dramatic effect.
-    final double totalAngle = (8 * 2 * pi) + baseAngle;
-
-    _wheelStopAngle = totalAngle;
-
-    debugPrint(
-        'Spinning wheel to winner number $_currentWinnerNumber at index $idx, stop angle $_wheelStopAngle');
-    setState(() => _wheelSpinning = true);
-    _wheelController.forward(from: 0);
+  void _restartCountdownTimer() {
+    if (_isRevealing) return;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  void _initSocketListeners() {
+    if (_socketListenersAttached || socket == null) return;
+    _socketListenersAttached = true;
+
+    socket!.on('equb-lottery', (data) {
+      try {
+        if (data is! Map) return;
+        if (data['equbId']?.toString() != widget.ekubId) return;
+        _syncClockAndSchedule();
+      } catch (_) {}
+    });
+
+    socket!.on('equb-eligible', (data) {
+      if (data is! Map || data['status'] != 'success' || !mounted) return;
+      final winners = data['data']?['currentRoundWinners']?.toList() ?? [];
+      setState(() {
+        eligibleMembersSocket =
+            data['data']?['eligibleMembers']?.toList() ?? [];
+        currentRoundWinnersSocket = winners;
+        equbEligibleMembersSocket =
+            data['data']?['equbEligibleMembers']?.toList() ?? [];
+        // Keep early-draw winners on the spinner; still hide result UI.
+        if (_holdingEarlyDrawReveal || remainingTime <= const Duration(minutes: 2)) {
+          _wheelKeepWinnerNumbers
+              .addAll(_latestDrawLotteryNumbers(winners));
+        }
+      });
+      // Cache only — never spin before 0:00.
+    });
+
+    socket!.connect();
+  }
+
+  Future<void> getMyEkubs(String id) async {
+    await _syncClockAndSchedule(forceTarget: true);
+  }
+
+  Future<void> getElligbleUsers() async {
+    // Kept for "Check again" — runs the same reveal path.
+    if (remainingTime > Duration.zero) {
+      await _syncClockAndSchedule(forceTarget: true);
+      return;
+    }
+    _revealStarted = false;
+    await _beginReveal();
+  }
 
   Future<void> tokenUpdate() async {
     TokenHelper.checkTokenExpiration(
@@ -511,114 +1035,6 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   void _handleTabSelection() => setState(() {});
   void sendMessage(String message) => socket?.emit('message', message);
-
-  // ── API calls ──────────────────────────────────────────────────────────────
-
-  Future<void> getMyEkubs(String id) async {
-    await Future.delayed(const Duration(seconds: 3));
-    final Dio d = Dio();
-    String token = await SecureStorageHelper.getAccessToken() ?? '';
-    try {
-      final res = await d.get('$ekubsUrl/$id',
-          options: Options(headers: {'Authorization': 'Bearer $token'}));
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        String dt =
-            '${res.data['data']['equb']['nextRoundDate'].substring(0, 11)}${res.data['data']['equb']['nextRoundTime']}:00';
-        setState(() {
-          targetDateTime = DateTime.parse('${dt}Z');
-          isLoading = false;
-        });
-      }
-    } catch (_) {}
-  }
-
-  Future<void> getElligbleUsers() async {
-    String token = await SecureStorageHelper.getAccessToken() ?? '';
-    try {
-      final res = await dio.get(getEligibleUsers + widget.ekubId,
-          options: Options(headers: {'Authorization': 'Bearer $token'}));
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        final data = res.data['data'];
-        final eligibleMembers = data['eligibleMembers'] as List<dynamic>;
-        final currentWinners = data['currentRoundWinners'] as List<dynamic>;
-
-        winnersList.clear();
-        elligibleUsersList.clear();
-        currentWinnersList.clear();
-        currentWinnersIdList.clear();
-        elligibleUsersLotteryList.clear();
-
-        for (var m in eligibleMembers) {
-          elligibleUsersLotteryList.add(m['lotteryNumber']);
-        }
-        for (var m in eligibleMembers)
-          for (var u in m['users'] as List<dynamic>) {
-            elligibleUsersList
-                .add(_firstAndMiddleName(u['user']['fullName']?.toString()));
-          }
-
-        if (currentWinners.isEmpty) {
-          debugPrint(
-              'getElligbleUsers: currentRoundWinners is empty for equb ${widget.ekubId}.');
-          debugPrint('Showing no-winner state after countdown finished.');
-          if (mounted) setState(() => _showNoWinnerState = true);
-          await Future.delayed(const Duration(seconds: 2));
-          if (mounted) setState(() => _isLoading = false);
-          return;
-        }
-
-        int round = currentWinners[0]['winRound'];
-        for (var w in currentWinners) {
-          winnersList.add(w['lotteryNumber']);
-        }
-        for (var w in currentWinners)
-          for (var u in w['users'] as List<dynamic>) {
-            currentWinnersList
-                .add(_firstAndMiddleName(u['user']['fullName']?.toString()));
-            currentWinnersIdList.add(u['user']['id']);
-          }
-
-        elligibleUsersLotteryList =
-            Set<String>.from(elligibleUsersLotteryList).toList();
-        winnersList = Set<String>.from(winnersList).toList();
-        debugPrint(
-            'getElligbleUsers: winnersList=$winnersList, eligibleLotteryNumbers=$elligibleUsersLotteryList.');
-        if (mounted) setState(() => _showNoWinnerState = winnersList.isEmpty);
-
-        if (eligibleMembersSocket.isNotEmpty &&
-            currentRoundWinnersSocket.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && !_hasNavigated) {
-              _hasNavigated = true;
-              Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => FortuneWheelScreen(
-                          ekubId: widget.ekubId,
-                          round: round,
-                          ekubName: widget.ekubName,
-                          ekubersNumber: widget.ekubersNumber,
-                          ekubCycle: widget.ekubCycle,
-                          nextRoundDate: widget.nextRoundDate,
-                          nextRoundTime: widget.nextRoundTime,
-                          ekubRequest: widget.ekubRequest,
-                          serviceCharge: widget.serviceCharge,
-                          nextRoundLotteryType: widget.nextRoundLotteryType,
-                          elligibleMembersSocket: eligibleMembersSocket,
-                          currentRoundWinnersSocket: currentRoundWinnersSocket,
-                          equbElligibleMembersSocket: equbEligibleMembersSocket,
-                          ekubAmount: widget.ekubAmount.toString())));
-            }
-          });
-        }
-        await Future.delayed(const Duration(seconds: 2));
-        if (mounted) setState(() => _isLoading = false);
-      }
-    } catch (_) {
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   Future<void> getEkubLotteries() async {
     String token = await SecureStorageHelper.getAccessToken() ?? '';
@@ -683,40 +1099,6 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     }
   }
 
-  Future<DateTime> fetchServerTime() async {
-    final requestTime = DateTime.now();
-    final res = await dio.get(getServerTimeUrl);
-    if (res.statusCode == 200) {
-      final responseTime = DateTime.now();
-      final serverTime = DateTime.parse(res.data['date']);
-      final rtt = responseTime.difference(requestTime).inMilliseconds / 2;
-      _cachedServerTime = serverTime.add(Duration(milliseconds: rtt.toInt()));
-      _timeOffset = _cachedServerTime!.difference(DateTime.now());
-      return _cachedServerTime!;
-    }
-    throw Exception('Failed to fetch server time');
-  }
-
-  void _startCountdown() async {
-    try {
-      if (_cachedServerTime == null || _timeOffset == null)
-        await fetchServerTime();
-      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        final now = DateTime.now().add(_timeOffset!);
-        final newRemaining = targetDateTime.difference(now);
-        setState(() {
-          remainingTime =
-              newRemaining.isNegative ? Duration.zero : newRemaining;
-          if (newRemaining.isNegative) {
-            timer.cancel();
-            // ── Countdown just hit zero: fetch winners and spin ──
-            _onCountdownFinished();
-          }
-        });
-      });
-    } catch (_) {}
-  }
-
   Future<void> getListOfFinancialInfo() async {
     String token = await SecureStorageHelper.getAccessToken() ?? '';
     final data = await apiService.readAll(addFinancialUrl, bearerToken: token);
@@ -753,7 +1135,10 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   Future<void> _openLotteryHistory() async {
     if (_isOpeningLotteryHistory) return;
 
-    setState(() => _isOpeningLotteryHistory = true);
+    setState(() {
+      _isOpeningLotteryHistory = true;
+      _revealedCurrentDrawWinners.clear();
+    });
     await getEkubLotteries();
     await getListOfFinancialInfo();
 
@@ -782,45 +1167,6 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         ),
       ),
     );
-  }
-
-  void checkTargetDateTime() {
-    socket!.connect();
-    socket!.on('connect', (_) {});
-    socket!.on('equb-lottery', (data) {
-      try {
-        if (data is Map<String, dynamic>) {
-          String ekubId = data['equbId']?.toString() ?? '';
-          if (ekubId == widget.ekubId) {
-            String serverDate = data['date']?.toString() ?? '';
-            DateTime serverDateTime = DateTime.parse(serverDate);
-            targetDateTime = serverDateTime.add(Duration(
-              days: data['remainingDays'] ?? 0,
-              hours: data['remainingHours'] ?? 0,
-              minutes: data['remainingMinutes'] ?? 0,
-              seconds: data['remainingSeconds'] ?? 0,
-            ));
-            remainingTime = targetDateTime.difference(serverDateTime);
-            setState(() {});
-          }
-        }
-      } catch (_) {}
-    });
-    socket!.on('equb-eligible', (data) {
-      if (data is Map<String, dynamic> &&
-          data['status'] == 'success' &&
-          mounted) {
-        setState(() {
-          eligibleMembersSocket =
-              data['data']?['eligibleMembers'].toList() ?? '';
-          currentRoundWinnersSocket =
-              data['data']?['currentRoundWinners'].toList() ?? '';
-          equbEligibleMembersSocket =
-              data['data']?['equbEligibleMembers'].toList() ?? '';
-        });
-      }
-    });
-    socket!.on('disconnect', (_) {});
   }
 
   // ── Dialogs ────────────────────────────────────────────────────────────────
@@ -904,8 +1250,6 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    checkTargetDateTime();
-
     final days = remainingTime.inDays;
     final hours = remainingTime.inHours % 24;
     final minutes = remainingTime.inMinutes % 60;
@@ -955,7 +1299,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+        // borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
       padding: EdgeInsets.fromLTRB(
           20, MediaQuery.of(context).padding.top + 12, 12, 20),
@@ -980,12 +1324,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
               Expanded(
                 child: Text(
                   widget.ekubName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Poppins',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AppTextStyles.poppins70020.copyWith(color: Colors.white),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1058,10 +1397,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         ),
         labelColor: Colors.white,
         unselectedLabelColor: AppColors.vibrantGreen,
-        labelStyle: const TextStyle(
-            fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 14),
-        unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Poppins', fontWeight: FontWeight.w500, fontSize: 14),
+        labelStyle: AppTextStyles.poppins60014,
+        unselectedLabelStyle: AppTextStyles.labelMedium,
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         tabs: [
@@ -1147,11 +1484,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
               const SizedBox(width: 10),
               Text(
                 AppKeys.makePayment.tr(context),
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Poppins',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600),
+                style: AppTextStyles.poppins60015.copyWith(color: Colors.white),
               ),
             ],
           ),
@@ -1181,11 +1514,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
               const SizedBox(width: 8),
               Text(
                 left,
-                style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary),
+                style: AppTextStyles.poppins70014.copyWith(color: AppColors.primary),
               ),
               const SizedBox(width: 4),
               const Icon(Icons.open_in_new_rounded,
@@ -1201,11 +1530,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           ),
           child: Text(
             right,
-            style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary),
+            style: AppTextStyles.poppins60013.copyWith(color: AppColors.primary),
           ),
         ),
       ],
@@ -1217,12 +1542,10 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         item.paidRound >= int.parse(ekubRound ?? '0');
 
     return GestureDetector(
-      onTap: () => showModalBottomSheet(
-        context: context,
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-        builder: (_) => LotteryDetailBottomSheet(
-            lottery: item.lotteryNumber, round: item.paidRound),
+      onTap: () => LotteryDetailBottomSheet.show(
+        context,
+        lottery: item.lotteryNumber,
+        round: item.paidRound,
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -1247,26 +1570,33 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: isPaid
                       ? AppColors.earthySuccessGreen.withOpacity(0.12)
                       : AppColors.crimsonRed.withOpacity(0.08),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Center(
-                  child: Text(
-                    '#${item.lotteryNumber}',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: isPaid
-                          ? AppColors.earthySuccessGreen
-                          : AppColors.crimsonRed,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.lotteryNumber,
+                      style: AppTextStyles.poppins70018.copyWith(
+                        color: const Color(0xFF2D2D2D),
+                        height: 1.1,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 2),
+                    Text(
+                      AppKeys.lottery.tr(context),
+                      style: AppTextStyles.poppins40010.copyWith(
+                        color: Colors.grey[600],
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 14),
@@ -1276,26 +1606,17 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                   children: [
                     Text(
                       item.name,
-                      style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF2D2D2D)),
+                      style: AppTextStyles.poppins60014.copyWith(color: const Color(0xFF2D2D2D)),
                     ),
                     const SizedBox(height: 4),
                     RichText(
                       text: TextSpan(
-                        style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 13.sp,
-                            color: Colors.grey[600]),
+                        style: AppTextStyles.poppins40013.copyWith(color: Colors.grey[600]),
                         children: [
                           TextSpan(
                               text: numberFormat.format(
                                   item.amountPaid < 0 ? 0 : item.amountPaid),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2D2D2D))),
+                              style: AppTextStyles.poppins60014.copyWith(color: Color(0xFF2D2D2D))),
                           const TextSpan(text: ' / '),
                           TextSpan(
                               text:
@@ -1335,14 +1656,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                           isPaid
                               ? AppKeys.paid.tr(context)
                               : AppKeys.notPaid.tr(context),
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: isPaid
-                                ? AppColors.earthySuccessGreen
-                                : AppColors.crimsonRed,
-                          ),
+                          style: AppTextStyles.poppins60011,
                         ),
                       ],
                     ),
@@ -1354,10 +1668,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                         AppKeys.viewLastPaid.tr(context).length > 14
                             ? '${AppKeys.viewLastPaid.tr(context).substring(0, 14)}…'
                             : AppKeys.viewLastPaid.tr(context),
-                        style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 10,
-                            fontFamily: 'Poppins'),
+                        style: AppTextStyles.poppins40010.copyWith(color: AppColors.primary),
                       ),
                     ),
                   if (widget.ekubRequest && !item.isGroup)
@@ -1369,14 +1680,9 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                             amount: item.request?.amount,
                             reason: item.request?.description,
                             requestId: item.request?.id),
-                        child: const Text(
+                        child: Text(
                           'Request',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 11,
-                            fontFamily: 'Poppins',
-                            decoration: TextDecoration.underline,
-                          ),
+                          style: AppTextStyles.poppins40011.copyWith(color: AppColors.primary, decoration: TextDecoration.underline),
                         ),
                       ),
                     ),
@@ -1399,7 +1705,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
             const SizedBox(height: 12),
             Text('No payments yet',
                 style:
-                    TextStyle(color: Colors.grey[400], fontFamily: 'Poppins')),
+                    AppTextStyles.poppins40014.copyWith(color: Colors.grey[400])),
           ],
         ),
       ),
@@ -1410,11 +1716,11 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   Widget _buildLotteriesTab(int days, int hours, int minutes, int seconds) {
     final provider = context.watch<LotteryProvider>();
-
-    final wheelNumbers = provider.lotteries
-        .map((e) => e.lotteryNumber)
-        .whereType<int>()
-        .toList();
+    final wheelNumbers = _wheelSlotNumbers(provider);
+    final showingAllRounds = remainingTime > const Duration(days: 2) &&
+        !_isRevealing &&
+        !_holdingEarlyDrawReveal &&
+        _currentWinnerNumber == null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1424,96 +1730,92 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           _buildCountdownRow(days, hours, minutes, seconds),
           const SizedBox(height: 24),
 
-          // Loading state
-          if (provider.isLoading)
-            const SizedBox(
-              height: 320,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 12),
-                    Text(
-                      'Loading lottery numbers...',
-                      style:
-                          TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-
-          // Empty state with helpful message
-          else if (remainingTime == Duration.zero &&
-              (_showNoWinnerState || wheelNumbers.isEmpty) &&
+          if (remainingTime == Duration.zero &&
+              _showNoWinnerState &&
+              !_isRevealing &&
               _currentWinnerNumber == null)
-            Builder(
-              builder: (_) {
-                debugPrint(
-                    'Rendering no-winner state: timeUp=${remainingTime == Duration.zero}, showNoWinner=$_showNoWinnerState, wheelNumbers=${wheelNumbers.length}, currentWinner=$_currentWinnerNumber');
-                return _buildNoWinnerState();
-              },
-            )
-          else if (wheelNumbers.isEmpty)
-            Container(
+            _buildNoWinnerState()
+          else if (wheelNumbers.isEmpty && !_isRevealing)
+            SizedBox(
               height: 320,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.hourglass_empty_rounded,
-                        size: 48, color: Colors.grey),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'No lottery numbers loaded',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    if (provider.isLoading) ...[
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Loading lottery numbers...',
+                        style: AppTextStyles.poppins40014
+                            .copyWith(color: Colors.grey),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      provider.error != null
-                          ? 'Error: ${provider.error}'
-                          : 'Waiting for data from server...',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.grey, fontFamily: 'Poppins'),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        context
-                            .read<LotteryProvider>()
-                            .fetchLotteries(widget.ekubId);
-                      },
-                      child: const Text('Retry'),
-                    ),
+                    ] else ...[
+                      const Icon(Icons.hourglass_empty_rounded,
+                          size: 48, color: Colors.grey),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No lottery numbers loaded',
+                        style: AppTextStyles.poppins60016,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        provider.error != null
+                            ? 'Error: ${provider.error}'
+                            : 'Waiting for data from server...',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.poppins40014
+                            .copyWith(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          context
+                              .read<LotteryProvider>()
+                              .fetchLotteries(widget.ekubId);
+                          getEkubLotteries();
+                        },
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ],
                 ),
               ),
             )
-
-          // Show the animated wheel when we have numbers
           else
-            LotteryWheel(
-              lotteryNumbers: wheelNumbers,
-              isTimeUp: remainingTime == Duration.zero,
-              winnerLotteryNumber: _currentWinnerNumber,
-              hasNextWinner: _pendingWinnerNumbers.isNotEmpty,
-              onSpinComplete: _onWheelSpinComplete,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                LotteryWheel(
+                  key: ValueKey(
+                      'spin_${_spinGeneration}_${showingAllRounds ? 'all' : 'joined'}'),
+                  lotteryNumbers: wheelNumbers.isNotEmpty
+                      ? wheelNumbers
+                      : (_currentWinnerNumber != null
+                          ? [_currentWinnerNumber!]
+                          : const <int>[1]),
+                  // Keep results hidden during early-draw hold countdown.
+                  isTimeUp:
+                      !_holdingEarlyDrawReveal && _currentWinnerNumber != null,
+                  winnerLotteryNumber:
+                      _holdingEarlyDrawReveal ? null : _currentWinnerNumber,
+                  hasNextWinner: _pendingWinnerNumbers.isNotEmpty,
+                  onSpinComplete: _onWheelSpinComplete,
+                ),
+                if (_revealedCurrentDrawWinners.isNotEmpty)
+                  Positioned(
+                    top: 12,
+                    right: 10,
+                    child: _buildFloatingWinnerStack(),
+                  ),
+              ],
             ),
 
           const SizedBox(height: 24),
-          _buildLotteryHistoryButton(),
-          const SizedBox(height: 24),
+          if (!_shouldHideLotteryHistoryButton) ...[
+            _buildLotteryHistoryButton(),
+            const SizedBox(height: 24),
+          ],
         ],
       ),
     );
@@ -1553,30 +1855,23 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'No winner for this round',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF1F2937),
-              fontFamily: 'Poppins',
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
+            style: AppTextStyles.poppins70020.copyWith(color: Color(0xFF1F2937)),
           ),
           const SizedBox(height: 8),
           Text(
             'The countdown has ended, but a winner has not been selected yet. Please check again shortly.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontFamily: 'Poppins',
-              fontSize: 14,
-              height: 1.45,
-            ),
+            style: AppTextStyles.poppins40014.copyWith(color: Colors.grey.shade600, height: 1.45),
           ),
           const SizedBox(height: 18),
           OutlinedButton.icon(
-            onPressed: _onCountdownFinished,
+            onPressed: () {
+              _revealStarted = false;
+              getElligbleUsers();
+            },
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Check again'),
             style: OutlinedButton.styleFrom(
@@ -1585,9 +1880,67 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              textStyle: const TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
+              textStyle: AppTextStyles.poppins60014,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingWinnerStack() {
+    final winners = _revealedCurrentDrawWinners.reversed.take(7).toList();
+    return Container(
+      constraints: BoxConstraints(maxWidth: 120.w),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.78),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.55)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.10),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.emoji_events_rounded,
+                  color: Color(0xFFFFB300), size: 16),
+              const SizedBox(width: 6),
+              Text(
+                AppKeys.winner.tr(context),
+                style: AppTextStyles.poppins60013
+                    .copyWith(color: const Color(0xFF1F2937)),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          ...winners.map(
+            (winner) => Padding(
+              padding: EdgeInsets.only(bottom: 6.h),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.72),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${winner.lotteryNumber}',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.poppins70020.copyWith(
+                    color: AppColors.primary,
+                    height: 1.1,
+                  ),
+                ),
               ),
             ),
           ),
@@ -1647,12 +2000,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
               const SizedBox(width: 10),
               Text(
                 AppKeys.lotteryHistory.tr(context),
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Poppins',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1),
+                style: AppTextStyles.poppins60016.copyWith(color: Colors.white, letterSpacing: 1),
               ),
             ],
           ),
@@ -1695,20 +2043,12 @@ class _CountdownBox extends StatelessWidget {
             ).createShader(bounds),
             child: Text(
               value.toString().padLeft(2, '0'),
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'Poppins',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800),
+              style: AppTextStyles.poppins40022.copyWith(color: Colors.white),
             ),
           ),
           const SizedBox(height: 2),
           Text(label,
-              style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF888888))),
+              style: AppTextStyles.poppins50011.copyWith(color: Color(0xFF888888))),
         ],
       ),
     );
@@ -1751,17 +2091,9 @@ class _InfoPill extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 11,
-                        color: Color(0xFF888888),
-                        fontWeight: FontWeight.w500)),
+                    style: AppTextStyles.poppins50011.copyWith(color: Color(0xFF888888))),
                 Text(value,
-                    style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1DB954))),
+                    style: AppTextStyles.poppins70014.copyWith(color: Color(0xFF1DB954))),
               ],
             ),
           ],
@@ -1789,11 +2121,7 @@ class _HeaderChipButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: const TextStyle(
-              color: Colors.white,
-              fontFamily: 'Poppins',
-              fontSize: 12,
-              fontWeight: FontWeight.w600),
+          style: AppTextStyles.poppins60012.copyWith(color: Colors.white),
         ),
       ),
     );
@@ -1833,10 +2161,7 @@ class _PaymentSummarySheet extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(AppKeys.payment.tr(context),
-                    style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
+                    style: AppTextStyles.poppins70018),
               ),
               const SizedBox(height: 12),
               Expanded(
@@ -1855,16 +2180,10 @@ class _PaymentSummarySheet extends StatelessWidget {
                         children: [
                           Text(
                             '${AppKeys.lottery.tr(context)} ${p.lotteryNumber} (${p.paidRound} ${AppKeys.round.tr(context)})',
-                            style: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500),
+                            style: AppTextStyles.poppins50013,
                           ),
                           Text('$sub ETB',
-                              style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700)),
+                              style: AppTextStyles.poppins70014),
                         ],
                       ),
                     );
@@ -1886,16 +2205,9 @@ class _PaymentSummarySheet extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(AppKeys.totalAmount.tr(context),
-                        style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold)),
+                        style: AppTextStyles.poppins70016),
                     Text('$total ETB',
-                        style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary)),
+                        style: AppTextStyles.poppins70016.copyWith(color: AppColors.primary)),
                   ],
                 ),
               ),
@@ -1926,12 +2238,7 @@ class StyledTabs extends StatelessWidget {
         child: Center(
           child: Text(
             text,
-            style: TextStyle(
-              color: isSelected ? Colors.white : AppColors.vibrantGreen,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Poppins',
-              fontSize: 13,
-            ),
+            style: AppTextStyles.poppins70014,
           ),
         ),
       ),

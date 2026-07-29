@@ -8,6 +8,7 @@ import '../../utils/colors_constant.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import '../../utils/lang_constants.dart';
 import '../../utils/app_localizations.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class EqubListByCategory extends StatefulWidget {
   final EqubCategory category;
@@ -86,7 +87,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
                   Text(
                     provider.error ?? 'Failed to load equbs',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    style: AppTextStyles.poppins40014.copyWith(color: Colors.grey),
                   ),
                   const SizedBox(height: 10),
                   OutlinedButton(
@@ -106,7 +107,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
           return Center(
             child: Text(
               AppKeys.noEkubs.tr(context),
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              style: AppTextStyles.poppins40016.copyWith(color: Colors.grey),
             ),
           );
         }
@@ -158,6 +159,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
                 );
               },
               child: EqubDetailCard(
+                key: ValueKey(equb.id),
                 equb: equb,
                 equbType: equb.equbType?.entries.first.value ?? '',
                 type: equb.equbType?['name'],

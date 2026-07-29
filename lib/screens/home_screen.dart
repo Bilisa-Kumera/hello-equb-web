@@ -6,7 +6,9 @@ import 'package:helloequb/screens/join_ekub_detail.dart';
 import 'package:helloequb/screens/my_other_ekubs.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/equb_type_localization.dart';
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -28,6 +30,8 @@ import 'package:helloequb/provider/equb_category_provider.dart';
 import 'package:helloequb/provider/equb_provider.dart';
 import 'package:helloequb/provider/cooperate_equbs_provider.dart';
 import 'package:helloequb/models/cooperate_models.dart';
+import 'package:helloequb/provider/joined_equbs_status_provider.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 
 import '../utils/getx_storage_custom.dart';
 import '../utils/secure_storage.dart';
@@ -61,7 +65,7 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
   @override
   Widget build(BuildContext context) {
     final List<EqubType> equbTypesWithAll = [
-      EqubType(id: '', name: AppKeys.all.tr(context)),
+      EqubType(id: '', name: 'All'),
       ...widget.equbTypes,
     ];
 
@@ -72,15 +76,15 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
           leading: IconButton(
               onPressed: () => Navigator.pop(context),
               icon: const Icon(
-                Icons.arrow_back,
+                Icons.arrow_back_ios_new_rounded,
                 color: Colors.white,
               )),
-          backgroundColor: const Color.fromARGB(255, 76, 109, 93),
+          backgroundColor: AppColors.primary,
           title: Row(
             children: [
               Text(
                 widget.equbType,
-                style: const TextStyle(color: Colors.white),
+                style: AppTextStyles.onPrimaryBold,
               ),
             ],
           ),
@@ -106,14 +110,21 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 18, vertical: 7),
                       decoration: BoxDecoration(
-                        color: getEqubTypeColor(equbType.name),
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.35),
+                        ),
                       ),
                       child: Text(
-                        equbType.name ?? '',
-                        style: const TextStyle(
+                        translateEqubTypeName(
+                          context,
+                          equbType.name,
+                          interval: equbType.interval,
+                        ),
+                        style: AppTextStyles.labelSmall.copyWith(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -219,7 +230,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
                   Text(
                     provider.error ?? 'Failed to load equbs',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    style: AppTextStyles.greyBody,
                   ),
                   const SizedBox(height: 10),
                   OutlinedButton(
@@ -239,7 +250,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
           return Center(
             child: Text(
               AppKeys.noEkubs.tr(context),
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              style: AppTextStyles.greyBody,
             ),
           );
         }
@@ -253,7 +264,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
           return Center(
             child: Text(
               AppKeys.noActiveEqubs.tr(context),
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              style: AppTextStyles.greyBody,
             ),
           );
         }
@@ -262,9 +273,9 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
 
         return ListView.separated(
           controller: _scrollController,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 16.h),
           itemCount: sortedEqubs.length + (showBottomItem ? 1 : 0),
-          separatorBuilder: (_, __) => const SizedBox(height: 14),
+          separatorBuilder: (_, __) => SizedBox(height: 12.h),
           itemBuilder: (context, index) {
             if (index >= sortedEqubs.length) {
               if (provider.error != null) {
@@ -305,6 +316,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
                 );
               },
               child: EqubDetailCard(
+                key: ValueKey(equb.id),
                 equb: equb,
                 equbType: equb.equbType?.entries.first.value ?? '',
                 type: equb.equbType?['name'],
@@ -332,7 +344,9 @@ String getEqubIcon(String? name) {
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool embedInShell;
+
+  const HomeScreen({super.key, this.embedInShell = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -359,6 +373,16 @@ class _HomeScreenState extends State<HomeScreen>
   int currentCategoryIndex = 0;
   bool _firstBuild = true;
 
+  Future<void> _refreshHome() async {
+    Provider.of<EqubTypeProvider>(context, listen: false).fetchEqubTypes();
+    Provider.of<EqubCategoryProvider>(context, listen: false)
+        .fetchEqubCategories();
+    Provider.of<BannerProvider>(context, listen: false).fetchBanners();
+    context.read<CooperateEqubsProvider>().fetchCooperates();
+    _fetchEqubsForCurrentTab(context);
+    await Future<void>.delayed(const Duration(seconds: 1));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -380,14 +404,13 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-    context.read<CooperateEqubsProvider>().fetchCooperates();
-  });
+      context.read<CooperateEqubsProvider>().fetchCooperates();
+    });
     Future.microtask(() =>
         Provider.of<EqubTypeProvider>(context, listen: false).fetchEqubTypes());
     Future.microtask(() =>
         Provider.of<EqubCategoryProvider>(context, listen: false)
             .fetchEqubCategories());
-      
   }
 
   void _fetchEqubsForCurrentTab(BuildContext context) {
@@ -433,8 +456,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   String profileAvatarUrl = '';
 
- 
-  
   Future<void> getProfileImage() async {
     final cachedAvatar =
         dataController.retrieveData<String>('profileUrl') ?? '';
@@ -476,8 +497,7 @@ class _HomeScreenState extends State<HomeScreen>
           bearerToken: accessToken,
         );
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   @override
@@ -506,6 +526,9 @@ class _HomeScreenState extends State<HomeScreen>
             },
             child: RefreshIndicator(
               onRefresh: () {
+                if (widget.embedInShell) {
+                  return _refreshHome();
+                }
                 Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -513,9 +536,13 @@ class _HomeScreenState extends State<HomeScreen>
                 return Future<void>.delayed(const Duration(seconds: 3));
               },
               child: Scaffold(
+                extendBody: !widget.embedInShell,
                 backgroundColor: Colors.white,
                 body: RefreshIndicator(
                   onRefresh: () {
+                    if (widget.embedInShell) {
+                      return _refreshHome();
+                    }
                     Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -523,23 +550,7 @@ class _HomeScreenState extends State<HomeScreen>
                     return Future<void>.delayed(const Duration(seconds: 3));
                   },
                   child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: ((equbTypeProvider.isLoading ?? false) ||
-                                  (equbCategoryProvider.isLoading == true))
-                              ? [
-                                  const Color.fromARGB(255, 245, 246, 247),
-                                  const Color.fromARGB(255, 234, 236, 236),
-                                ]
-                              : [
-                                  AppColors.primary,
-                                  const Color.fromARGB(255, 2, 174, 65),
-                                ],
-                          stops: const [0.016, 0.4143],
-                        ),
-                      ),
+                      color: Colors.white,
                       child: ((equbTypeProvider.isLoading ?? false) ||
                               (equbCategoryProvider.isLoading == true))
                           ? Center(
@@ -572,12 +583,12 @@ class _HomeScreenState extends State<HomeScreen>
                                         },
                                       ),
                                       const SizedBox(height: 12),
-                                      const Text(
+                                      Text(
                                         'Tap to refresh',
-                                        style: TextStyle(
+                                        style:
+                                            AppTextStyles.sectionTitle.copyWith(
                                           color: AppColors.primary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                       const SizedBox(height: 8),
@@ -588,9 +599,9 @@ class _HomeScreenState extends State<HomeScreen>
                                   shrinkWrap: true,
                                   slivers: [
                                     SliverAppBar(
-                                      backgroundColor: Colors.transparent,
+                                      backgroundColor: Colors.white,
                                       elevation: 0,
-
+                                      surfaceTintColor: Colors.white,
                                       leading: Padding(
                                         padding: const EdgeInsets.only(
                                             left: 16.0, top: 20),
@@ -604,11 +615,12 @@ class _HomeScreenState extends State<HomeScreen>
                                                 ? NetworkImage(
                                                     '${mediaUrl}images/avatar/$profileAvatarUrl')
                                                 : null,
-                                            backgroundColor: Colors.white24,
+                                            backgroundColor:
+                                                Colors.grey.shade200,
                                             child: profileAvatarUrl.isEmpty
-                                                ? const Icon(
+                                                ? Icon(
                                                     Icons.person,
-                                                    color: Colors.white,
+                                                    color: Colors.grey.shade600,
                                                   )
                                                 : null,
                                           ),
@@ -626,20 +638,17 @@ class _HomeScreenState extends State<HomeScreen>
                                                 dataController.retrieveData<
                                                     String>('fullName'),
                                               ),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 13,
-                                                fontFamily: 'Poppins',
+                                              style: AppTextStyles.chipSelected
+                                                  .copyWith(
+                                                color: AppColors.richDeepGreen,
                                               ),
                                             ),
                                             Text(
                                               AppKeys.welcomeBack.tr(context),
-                                              style: const TextStyle(
-                                                color: Colors.white70,
+                                              style: AppTextStyles.captionMuted
+                                                  .copyWith(
+                                                color: Colors.grey.shade600,
                                                 fontWeight: FontWeight.w300,
-                                                fontSize: 11,
-                                                fontFamily: 'Poppins',
                                               ),
                                             ),
                                           ],
@@ -655,7 +664,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               IconButton(
                                                 icon: const Icon(
                                                     Icons.notifications),
-                                                color: Colors.white,
+                                                color: AppColors.richDeepGreen,
                                                 onPressed: () {
                                                   Navigator.push(
                                                       context,
@@ -685,11 +694,12 @@ class _HomeScreenState extends State<HomeScreen>
                                                     child: Center(
                                                       child: Text(
                                                         '$notificationCount',
-                                                        style: const TextStyle(
+                                                        style: AppTextStyles
+                                                            .captionMuted
+                                                            .copyWith(
                                                           color: Colors.white,
                                                           fontWeight:
-                                                              FontWeight.bold,
-                                                          fontSize: 11,
+                                                              FontWeight.w700,
                                                         ),
                                                       ),
                                                     ),
@@ -726,9 +736,15 @@ class _HomeScreenState extends State<HomeScreen>
                                                         'Error: ${bannerProvider.error}'));
                                               } else if (bannerProvider
                                                   .banners.isEmpty) {
-                                                return const Center(
+                                                return Center(
                                                     child: Text(
-                                                        'No banners available'));
+                                                  'No banners available',
+                                                  style: AppTextStyles
+                                                      .captionMuted
+                                                      .copyWith(
+                                                    color: Colors.grey.shade500,
+                                                  ),
+                                                ));
                                               }
                                               return CarouselSlider(
                                                 items: bannerProvider.banners
@@ -756,1141 +772,795 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
 
                                     // ======= Equb Types & Categories =======
-                                    SliverToBoxAdapter(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.only(
-                                            topLeft: Radius.circular(20.r),
-                                            topRight: Radius.circular(20.r),
-                                          ),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 16),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            children: [
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 18.0, bottom: 10.0),
-                                                child: Center(
-                                                  child: Text(
-                                                    AppKeys.joinEqubsToday
-                                                        .tr(context),
-                                                    style: const TextStyle(
-                                                      fontSize: 22,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: AppColors
-                                                          .vibrantGreen,
-                                                      letterSpacing: 1.2,
-                                                      // shadows: [
-                                                      //   Shadow(
-                                                      //     color: Colors.black12,
-                                                      //     blurRadius: 4.0,
-                                                      //     offset: Offset(2, 2),
-                                                      //   ),
-                                                      // ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 6),
-                                                child:
-                                                    Builder(builder: (context) {
-                                                  // Filter only categories where otherTypeEqub is false
-                                                  final filteredCategories =
-                                                      equbCategories
-                                                          .where((cat) =>
-                                                              cat.otherTypeEqub ==
-                                                              false)
-                                                          .toList();
+                                    Consumer<CooperateEqubsProvider>(
+                                      builder: (context, coopProv, _) {
+                                        final hasMainCategories =
+                                            equbCategories.any((cat) =>
+                                                cat.otherTypeEqub == false);
+                                        final hasOtherCategories =
+                                            equbCategories.any((cat) =>
+                                                cat.otherTypeEqub == true);
+                                        final hasCooperates =
+                                            coopProv.cooperates.isNotEmpty;
 
-                                                  return GridView.builder(
-                                                    shrinkWrap: true,
-                                                    physics:
-                                                        const NeverScrollableScrollPhysics(),
-                                                    itemCount:
-                                                        filteredCategories
-                                                            .length,
-                                                    gridDelegate:
-                                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                                      crossAxisCount: 3,
-                                                      mainAxisSpacing: 12,
-                                                      crossAxisSpacing: 12,
-                                                      childAspectRatio: 1.1,
-                                                    ),
-                                                    itemBuilder:
-                                                        (context, index) {
-                                                      final category = filteredCategories
-                                                                  .isNotEmpty &&
-                                                              index <
-                                                                  filteredCategories
-                                                                      .length
-                                                          ? filteredCategories[
-                                                              index]
-                                                          : null;
+                                        if (!hasMainCategories &&
+                                            !hasOtherCategories &&
+                                            !hasCooperates) {
+                                          return const SliverToBoxAdapter(
+                                            child: SizedBox.shrink(),
+                                          );
+                                        }
 
-                                                      return GestureDetector(
-                                                        onTap: () {
-                                                          if (category !=
-                                                              null) {
-                                                            Navigator.push(
-                                                              context,
-                                                              MaterialPageRoute(
-                                                                builder: (_) =>
-                                                                    EqubTabbedScreen(
-                                                                  equbType:
-                                                                      category.name ??
-                                                                          '',
-                                                                  equbTypes:
-                                                                      equbTypes,
-                                                                  category:
-                                                                      category,
-                                                                  equbTypeId:
-                                                                      category.id ??
-                                                                          '',
-                                                                ),
-                                                              ),
-                                                            );
-                                                          }
-                                                        },
-                                                        child: Container(
-                                                          padding:
-                                                              EdgeInsets.all(
-                                                                  12.r),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color:
-                                                                AppColors.white,
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        16),
-                                                            boxShadow: [
-                                                              BoxShadow(
-                                                                color: Colors
-                                                                    .grey
-                                                                    .withOpacity(
-                                                                        0.2),
-                                                                blurRadius: 6,
-                                                                offset:
-                                                                    const Offset(
-                                                                        0, 4),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                          child: Column(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .center,
-                                                            mainAxisAlignment:
-                                                                MainAxisAlignment
-                                                                    .center,
-                                                            children: [
-                                                              if (category !=
-                                                                      null &&
-                                                                  category.imageIcon !=
-                                                                      null &&
-                                                                  category
-                                                                      .imageIcon!
-                                                                      .isNotEmpty)
-                                                                Padding(
-                                                                  padding:
-                                                                      const EdgeInsets
-                                                                          .only(
-                                                                          bottom:
-                                                                              8.0),
-                                                                  child:
-                                                                      SizedBox(
-                                                                    height: 40,
-                                                                    width: 40,
-                                                                    child: Image
-                                                                        .network(
-                                                                      '${mediaUrl}images/category/${category.imageIcon}',
-                                                                      fit: BoxFit
-                                                                          .contain,
-                                                                      loadingBuilder: (context,
-                                                                          child,
-                                                                          loadingProgress) {
-                                                                        if (loadingProgress ==
-                                                                            null) {
-                                                                          return child;
-                                                                        }
-                                                                        return Center(
-                                                                          child:
-                                                                              SizedBox(
-                                                                            height:
-                                                                                32,
-                                                                            width:
-                                                                                32,
-                                                                            child:
-                                                                                CircularProgressIndicator(
-                                                                              value: loadingProgress.expectedTotalBytes != null ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1) : null,
-                                                                              strokeWidth: 3,
-                                                                              color: AppColors.primary,
-                                                                            ),
-                                                                          ),
-                                                                        );
-                                                                      },
-                                                                      errorBuilder: (context,
-                                                                              error,
-                                                                              stackTrace) =>
-                                                                          const Icon(
-                                                                        Icons
-                                                                            .image_not_supported,
-                                                                        size:
-                                                                            40,
-                                                                        color: Colors
-                                                                            .grey,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              // Title
-                                                              Text(
-                                                                category?.name ??
-                                                                    '',
-                                                                style:
-                                                                    TextStyle(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  fontSize:
-                                                                      16.sp,
-                                                                  color:
-                                                                      AppColors
-                                                                          .black,
-                                                                ),
-                                                                maxLines: 1,
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                              ),
-                                                              SizedBox(
-                                                                height: 6.h,
-                                                              ),
-                                                              // Description
-                                                              // Text(
-                                                              //   category?.description ??
-                                                              //       '',
-                                                              //   style: TextStyle(
-                                                              //     fontSize: 12.sp,
-                                                              //     color: Colors
-                                                              //         .grey[700],
-                                                              //   ),
-                                                              //   maxLines: 2,
-                                                              //   overflow:
-                                                              //       TextOverflow
-                                                              //           .ellipsis,
-                                                              // ),
-                                                              const Spacer(),
-                                                              // Green button
-                                                              // SizedBox(
-                                                              //   width: double
-                                                              //       .infinity,
-                                                              //   child:
-                                                              //       ElevatedButton(
-                                                              //     onPressed: () {
-                                                              //       Navigator
-                                                              //           .push(
-                                                              //         context,
-                                                              //         MaterialPageRoute(
-                                                              //           builder:
-                                                              //               (_) =>
-                                                              //                   EqubTabbedScreen(
-                                                              //                     equbType:
-                                                              //                 category?.name ??
-                                                              //                     '',
-                                                              //             equbTypes:
-                                                              //                 equbTypes,
-                                                              //             categories:
-                                                              //                 equbCategories,
-                                                              //             equbTypeId:
-                                                              //                 category?.id ??
-                                                              //                     '',
-                                                              //           ),
-                                                              //         ),
-                                                              //       );
-                                                              //     },
-                                                              //     style: ElevatedButton
-                                                              //         .styleFrom(
-                                                              //       backgroundColor:
-                                                              //           AppColors
-                                                              //               .vibrantGreen,
-                                                              //       shape:
-                                                              //           RoundedRectangleBorder(
-                                                              //         borderRadius:
-                                                              //             BorderRadius.circular(
-                                                              //                 24),
-                                                              //       ),
-                                                              //       padding: EdgeInsets
-                                                              //           .symmetric(
-                                                              //               vertical:
-                                                              //                   8.h),
-                                                              //     ),
-                                                              //     child: Text(
-                                                              //       AppKeys.join.tr(
-                                                              //           context),
-                                                              //       style:
-                                                              //           TextStyle(
-                                                              //         fontSize:
-                                                              //             16.sp,
-                                                              //         fontWeight:
-                                                              //             FontWeight
-                                                              //                 .bold,
-                                                              //         color: Colors
-                                                              //             .white,
-                                                              //       ),
-                                                              //     ),
-                                                              //   ),
-                                                              // ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
-                                                  );
-                                                }),
-                                              ),
-                                              Builder(builder: (context) {
-                                                final otherCategories =
-                                                    equbCategories
-                                                        .where((cat) =>
-                                                            cat.otherTypeEqub ==
-                                                            true)
-                                                        .toList();
+                                        return SliverToBoxAdapter(
+                                          child: Container(
+                                            color: Colors.white,
+                                            child: Padding(
+                                              padding: EdgeInsets.fromLTRB(
+                                                  12.w, 8.h, 12.w, 16.h),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Builder(builder: (context) {
+                                                    final filteredCategories =
+                                                        equbCategories
+                                                            .where((cat) =>
+                                                                cat.otherTypeEqub ==
+                                                                false)
+                                                            .toList();
 
-                                                if (otherCategories.isEmpty) {
-                                                  return const SizedBox.shrink();
-                                                }
-
-                                                return Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
-                                                  children: [
-                                                    Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 20.0),
-                                                      child: Text(
-                                                        AppKeys.otherEqubType
-                                                            .tr(context),
-                                                        style: const TextStyle(
-                                                          fontSize: 20,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          color: AppColors
-                                                              .richDeepGreen,
-                                                          letterSpacing: 1.1,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 6),
-                                                      child: GridView.builder(
-                                                        shrinkWrap: true,
-                                                        physics:
-                                                            const NeverScrollableScrollPhysics(),
-                                                        itemCount:
-                                                            otherCategories
-                                                                .length,
-                                                        gridDelegate:
-                                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                                          crossAxisCount: 3,
-                                                          mainAxisSpacing: 12,
-                                                          crossAxisSpacing: 12,
-                                                          childAspectRatio: 1.1,
-                                                        ),
-                                                        itemBuilder:
-                                                            (context, index) {
-                                                          final category = otherCategories
-                                                                      .isNotEmpty &&
-                                                                  index <
-                                                                      otherCategories
-                                                                          .length
-                                                              ? otherCategories[
-                                                                  index]
-                                                              : null;
-
-                                                          return GestureDetector(
-                                                            onTap: () {
-                                                              if (category !=
-                                                                  null) {
-                                                                Navigator.push(
-                                                                  context,
-                                                                  MaterialPageRoute(
-                                                                    builder: (_) =>
-                                                                        EqubTabbedScreen(
-                                                                      imageUrl: category.imageIcon,
-                                                                      description: category.description,
-                                                                      equbType:
-                                                                          category.name ??
-                                                                              '',
-                                                                      equbTypes:
-                                                                          equbTypes,
-                                                                      category:
-                                                                          category,
-                                                                      equbTypeId:
-                                                                          category.id ??
-                                                                              '',
-                                                                    ),
-                                                                  ),
-                                                                );
-                                                              }
-                                                            },
-                                                            child: Container(
-                                                              padding:
-                                                                  EdgeInsets.all(
-                                                                      12.r),
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: AppColors
-                                                                    .white,
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            16),
-                                                                boxShadow: [
-                                                                  BoxShadow(
-                                                                    color: Colors
-                                                                        .grey
-                                                                        .withOpacity(
-                                                                            0.2),
-                                                                    blurRadius: 6,
-                                                                    offset:
-                                                                        const Offset(
-                                                                            0, 4),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              child: Column(
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .center,
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .center,
-                                                                children: [
-                                                              if (category !=
-                                                                      null &&
-                                                                  category.imageIcon !=
-                                                                      null &&
-                                                                  category
-                                                                      .imageIcon!
-                                                                      .isNotEmpty)
-                                                                Padding(
-                                                                  padding:
-                                                                      const EdgeInsets
-                                                                          .only(
-                                                                          bottom:
-                                                                              8.0),
-                                                                  child:
-                                                                      SizedBox(
-                                                                    height: 40,
-                                                                    width: 40,
-                                                                    child: Image
-                                                                        .network(
-                                                                      '${mediaUrl}images/category/${category.imageIcon}',
-                                                                      fit: BoxFit
-                                                                          .contain,
-                                                                      loadingBuilder: (context,
-                                                                          child,
-                                                                          loadingProgress) {
-                                                                        if (loadingProgress ==
-                                                                            null) {
-                                                                          return child;
-                                                                        }
-                                                                        return Center(
-                                                                          child:
-                                                                              SizedBox(
-                                                                            height:
-                                                                                32,
-                                                                            width:
-                                                                                32,
-                                                                            child:
-                                                                                CircularProgressIndicator(
-                                                                              value: loadingProgress.expectedTotalBytes != null ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1) : null,
-                                                                              strokeWidth: 3,
-                                                                              color: AppColors.primary,
-                                                                            ),
-                                                                          ),
-                                                                        );
-                                                                      },
-                                                                      errorBuilder: (context,
-                                                                              error,
-                                                                              stackTrace) =>
-                                                                          const Icon(
-                                                                        Icons
-                                                                            .image_not_supported,
-                                                                        size:
-                                                                            40,
-                                                                        color: Colors
-                                                                            .grey,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              // Title
-                                                              Text(
-                                                                category?.name ??
-                                                                    '',
-                                                                style:
-                                                                    TextStyle(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  fontSize:
-                                                                      16.sp,
-                                                                  color:
-                                                                      AppColors
-                                                                          .black,
-                                                                ),
-                                                                maxLines: 1,
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                              ),
-                                                              SizedBox(
-                                                                height: 6.h,
-                                                              ),
-                                                              const Spacer(),
-                                                            ],
-                                                          ),
-                                                            ));
-                                                        },
-                                                      ),
-                                                    ),
-                                                  ],
-                                                );
-                                              }),
-                                              Consumer<CooperateEqubsProvider>(
-                                                builder:
-                                                    (context, coopProv, _) {
-                                                  final bool hasItems =
-                                                      coopProv.cooperates
-                                                          .isNotEmpty;
-                                                  if (!hasItems &&
-                                                      !coopProv.isLoading) {
-                                                    return const SizedBox.shrink();
-                                                  }
-
-                                                  return Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            bottom: 12.0,
-                                                            top: 25),
-                                                    child: Text(
-                                                      AppKeys
-                                                          .cooperateEqubsTitle
-                                                          .tr(context),
-                                                      style: const TextStyle(
-                                                        fontSize: 20,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: AppColors
-                                                            .richDeepGreen,
-                                                        letterSpacing: 1.1,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                              Consumer<CooperateEqubsProvider>(
-                                                builder:
-                                                    (context, coopProv, _) {
-                                                  if (!coopProv.isLoading &&
-                                                      (coopProv.cooperates
-                                                              .isEmpty &&
-                                                          coopProv.error ==
-                                                              null)) {
-                                                    WidgetsBinding.instance
-                                                        .addPostFrameCallback(
-                                                            (_) {
-                                                      coopProv
-                                                          .fetchCooperates();
-                                                    });
-                                                  }
-
-                                                  if (coopProv.isLoading) {
-                                                    return Center(
-                                                      child:
-                                                          LoadingAnimationWidget
-                                                              .threeRotatingDots(
-                                                        color:
-                                                            AppColors.primary,
-                                                        size: 40,
-                                                      ),
-                                                    );
-                                                  }
-
-                                                  if (coopProv.error != null) {
-                                                    if (coopProv.error ==
-                                                        'Token is not valid') {
-                                                      WidgetsBinding.instance
-                                                          .addPostFrameCallback(
-                                                              (_) {
-                                                        Navigator.of(context)
-                                                            .pushAndRemoveUntil(
-                                                          MaterialPageRoute(
-                                                              builder: (_) =>
-                                                                  LoginScreenWithPin(
-                                                                      phoneNumber:
-                                                                          '')),
-                                                          (route) => false,
-                                                        );
-                                                      });
+                                                    if (filteredCategories
+                                                        .isEmpty) {
+                                                      return const SizedBox
+                                                          .shrink();
                                                     }
-                                                  } else if (coopProv.error !=
-                                                      null) {
-                                                    return Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 8.0),
-                                                      child: Column(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .center,
-                                                        children: [
-                                                          const Icon(
-                                                              Icons
-                                                                  .error_outline,
-                                                              color: Colors.red,
-                                                              size: 32),
-                                                          const SizedBox(
-                                                              height: 8),
-                                                          Text(
-                                                            coopProv.error ??
-                                                                'Error',
-                                                            style:
-                                                                const TextStyle(
-                                                              color: Colors.red,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                              fontSize: 16,
-                                                            ),
-                                                            textAlign: TextAlign
-                                                                .center,
-                                                          ),
-                                                          const SizedBox(
-                                                              height: 12),
-                                                          ElevatedButton.icon(
-                                                            onPressed: () {
-                                                              coopProv
-                                                                  .fetchCooperates();
-                                                            },
-                                                            icon: const Icon(
-                                                                Icons.refresh),
-                                                            label: Text(AppKeys
-                                                                .retry
-                                                                .tr(context)),
-                                                            style:
-                                                                ElevatedButton
-                                                                    .styleFrom(
-                                                              foregroundColor:
-                                                                  Colors.white,
-                                                              backgroundColor:
-                                                                  AppColors
-                                                                      .primary,
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            8),
+
+                                                    return Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .stretch,
+                                                      children: [
+                                                        Padding(
+                                                          padding:
+                                                              EdgeInsets.only(
+                                                                  top: 8.h,
+                                                                  bottom: 10.h),
+                                                          child: Center(
+                                                            child: Text(
+                                                              AppKeys
+                                                                  .joinEqubsToday
+                                                                  .tr(context),
+                                                              style: AppTextStyles
+                                                                  .sectionTitle
+                                                                  .copyWith(
+                                                                color: AppColors
+                                                                    .richDeepGreen,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
                                                               ),
                                                             ),
                                                           ),
-                                                        ],
-                                                      ),
-                                                    );
-                                                  }
-
-                                                  final List<Cooperate> items =
-                                                      coopProv.cooperates;
-                                                  if (items.isEmpty) {
-                                                    return const SizedBox
-                                                        .shrink();
-                                                  }
-
-                                                  return Padding(
-                                                      padding: EdgeInsets.zero,
-                                                      child: GridView.builder(
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        shrinkWrap: true,
-                                                        physics:
-                                                            const NeverScrollableScrollPhysics(),
-                                                        gridDelegate:
-                                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                                          crossAxisCount: 3,
-                                                          crossAxisSpacing: 8,
-                                                          mainAxisSpacing: 8,
-                                                          childAspectRatio:
-                                                              0.85,
                                                         ),
-                                                        itemCount: items.length,
-                                                        itemBuilder:
-                                                            (context, index) {
-                                                          final item =
-                                                              items[index];
-
-                                                          return GestureDetector(
-                                                            onTap: () async {
-                                                              final TextEditingController
-                                                                  codeController =
-                                                                  TextEditingController(
-                                                                      text: item
-                                                                              .code ??
-                                                                          '');
-                                                              final _formKey =
-                                                                  GlobalKey<
-                                                                      FormState>();
-
-                                                              await showDialog(
-                                                                context:
-                                                                    context,
-                                                                barrierDismissible:
-                                                                    false,
-                                                                builder: (ctx) {
-                                                                  bool
-                                                                      isSubmitting =
-                                                                      false;
-                                                                  return StatefulBuilder(
-                                                                    builder:
-                                                                        (context,
-                                                                            setLocalState) {
-                                                                      return Dialog(
-                                                                        shape:
-                                                                            RoundedRectangleBorder(
-                                                                          borderRadius:
-                                                                              BorderRadius.circular(18),
-                                                                        ),
-                                                                        insetPadding: const EdgeInsets
-                                                                            .symmetric(
-                                                                            horizontal:
-                                                                                36,
-                                                                            vertical:
-                                                                                24),
+                                                        LayoutBuilder(
+                                                          builder: (context,
+                                                              constraints) {
+                                                            const crossAxisCount =
+                                                                3;
+                                                            final spacing = 8.w;
+                                                            final itemWidth = (constraints
+                                                                        .maxWidth -
+                                                                    spacing *
+                                                                        (crossAxisCount -
+                                                                            1)) /
+                                                                crossAxisCount;
+                                                            return Align(
+                                                              alignment: Alignment
+                                                                  .centerLeft,
+                                                              child: Wrap(
+                                                                alignment:
+                                                                    WrapAlignment
+                                                                        .start,
+                                                                spacing:
+                                                                    spacing,
+                                                                runSpacing: 8.h,
+                                                                children:
+                                                                    filteredCategories
+                                                                        .map(
+                                                                            (category) {
+                                                                  final networkUrl = (category.imageIcon !=
+                                                                              null &&
+                                                                          category
+                                                                              .imageIcon!
+                                                                              .isNotEmpty)
+                                                                      ? '${mediaUrl}images/category/${category.imageIcon}'
+                                                                      : null;
+                                                                  return SizedBox(
+                                                                    width:
+                                                                        itemWidth,
+                                                                    child:
+                                                                        AspectRatio(
+                                                                      aspectRatio:
+                                                                          0.95,
+                                                                      child:
+                                                                          GestureDetector(
+                                                                        onTap:
+                                                                            () {
+                                                                          Navigator
+                                                                              .push(
+                                                                            context,
+                                                                            MaterialPageRoute(
+                                                                              builder: (_) => EqubTabbedScreen(
+                                                                                equbType: category.name ?? '',
+                                                                                equbTypes: equbTypes,
+                                                                                category: category,
+                                                                                equbTypeId: category.id ?? '',
+                                                                              ),
+                                                                            ),
+                                                                          );
+                                                                        },
                                                                         child:
-                                                                            Padding(
-                                                                          padding: const EdgeInsets
-                                                                              .all(
-                                                                              24.0),
+                                                                            Container(
+                                                                          padding: EdgeInsets.fromLTRB(
+                                                                              8.w,
+                                                                              10.h,
+                                                                              8.w,
+                                                                              8.h),
+                                                                          decoration:
+                                                                              BoxDecoration(
+                                                                            color:
+                                                                                AppColors.white,
+                                                                            borderRadius:
+                                                                                BorderRadius.circular(12.r),
+                                                                            border:
+                                                                                Border.all(color: Colors.grey.shade200),
+                                                                          ),
                                                                           child:
                                                                               Column(
-                                                                            mainAxisSize:
-                                                                                MainAxisSize.min,
                                                                             children: [
-                                                                              const Icon(
-                                                                                Icons.lock_open_rounded,
-                                                                                size: 50,
-                                                                                color: AppColors.primary,
+                                                                              Expanded(
+                                                                                child: Center(
+                                                                                  child: _HomeFallbackIcon(networkUrl: networkUrl),
+                                                                                ),
                                                                               ),
-                                                                              const SizedBox(height: 18),
                                                                               Text(
-                                                                                AppKeys.enterCodeTitle.tr(context),
-                                                                                style: const TextStyle(
-                                                                                  fontSize: 22,
-                                                                                  fontWeight: FontWeight.bold,
-                                                                                  color: AppColors.vibrantGreen,
+                                                                                category.name ?? '',
+                                                                                style: AppTextStyles.labelSmall.copyWith(
+                                                                                  fontWeight: FontWeight.w600,
+                                                                                  color: AppColors.black,
                                                                                 ),
-                                                                              ),
-                                                                              const SizedBox(height: 18),
-                                                                              Form(
-                                                                                key: _formKey,
-                                                                                child: TextFormField(
-                                                                                  controller: codeController,
-                                                                                  decoration: InputDecoration(
-                                                                                    labelText: AppKeys.codeLabel.tr(context),
-                                                                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                                                                    prefixIcon: const Icon(Icons.vpn_key, color: Colors.deepPurple),
-                                                                                  ),
-                                                                                  textInputAction: TextInputAction.done,
-                                                                                  validator: (val) => (val == null || val.trim().isEmpty) ? AppKeys.codeRequired.tr(context) : null,
-                                                                                ),
-                                                                              ),
-                                                                              const SizedBox(height: 22),
-                                                                              Row(
-                                                                                children: [
-                                                                                  Expanded(
-                                                                                    child: TextButton(
-                                                                                      onPressed: isSubmitting
-                                                                                          ? null
-                                                                                          : () {
-                                                                                              Navigator.pop(ctx);
-                                                                                            },
-                                                                                      style: TextButton.styleFrom(
-                                                                                        foregroundColor: Colors.grey[700],
-                                                                                        textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                                                                                      ),
-                                                                                      child: Text(AppKeys.cancel.tr(context)),
-                                                                                    ),
-                                                                                  ),
-                                                                                  const SizedBox(width: 12),
-                                                                                  Expanded(
-                                                                                    child: ElevatedButton(
-                                                                                      style: ElevatedButton.styleFrom(
-                                                                                        backgroundColor: AppColors.primary,
-                                                                                        shadowColor: Colors.greenAccent,
-                                                                                        shape: RoundedRectangleBorder(
-                                                                                          borderRadius: BorderRadius.circular(10),
-                                                                                        ),
-                                                                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                                                                      ),
-                                                                                      onPressed: isSubmitting
-                                                                                          ? null
-                                                                                          : () async {
-                                                                                              if (!(_formKey.currentState?.validate() ?? false)) return;
-
-                                                                                              final token = await SecureStorageHelper.getAccessToken() ?? '';
-                                                                                              if (token.isEmpty) {
-                                                                                                await showDialog(
-                                                                                                  context: context,
-                                                                                                  builder: (dialogCtx) => AlertDialog(
-                                                                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                                                    backgroundColor: Colors.red[50],
-                                                                                                    title: Row(
-                                                                                                      children: [
-                                                                                                        const Icon(Icons.error_outline, color: Colors.red, size: 28),
-                                                                                                        const SizedBox(width: 6),
-                                                                                                        Text(AppKeys.notAuthorizedTitle.tr(dialogCtx)),
-                                                                                                      ],
-                                                                                                    ),
-                                                                                                    content: Text(AppKeys.loginToContinue.tr(dialogCtx)),
-                                                                                                    actions: [
-                                                                                                      TextButton(
-                                                                                                        onPressed: () {
-                                                                                                          Navigator.pop(dialogCtx);
-                                                                                                        },
-                                                                                                        child: Text(AppKeys.ok.tr(dialogCtx)),
-                                                                                                      ),
-                                                                                                    ],
-                                                                                                  ),
-                                                                                                );
-                                                                                                return;
-                                                                                              }
-
-                                                                                              setLocalState(() => isSubmitting = true);
-                                                                                              try {
-                                                                                                final dio = Dio(
-                                                                                                  BaseOptions(
-                                                                                                    connectTimeout: const Duration(seconds: 12),
-                                                                                                    receiveTimeout: const Duration(seconds: 12),
-                                                                                                    headers: {
-                                                                                                      'Authorization': 'Bearer $token',
-                                                                                                      'Content-Type': 'application/json',
-                                                                                                    },
-                                                                                                  ),
-                                                                                                );
-
-                                                                                                final response = await dio.post(
-                                                                                                  validateCooperateUrl,
-                                                                                                  data: {
-                                                                                                    'id': item.id,
-                                                                                                    'code': codeController.text.trim(),
-                                                                                                  },
-                                                                                                );
-
-                                                                                                final dynamic data = response.data;
-                                                                                                final bool ok = (response.statusCode == 200 || response.statusCode == 201) && (data is Map && ((data['status'] == 'success') || (data['success'] == true)));
-
-                                                                                                Navigator.pop(ctx);
-
-                                                                                                if (ok) {
-                                                                                                  Navigator.push(
-                                                                                                    context,
-                                                                                                    MaterialPageRoute(
-                                                                                                      builder: (_) => CooperateListScreen(
-                                                                                                        title: item.name ?? 'Equbs',
-                                                                                                        equbs: item.equbs ?? const [],
-                                                                                                      ),
-                                                                                                    ),
-                                                                                                  );
-                                                                                                } else {
-                                                                                                  final String errorMsg = (data is Map && data['message'] is String) ? data['message'] as String : AppKeys.validationFailedMessage.tr(context);
-                                                                                                  await showDialog(
-                                                                                                    context: context,
-                                                                                                    builder: (dialogCtx) => AlertDialog(
-                                                                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                                                      backgroundColor: Colors.red[50],
-                                                                                                      title: Row(
-                                                                                                        children: [
-                                                                                                          const Icon(Icons.clear_rounded, color: Colors.red, size: 28),
-                                                                                                          const SizedBox(width: 6),
-                                                                                                          Text(AppKeys.failedTitle.tr(dialogCtx)),
-                                                                                                        ],
-                                                                                                      ),
-                                                                                                      content: Text(errorMsg, style: const TextStyle(fontSize: 16)),
-                                                                                                      actions: [
-                                                                                                        TextButton(
-                                                                                                          onPressed: () {
-                                                                                                            Navigator.pop(dialogCtx);
-                                                                                                          },
-                                                                                                          child: Text(AppKeys.ok.tr(dialogCtx)),
-                                                                                                        ),
-                                                                                                      ],
-                                                                                                    ),
-                                                                                                  );
-                                                                                                }
-                                                                                              } on DioError catch (e) {
-                                                                                                Navigator.pop(ctx);
-                                                                                                String message = AppKeys.genericErrorMessage.tr(context);
-                                                                                                if (e.type == DioErrorType.connectionTimeout || e.type == DioErrorType.receiveTimeout) {
-                                                                                                  message = AppKeys.timeoutErrorMessage.tr(context);
-                                                                                                } else if (e.response != null) {
-                                                                                                  final data = e.response?.data;
-                                                                                                  if (data is Map && data['message'] is String) {
-                                                                                                    message = data['message'] as String;
-                                                                                                  } else if (e.response?.statusCode == 401) {
-                                                                                                    message = AppKeys.sessionExpiredMessage.tr(context);
-                                                                                                  }
-                                                                                                }
-                                                                                                await showDialog(
-                                                                                                  context: context,
-                                                                                                  builder: (dialogCtx) => AlertDialog(
-                                                                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                                                    backgroundColor: Colors.red[50],
-                                                                                                    title: Row(
-                                                                                                      children: [
-                                                                                                        const Icon(Icons.error_outline, color: Colors.red, size: 28),
-                                                                                                        const SizedBox(width: 6),
-                                                                                                        Text(AppKeys.errorTitle.tr(dialogCtx)),
-                                                                                                      ],
-                                                                                                    ),
-                                                                                                    content: Text(message, style: const TextStyle(fontSize: 16)),
-                                                                                                    actions: [
-                                                                                                      TextButton(
-                                                                                                        onPressed: () => Navigator.pop(dialogCtx),
-                                                                                                        child: Text(AppKeys.ok.tr(dialogCtx)),
-                                                                                                      ),
-                                                                                                    ],
-                                                                                                  ),
-                                                                                                );
-                                                                                              } catch (e) {
-                                                                                                Navigator.pop(ctx);
-                                                                                                await showDialog(
-                                                                                                  context: context,
-                                                                                                  builder: (dialogCtx) => AlertDialog(
-                                                                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                                                    backgroundColor: Colors.red[50],
-                                                                                                    title: Row(
-                                                                                                      children: [
-                                                                                                        const Icon(Icons.error_outline, color: Colors.red, size: 28),
-                                                                                                        const SizedBox(width: 6),
-                                                                                                        Text(AppKeys.errorTitle.tr(dialogCtx)),
-                                                                                                      ],
-                                                                                                    ),
-                                                                                                    content: Text('${AppKeys.exceptionErrorPrefix.tr(dialogCtx)}$e', style: const TextStyle(fontSize: 16)),
-                                                                                                    actions: [
-                                                                                                      TextButton(
-                                                                                                        onPressed: () => Navigator.pop(dialogCtx),
-                                                                                                        child: Text(AppKeys.ok.tr(dialogCtx)),
-                                                                                                      ),
-                                                                                                    ],
-                                                                                                  ),
-                                                                                                );
-                                                                                              } finally {
-                                                                                                if (mounted) {
-                                                                                                  setLocalState(() => isSubmitting = false);
-                                                                                                }
-                                                                                              }
-                                                                                            },
-                                                                                      child: isSubmitting
-                                                                                          ? const SizedBox(
-                                                                                              height: 20,
-                                                                                              width: 20,
-                                                                                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                                                                            )
-                                                                                          : Text(AppKeys.join.tr(context), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                                                                                    ),
-                                                                                  ),
-                                                                                ],
+                                                                                maxLines: 2,
+                                                                                overflow: TextOverflow.ellipsis,
+                                                                                textAlign: TextAlign.center,
                                                                               ),
                                                                             ],
                                                                           ),
                                                                         ),
-                                                                      );
-                                                                    },
+                                                                      ),
+                                                                    ),
                                                                   );
-                                                                },
-                                                              );
-                                                            },
-                                                            child: Container(
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: Colors
-                                                                    .white,
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            8),
-                                                                boxShadow: const [
-                                                                  BoxShadow(
-                                                                    color: Color
-                                                                        .fromRGBO(
-                                                                            0,
-                                                                            0,
-                                                                            0,
-                                                                            0.08),
-                                                                    blurRadius:
-                                                                        6,
-                                                                    offset:
-                                                                        Offset(
-                                                                            0,
-                                                                            2),
-                                                                  ),
-                                                                ],
+                                                                }).toList(),
                                                               ),
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(8),
-                                                              child: Column(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .center,
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .center,
-                                                                children: [
-                                                                  if (item.imageIcon !=
-                                                                          null &&
-                                                                      item.imageIcon!
-                                                                          .isNotEmpty)
-                                                                    Padding(
-                                                                      padding: const EdgeInsets
-                                                                          .only(
-                                                                          bottom:
-                                                                              8.0),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ],
+                                                    );
+                                                  }),
+                                                  Builder(builder: (context) {
+                                                    final otherCategories =
+                                                        equbCategories
+                                                            .where((cat) =>
+                                                                cat.otherTypeEqub ==
+                                                                true)
+                                                            .toList();
+
+                                                    if (otherCategories
+                                                        .isEmpty) {
+                                                      return const SizedBox
+                                                          .shrink();
+                                                    }
+
+                                                    return Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .stretch,
+                                                      children: [
+                                                        Padding(
+                                                          padding:
+                                                              EdgeInsets.only(
+                                                                  top: 16.h,
+                                                                  bottom: 10.h),
+                                                          child: Center(
+                                                            child: Text(
+                                                              AppKeys
+                                                                  .otherEqubType
+                                                                  .tr(context),
+                                                              style: AppTextStyles
+                                                                  .sectionTitle
+                                                                  .copyWith(
+                                                                color: AppColors
+                                                                    .richDeepGreen,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        LayoutBuilder(
+                                                          builder: (context,
+                                                              constraints) {
+                                                            const crossAxisCount =
+                                                                3;
+                                                            final spacing = 8.w;
+                                                            final itemWidth = (constraints
+                                                                        .maxWidth -
+                                                                    spacing *
+                                                                        (crossAxisCount -
+                                                                            1)) /
+                                                                crossAxisCount;
+                                                            return Align(
+                                                              alignment: Alignment
+                                                                  .centerLeft,
+                                                              child: Wrap(
+                                                                alignment:
+                                                                    WrapAlignment
+                                                                        .start,
+                                                                spacing:
+                                                                    spacing,
+                                                                runSpacing: 8.h,
+                                                                children:
+                                                                    otherCategories
+                                                                        .map(
+                                                                            (category) {
+                                                                  final networkUrl = (category.imageIcon !=
+                                                                              null &&
+                                                                          category
+                                                                              .imageIcon!
+                                                                              .isNotEmpty)
+                                                                      ? '${mediaUrl}images/category/${category.imageIcon}'
+                                                                      : null;
+                                                                  return SizedBox(
+                                                                    width:
+                                                                        itemWidth,
+                                                                    child:
+                                                                        AspectRatio(
+                                                                      aspectRatio:
+                                                                          0.95,
                                                                       child:
-                                                                          SizedBox(
-                                                                        height:
-                                                                            40,
-                                                                        width:
-                                                                            40,
-                                                                        child: Image
-                                                                            .network(
-                                                                          '${mediaUrl}images/cooperate/${item.imageIcon}',
-                                                                          fit: BoxFit
-                                                                              .contain,
-                                                                          loadingBuilder: (context,
-                                                                              child,
-                                                                              loadingProgress) {
-                                                                            if (loadingProgress ==
-                                                                                null) {
-                                                                              return child;
-                                                                            }
-                                                                            return Center(
-                                                                              child: SizedBox(
-                                                                                height: 32,
-                                                                                width: 32,
-                                                                                child: CircularProgressIndicator(
-                                                                                  value: loadingProgress.expectedTotalBytes != null ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1) : null,
-                                                                                  strokeWidth: 3,
-                                                                                  color: AppColors.primary,
+                                                                          GestureDetector(
+                                                                        onTap:
+                                                                            () {
+                                                                          Navigator
+                                                                              .push(
+                                                                            context,
+                                                                            MaterialPageRoute(
+                                                                              builder: (_) => EqubTabbedScreen(
+                                                                                imageUrl: category.imageIcon,
+                                                                                description: category.description,
+                                                                                equbType: category.name ?? '',
+                                                                                equbTypes: equbTypes,
+                                                                                category: category,
+                                                                                equbTypeId: category.id ?? '',
+                                                                              ),
+                                                                            ),
+                                                                          );
+                                                                        },
+                                                                        child:
+                                                                            Container(
+                                                                          padding: EdgeInsets.fromLTRB(
+                                                                              8.w,
+                                                                              10.h,
+                                                                              8.w,
+                                                                              8.h),
+                                                                          decoration:
+                                                                              BoxDecoration(
+                                                                            color:
+                                                                                AppColors.white,
+                                                                            borderRadius:
+                                                                                BorderRadius.circular(12.r),
+                                                                            border:
+                                                                                Border.all(color: Colors.grey.shade200),
+                                                                          ),
+                                                                          child:
+                                                                              Column(
+                                                                            children: [
+                                                                              Expanded(
+                                                                                child: Center(
+                                                                                  child: _HomeFallbackIcon(networkUrl: networkUrl),
                                                                                 ),
                                                                               ),
-                                                                            );
-                                                                          },
-                                                                          errorBuilder: (context, error, stackTrace) =>
-                                                                              const Icon(
-                                                                            Icons.image_not_supported,
-                                                                            size:
-                                                                                40,
-                                                                            color:
-                                                                                Colors.grey,
+                                                                              Text(
+                                                                                category.name ?? '',
+                                                                                style: AppTextStyles.labelSmall.copyWith(
+                                                                                  fontWeight: FontWeight.w600,
+                                                                                  color: AppColors.black,
+                                                                                ),
+                                                                                maxLines: 2,
+                                                                                overflow: TextOverflow.ellipsis,
+                                                                                textAlign: TextAlign.center,
+                                                                              ),
+                                                                            ],
                                                                           ),
                                                                         ),
                                                                       ),
                                                                     ),
-                                                                  const SizedBox(
-                                                                      height:
-                                                                          10),
-                                                                  Text(
-                                                                    item.name ??
-                                                                        '-',
-                                                                    textAlign:
-                                                                        TextAlign
-                                                                            .center,
-                                                                    maxLines: 2,
-                                                                    overflow:
-                                                                        TextOverflow
-                                                                            .ellipsis,
-                                                                    style:
-                                                                        TextStyle(
-                                                                      fontSize:
-                                                                          16.sp,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600,
-                                                                    ),
-                                                                  ),
-                                                                ],
+                                                                  );
+                                                                }).toList(),
+                                                              ),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ],
+                                                    );
+                                                  }),
+                                                  Consumer<
+                                                      CooperateEqubsProvider>(
+                                                    builder:
+                                                        (context, coopProv, _) {
+                                                      if (!coopProv.isLoading &&
+                                                          coopProv.cooperates
+                                                              .isEmpty &&
+                                                          coopProv.error ==
+                                                              null) {
+                                                        WidgetsBinding.instance
+                                                            .addPostFrameCallback(
+                                                                (_) {
+                                                          coopProv
+                                                              .fetchCooperates();
+                                                        });
+                                                      }
+
+                                                      if (coopProv.isLoading) {
+                                                        return const SizedBox
+                                                            .shrink();
+                                                      }
+
+                                                      if (coopProv.error !=
+                                                          null) {
+                                                        if (coopProv.error ==
+                                                            'Token is not valid') {
+                                                          WidgetsBinding
+                                                              .instance
+                                                              .addPostFrameCallback(
+                                                                  (_) {
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pushAndRemoveUntil(
+                                                              MaterialPageRoute(
+                                                                  builder: (_) =>
+                                                                      LoginScreenWithPin(
+                                                                          phoneNumber:
+                                                                              '')),
+                                                              (route) => false,
+                                                            );
+                                                          });
+                                                        }
+                                                        return const SizedBox
+                                                            .shrink();
+                                                      }
+
+                                                      final List<Cooperate>
+                                                          items =
+                                                          coopProv.cooperates;
+                                                      if (items.isEmpty) {
+                                                        return const SizedBox
+                                                            .shrink();
+                                                      }
+
+                                                      return Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .stretch,
+                                                        children: [
+                                                          Padding(
+                                                            padding:
+                                                                EdgeInsets.only(
+                                                                    top: 16.h,
+                                                                    bottom:
+                                                                        10.h),
+                                                            child: Center(
+                                                              child: Text(
+                                                                AppKeys
+                                                                    .cooperateEqubsTitle
+                                                                    .tr(context),
+                                                                style: AppTextStyles
+                                                                    .sectionTitle
+                                                                    .copyWith(
+                                                                  color: AppColors
+                                                                      .richDeepGreen,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
                                                               ),
                                                             ),
-                                                          );
-                                                        },
-                                                      ));
-                                                },
+                                                          ),
+                                                          LayoutBuilder(
+                                                            builder: (context,
+                                                                constraints) {
+                                                              const crossAxisCount =
+                                                                  3;
+                                                              final spacing =
+                                                                  8.w;
+                                                              final itemWidth = (constraints
+                                                                          .maxWidth -
+                                                                      spacing *
+                                                                          (crossAxisCount -
+                                                                              1)) /
+                                                                  crossAxisCount;
+                                                              return Align(
+                                                                alignment: Alignment
+                                                                    .centerLeft,
+                                                                child: Wrap(
+                                                                  alignment:
+                                                                      WrapAlignment
+                                                                          .start,
+                                                                  spacing:
+                                                                      spacing,
+                                                                  runSpacing:
+                                                                      8.h,
+                                                                  children:
+                                                                      items.map(
+                                                                          (item) {
+                                                                    final networkUrl = (item.imageIcon !=
+                                                                                null &&
+                                                                            item.imageIcon!.isNotEmpty)
+                                                                        ? '${mediaUrl}images/cooperate/${item.imageIcon}'
+                                                                        : null;
+                                                                    return SizedBox(
+                                                                      width:
+                                                                          itemWidth,
+                                                                      child:
+                                                                          AspectRatio(
+                                                                        aspectRatio:
+                                                                            0.95,
+                                                                        child:
+                                                                            GestureDetector(
+                                                                          onTap:
+                                                                              () async {
+                                                                            final TextEditingController
+                                                                                codeController =
+                                                                                TextEditingController(text: item.code ?? '');
+                                                                            final formKey =
+                                                                                GlobalKey<FormState>();
+
+                                                                            await showDialog(
+                                                                              context: context,
+                                                                              barrierDismissible: false,
+                                                                              builder: (ctx) {
+                                                                                bool isSubmitting = false;
+                                                                                return StatefulBuilder(
+                                                                                  builder: (context, setLocalState) {
+                                                                                    return Dialog(
+                                                                                      shape: RoundedRectangleBorder(
+                                                                                        borderRadius: BorderRadius.circular(18),
+                                                                                      ),
+                                                                                      insetPadding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
+                                                                                      child: Padding(
+                                                                                        padding: const EdgeInsets.all(24.0),
+                                                                                        child: Column(
+                                                                                          mainAxisSize: MainAxisSize.min,
+                                                                                          children: [
+                                                                                            const Icon(
+                                                                                              Icons.lock_open_rounded,
+                                                                                              size: 50,
+                                                                                              color: AppColors.primary,
+                                                                                            ),
+                                                                                            const SizedBox(height: 18),
+                                                                                            Text(
+                                                                                              AppKeys.enterCodeTitle.tr(context),
+                                                                                              style: AppTextStyles.dialogTitle.copyWith(
+                                                                                                fontWeight: FontWeight.w700,
+                                                                                                color: AppColors.vibrantGreen,
+                                                                                              ),
+                                                                                            ),
+                                                                                            const SizedBox(height: 18),
+                                                                                            Form(
+                                                                                              key: formKey,
+                                                                                              child: TextFormField(
+                                                                                                controller: codeController,
+                                                                                                decoration: InputDecoration(
+                                                                                                  labelText: AppKeys.codeLabel.tr(context),
+                                                                                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                                                                                  prefixIcon: const Icon(Icons.vpn_key, color: Colors.deepPurple),
+                                                                                                ),
+                                                                                                textInputAction: TextInputAction.done,
+                                                                                                validator: (val) => (val == null || val.trim().isEmpty) ? AppKeys.codeRequired.tr(context) : null,
+                                                                                              ),
+                                                                                            ),
+                                                                                            const SizedBox(height: 22),
+                                                                                            Row(
+                                                                                              children: [
+                                                                                                Expanded(
+                                                                                                  child: TextButton(
+                                                                                                    onPressed: isSubmitting
+                                                                                                        ? null
+                                                                                                        : () {
+                                                                                                            Navigator.pop(ctx);
+                                                                                                          },
+                                                                                                    style: TextButton.styleFrom(
+                                                                                                      foregroundColor: Colors.grey[700],
+                                                                                                      textStyle: AppTextStyles.buttonMedium,
+                                                                                                    ),
+                                                                                                    child: Text(AppKeys.cancel.tr(context)),
+                                                                                                  ),
+                                                                                                ),
+                                                                                                const SizedBox(width: 12),
+                                                                                                Expanded(
+                                                                                                  child: ElevatedButton(
+                                                                                                    style: ElevatedButton.styleFrom(
+                                                                                                      backgroundColor: AppColors.primary,
+                                                                                                      shadowColor: Colors.greenAccent,
+                                                                                                      shape: RoundedRectangleBorder(
+                                                                                                        borderRadius: BorderRadius.circular(10),
+                                                                                                      ),
+                                                                                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                                                                                    ),
+                                                                                                    onPressed: isSubmitting
+                                                                                                        ? null
+                                                                                                        : () async {
+                                                                                                            if (!(formKey.currentState?.validate() ?? false)) return;
+
+                                                                                                            final token = await SecureStorageHelper.getAccessToken() ?? '';
+                                                                                                            if (token.isEmpty) {
+                                                                                                              await showDialog(
+                                                                                                                context: context,
+                                                                                                                builder: (dialogCtx) => AlertDialog(
+                                                                                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                                                                  backgroundColor: Colors.red[50],
+                                                                                                                  title: Row(
+                                                                                                                    children: [
+                                                                                                                      const Icon(Icons.error_outline, color: Colors.red, size: 28),
+                                                                                                                      const SizedBox(width: 6),
+                                                                                                                      Text(AppKeys.notAuthorizedTitle.tr(dialogCtx)),
+                                                                                                                    ],
+                                                                                                                  ),
+                                                                                                                  content: Text(AppKeys.loginToContinue.tr(dialogCtx)),
+                                                                                                                  actions: [
+                                                                                                                    TextButton(
+                                                                                                                      onPressed: () {
+                                                                                                                        Navigator.pop(dialogCtx);
+                                                                                                                      },
+                                                                                                                      child: Text(AppKeys.ok.tr(dialogCtx)),
+                                                                                                                    ),
+                                                                                                                  ],
+                                                                                                                ),
+                                                                                                              );
+                                                                                                              return;
+                                                                                                            }
+
+                                                                                                            setLocalState(() => isSubmitting = true);
+                                                                                                            try {
+                                                                                                              final dio = Dio(
+                                                                                                                BaseOptions(
+                                                                                                                  connectTimeout: const Duration(seconds: 12),
+                                                                                                                  receiveTimeout: const Duration(seconds: 12),
+                                                                                                                  headers: {
+                                                                                                                    'Authorization': 'Bearer $token',
+                                                                                                                    'Content-Type': 'application/json',
+                                                                                                                  },
+                                                                                                                ),
+                                                                                                              );
+
+                                                                                                              final response = await dio.post(
+                                                                                                                validateCooperateUrl,
+                                                                                                                data: {
+                                                                                                                  'id': item.id,
+                                                                                                                  'code': codeController.text.trim(),
+                                                                                                                },
+                                                                                                              );
+
+                                                                                                              final dynamic data = response.data;
+                                                                                                              final bool ok = (response.statusCode == 200 || response.statusCode == 201) && (data is Map && ((data['status'] == 'success') || (data['success'] == true)));
+
+                                                                                                              Navigator.pop(ctx);
+
+                                                                                                              if (ok) {
+                                                                                                                Navigator.push(
+                                                                                                                  context,
+                                                                                                                  MaterialPageRoute(
+                                                                                                                    builder: (_) => CooperateListScreen(
+                                                                                                                      title: item.name ?? 'Equbs',
+                                                                                                                      equbs: item.equbs ?? const [],
+                                                                                                                    ),
+                                                                                                                  ),
+                                                                                                                );
+                                                                                                              } else {
+                                                                                                                final String errorMsg = (data is Map && data['message'] is String) ? data['message'] as String : AppKeys.validationFailedMessage.tr(context);
+                                                                                                                await showDialog(
+                                                                                                                  context: context,
+                                                                                                                  builder: (dialogCtx) => AlertDialog(
+                                                                                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                                                                    backgroundColor: Colors.red[50],
+                                                                                                                    title: Row(
+                                                                                                                      children: [
+                                                                                                                        const Icon(Icons.clear_rounded, color: Colors.red, size: 28),
+                                                                                                                        const SizedBox(width: 6),
+                                                                                                                        Text(AppKeys.failedTitle.tr(dialogCtx)),
+                                                                                                                      ],
+                                                                                                                    ),
+                                                                                                                    content: Text(errorMsg, style: AppTextStyles.bodyLarge),
+                                                                                                                    actions: [
+                                                                                                                      TextButton(
+                                                                                                                        onPressed: () {
+                                                                                                                          Navigator.pop(dialogCtx);
+                                                                                                                        },
+                                                                                                                        child: Text(AppKeys.ok.tr(dialogCtx)),
+                                                                                                                      ),
+                                                                                                                    ],
+                                                                                                                  ),
+                                                                                                                );
+                                                                                                              }
+                                                                                                            } on DioError catch (e) {
+                                                                                                              Navigator.pop(ctx);
+                                                                                                              String message = AppKeys.genericErrorMessage.tr(context);
+                                                                                                              if (e.type == DioErrorType.connectionTimeout || e.type == DioErrorType.receiveTimeout) {
+                                                                                                                message = AppKeys.timeoutErrorMessage.tr(context);
+                                                                                                              } else if (e.response != null) {
+                                                                                                                final data = e.response?.data;
+                                                                                                                if (data is Map && data['message'] is String) {
+                                                                                                                  message = data['message'] as String;
+                                                                                                                } else if (e.response?.statusCode == 401) {
+                                                                                                                  message = AppKeys.sessionExpiredMessage.tr(context);
+                                                                                                                }
+                                                                                                              }
+                                                                                                              await showDialog(
+                                                                                                                context: context,
+                                                                                                                builder: (dialogCtx) => AlertDialog(
+                                                                                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                                                                  backgroundColor: Colors.red[50],
+                                                                                                                  title: Row(
+                                                                                                                    children: [
+                                                                                                                      const Icon(Icons.error_outline, color: Colors.red, size: 28),
+                                                                                                                      const SizedBox(width: 6),
+                                                                                                                      Text(AppKeys.errorTitle.tr(dialogCtx)),
+                                                                                                                    ],
+                                                                                                                  ),
+                                                                                                                  content: Text(message, style: AppTextStyles.bodyLarge),
+                                                                                                                  actions: [
+                                                                                                                    TextButton(
+                                                                                                                      onPressed: () => Navigator.pop(dialogCtx),
+                                                                                                                      child: Text(AppKeys.ok.tr(dialogCtx)),
+                                                                                                                    ),
+                                                                                                                  ],
+                                                                                                                ),
+                                                                                                              );
+                                                                                                            } catch (e) {
+                                                                                                              Navigator.pop(ctx);
+                                                                                                              await showDialog(
+                                                                                                                context: context,
+                                                                                                                builder: (dialogCtx) => AlertDialog(
+                                                                                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                                                                  backgroundColor: Colors.red[50],
+                                                                                                                  title: Row(
+                                                                                                                    children: [
+                                                                                                                      const Icon(Icons.error_outline, color: Colors.red, size: 28),
+                                                                                                                      const SizedBox(width: 6),
+                                                                                                                      Text(AppKeys.errorTitle.tr(dialogCtx)),
+                                                                                                                    ],
+                                                                                                                  ),
+                                                                                                                  content: Text('${AppKeys.exceptionErrorPrefix.tr(dialogCtx)}$e', style: AppTextStyles.bodyLarge),
+                                                                                                                  actions: [
+                                                                                                                    TextButton(
+                                                                                                                      onPressed: () => Navigator.pop(dialogCtx),
+                                                                                                                      child: Text(AppKeys.ok.tr(dialogCtx)),
+                                                                                                                    ),
+                                                                                                                  ],
+                                                                                                                ),
+                                                                                                              );
+                                                                                                            } finally {
+                                                                                                              if (mounted) {
+                                                                                                                setLocalState(() => isSubmitting = false);
+                                                                                                              }
+                                                                                                            }
+                                                                                                          },
+                                                                                                    child: isSubmitting
+                                                                                                        ? const SizedBox(
+                                                                                                            height: 20,
+                                                                                                            width: 20,
+                                                                                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                                                                                          )
+                                                                                                        : Text(AppKeys.join.tr(context), style: AppTextStyles.onPrimaryBold.copyWith(fontWeight: FontWeight.w700)),
+                                                                                                  ),
+                                                                                                ),
+                                                                                              ],
+                                                                                            ),
+                                                                                          ],
+                                                                                        ),
+                                                                                      ),
+                                                                                    );
+                                                                                  },
+                                                                                );
+                                                                              },
+                                                                            );
+                                                                          },
+                                                                          child:
+                                                                              Container(
+                                                                            decoration:
+                                                                                BoxDecoration(
+                                                                              color: Colors.white,
+                                                                              borderRadius: BorderRadius.circular(12.r),
+                                                                              border: Border.all(color: Colors.grey.shade200),
+                                                                            ),
+                                                                            padding: EdgeInsets.fromLTRB(
+                                                                                8.w,
+                                                                                10.h,
+                                                                                8.w,
+                                                                                8.h),
+                                                                            child:
+                                                                                Column(
+                                                                              children: [
+                                                                                Expanded(
+                                                                                  child: Center(
+                                                                                    child: _HomeFallbackIcon(
+                                                                                      networkUrl: networkUrl,
+                                                                                    ),
+                                                                                  ),
+                                                                                ),
+                                                                                Text(
+                                                                                  item.name ?? '-',
+                                                                                  textAlign: TextAlign.center,
+                                                                                  maxLines: 2,
+                                                                                  overflow: TextOverflow.ellipsis,
+                                                                                  style: AppTextStyles.labelSmall.copyWith(
+                                                                                    fontWeight: FontWeight.w600,
+                                                                                  ),
+                                                                                ),
+                                                                              ],
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                  }).toList(),
+                                                                ),
+                                                              );
+                                                            },
+                                                          ),
+                                                        ],
+                                                      );
+                                                    },
+                                                  ),
+                                                ],
                                               ),
-                                            ],
+                                            ),
                                           ),
-                                        ),
+                                        );
+                                      },
+                                    ),
+                                    SliverToBoxAdapter(
+                                      child: SizedBox(
+                                        height: 200.h
                                       ),
                                     ),
                                   ],
                                 )),
                 ),
-                bottomNavigationBar: CustomBottomNavigationBar(
-                  currentIndex: 0,
-                  onTap: (index) {
-                    switch (index) {
-                      case 0:
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const HomeScreen()));
-
-                        break;
-                      case 1:
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    const ActiveEqubsScreen()));
-
-                        break;
-                      case 2:
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const PaymentList()));
-
-                        break;
-                      case 3:
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const ProfileScreen()));
-                        break;
-                      default:
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const HomeScreen()));
-                        break;
-                    }
-                    // Handle bottom navigation tab selection
-                  },
-                ),
+                bottomNavigationBar: widget.embedInShell
+                    ? null
+                    : Consumer<JoinedEqubsStatusProvider>(
+                        builder: (context, joinStatus, _) {
+                          final currentIndex = newEqubTabIndex(context);
+                          return CustomBottomNavigationBar(
+                            showMyEqubTab: joinStatus.hasJoinedEqubs,
+                            currentIndex: currentIndex,
+                            onTap: (index) => onMainBottomNavTap(
+                              context,
+                              tappedIndex: index,
+                              currentIndex: currentIndex,
+                            ),
+                          );
+                        },
+                      ),
               ),
             ),
           );
@@ -1908,6 +1578,52 @@ class _HomeScreenState extends State<HomeScreen>
       default:
         return "assets/equb.png";
     }
+  }
+}
+
+class _HomeFallbackIcon extends StatelessWidget {
+  final String? networkUrl;
+
+  const _HomeFallbackIcon({this.networkUrl});
+
+  static const String _fallbackAsset = 'assets/splash.png';
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40.h,
+      width: 40.w,
+      child: (networkUrl != null && networkUrl!.isNotEmpty)
+          ? Image.network(
+              networkUrl!,
+              fit: BoxFit.contain,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Center(
+                  child: SizedBox(
+                    height: 20.h,
+                    width: 20.w,
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              (loadingProgress.expectedTotalBytes ?? 1)
+                          : null,
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) => Image.asset(
+                _fallbackAsset,
+                fit: BoxFit.contain,
+              ),
+            )
+          : Image.asset(
+              _fallbackAsset,
+              fit: BoxFit.contain,
+            ),
+    );
   }
 }
 
@@ -1944,11 +1660,8 @@ class StyledTab extends StatelessWidget {
               : text == "Weekly"
                   ? AppKeys.weekly.tr(context)
                   : AppKeys.monthly.tr(context),
-          style: TextStyle(
+          style: AppTextStyles.cardTitle.copyWith(
             color: const Color.fromARGB(255, 10, 69, 1),
-            fontWeight: FontWeight.w500,
-            fontFamily: 'Urbanist',
-            fontSize: 15.sp,
           ),
         ),
       ),
@@ -2037,11 +1750,7 @@ class CardItem extends StatelessWidget {
                       child: Text(
                         textScaleFactor: 1.0,
                         cardIndex,
-                        style: const TextStyle(
-                          fontSize: 12.0,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w400,
-                        ),
+                        style: AppTextStyles.caption,
                       ),
                     ),
                   ),
@@ -2088,7 +1797,8 @@ class _BannerCard extends StatelessWidget {
               fit: BoxFit.fitHeight,
               errorBuilder: (context, error, stackTrace) => Container(
                 color: Colors.grey[300],
-                child: const Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                child: const Icon(Icons.broken_image,
+                    size: 40, color: Colors.grey),
               ),
             ),
 

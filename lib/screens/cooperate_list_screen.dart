@@ -6,6 +6,7 @@ import 'package:helloequb/core/api_url.dart';
 
 import 'equb_detail_card.dart';
 import 'join_ekub_detail.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class CooperateListScreen extends StatelessWidget {
   final String title;
@@ -18,12 +19,12 @@ class CooperateListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(onPressed:()=> Navigator.pop(context), icon: const Icon(Icons.arrow_back, color: Colors.white)),
+        leading: IconButton(onPressed:()=> Navigator.pop(context), icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white)),
         backgroundColor: const Color.fromARGB(255, 76, 109, 93),
         title: Row(
           children: [
            
-            Text(title, style: const TextStyle(color: Colors.white)),
+            Text(title, style: AppTextStyles.poppins40014.copyWith(color: Colors.white)),
           ],
         ),
       ),
@@ -48,6 +49,7 @@ class CooperateListScreen extends StatelessWidget {
                     );
                   },
                   child: EqubDetailCard(
+                    key: ValueKey(e.id),
                     equb: e,
                     equbType: e.equbType?.entries.first.value ?? '',
                     type: e.equbType?['name'] ?? '',
@@ -66,13 +68,14 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.inbox_outlined, color: Colors.grey, size: 48),
-          SizedBox(height: 8),
-          Text('No Equbs found', style: TextStyle(color: Colors.grey)),
+          const Icon(Icons.inbox_outlined, color: Colors.grey, size: 48),
+          const SizedBox(height: 8),
+          Text('No Equbs found',
+              style: AppTextStyles.poppins40014.copyWith(color: Colors.grey)),
         ],
       ),
     );
@@ -135,11 +138,7 @@ class _EqubCard extends StatelessWidget {
                   name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
-                  ),
+                  style: AppTextStyles.poppins70016.copyWith(color: Colors.black87),
                 ),
                 const SizedBox(height: 6),
                 Wrap(
@@ -178,11 +177,7 @@ class _Chip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 12.sp,
-          color: Colors.grey[800],
-          fontWeight: FontWeight.w600,
-        ),
+        style: AppTextStyles.poppins60012.copyWith(color: Colors.grey[800]),
       ),
     );
   }

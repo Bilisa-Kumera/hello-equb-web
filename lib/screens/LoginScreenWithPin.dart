@@ -5,10 +5,11 @@ import 'package:dio/dio.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/logic/check_network.dart';
 import 'package:helloequb/screens/forget_screen.dart';
-import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:helloequb/screens/login_screen.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
@@ -17,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:email_validator/email_validator.dart';
 import 'dart:convert';
 
 import '../utils/secure_storage.dart';
@@ -39,10 +41,14 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
   final DataController dataController = DataController();
 
   late TextEditingController phoneController;
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController pinController = TextEditingController();
+  final FocusNode _phoneFocusNode = FocusNode();
+  final FocusNode _emailFocusNode = FocusNode();
 
   bool waiting = false;
   bool _obscureText = true;
+  bool _isPhoneTabActive = true;
 
   String errorMessage = '';
   String phoneNumber = '';
@@ -58,32 +64,75 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
 
     phoneNumber = widget.phoneNumber ?? '';
 
-    phoneController = TextEditingController(
-      text: phoneNumber.isNotEmpty
-          ? phoneNumber
-          : dataController.retrieveData('phoneNumber') ?? '',
-    );
+    final initialValue = phoneNumber.isNotEmpty
+        ? phoneNumber
+        : dataController.retrieveData('phoneNumber')?.toString() ?? '';
+
+    phoneController = TextEditingController();
+    if (initialValue.contains('@')) {
+      _isPhoneTabActive = false;
+      emailController.text = initialValue;
+    } else {
+      phoneController.text = initialValue;
+    }
   }
 
   @override
   void dispose() {
     phoneController.dispose();
+    emailController.dispose();
     pinController.dispose();
+    _phoneFocusNode.dispose();
+    _emailFocusNode.dispose();
     super.dispose();
+  }
+
+  void _switchInputTab(bool isPhoneTab) {
+    if (_isPhoneTabActive == isPhoneTab) return;
+    _phoneFocusNode.unfocus();
+    _emailFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isPhoneTabActive = isPhoneTab;
+      errorMessage = '';
+    });
+    Future.delayed(const Duration(milliseconds: 120), () {
+      if (!mounted) return;
+      if (isPhoneTab) {
+        _phoneFocusNode.requestFocus();
+      } else {
+        _emailFocusNode.requestFocus();
+      }
+    });
   }
 
   Future<void> registerUser(BuildContext context) async {
     FocusScope.of(context).unfocus();
 
-    _validateAndNormalize(phoneController.text);
+    if (_isPhoneTabActive) {
+      _validateAndNormalize(phoneController.text);
+      if (phoneNumber.isEmpty) {
+        setState(() {
+          errorMessage = AppKeys.pleaseEnterPhoneNumber.tr(context);
+        });
+        return;
+      }
+    } else {
+      final email = emailController.text.trim();
+      if (!EmailValidator.validate(email)) {
+        setState(() {
+          phoneNumber = '';
+          errorMessage = AppKeys.pleaseEnterEmail.tr(context);
+        });
+        return;
+      }
+      phoneNumber = email;
+    }
 
-    if (phoneNumber.isEmpty || pinController.text.trim().isEmpty) {
+    if (pinController.text.trim().isEmpty) {
       setState(() {
-        errorMessage = phoneNumber.isEmpty
-            ? AppKeys.pleaseEnterPhoneNumber.tr(context)
-            : AppKeys.pleaseEnterValid.tr(context);
+        errorMessage = AppKeys.pleaseEnterValid.tr(context);
       });
-
       return;
     }
 
@@ -180,13 +229,7 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
 
         if (!mounted) return;
 
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const HomeScreen(),
-          ),
-          (route) => false,
-        );
+        await navigateToMainShell(context);
       }
     } on DioError catch (e) {
       if (dialogOpen && mounted) {
@@ -312,10 +355,9 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         AppKeys.welcomeBack.tr(context),
-                        style: TextStyle(
-                          fontSize: 28.sp,
-                          fontWeight: FontWeight.bold,
+                        style: AppTextStyles.screenTitleLarge.copyWith(
                           color: AppColors.darkBlueGray,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -325,21 +367,71 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
 
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: TextFormField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.emailAddress,
-                      onChanged: _validateAndNormalize,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: AppColors.grayOverlay,
-                        hintText: AppKeys.enterPhoneOrEmail.tr(context),
-                        prefixIcon: const Icon(Icons.person_outline),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
+                    child: Container(
+                      padding: EdgeInsets.all(4.w),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildInputTypeTab(
+                              label: AppKeys.phoneNumber.tr(context),
+                              isSelected: _isPhoneTabActive,
+                              onTap: () => _switchInputTab(true),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: _buildInputTypeTab(
+                              label: AppKeys.email.tr(context),
+                              isSelected: !_isPhoneTabActive,
+                              onTap: () => _switchInputTab(false),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _isPhoneTabActive
+                        ? TextFormField(
+                            controller: phoneController,
+                            focusNode: _phoneFocusNode,
+                            keyboardType: TextInputType.phone,
+                            onChanged: _validateAndNormalize,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: AppColors.grayOverlay,
+                              hintText:
+                                  AppKeys.pleaseEnterPhoneNumber.tr(context),
+                              prefixIcon: const Icon(Icons.phone_outlined),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          )
+                        : TextFormField(
+                            controller: emailController,
+                            focusNode: _emailFocusNode,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: AppColors.grayOverlay,
+                              hintText: AppKeys.pleaseEnterEmail.tr(context),
+                              prefixIcon: const Icon(Icons.email_outlined),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
                   ),
 
                   const SizedBox(height: 20),
@@ -384,40 +476,11 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
                     const SizedBox(height: 10),
                     Text(
                       errorMessage,
-                      style: const TextStyle(
-                        color: AppColors.red,
-                      ),
+                      style: AppTextStyles.error.copyWith(color: AppColors.red),
                     ),
                   ],
 
                   const SizedBox(height: 20),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ForgetScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          AppKeys.forgetPassword.tr(context),
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            color: AppColors.darkTeal,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
 
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -427,6 +490,7 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
+                          elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -444,29 +508,85 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
                                 registerUser(context);
                               },
                         child: waiting
-                            ? const CircularProgressIndicator()
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
                             : Text(
-                                AppKeys.login.tr(context), style: TextStyle(
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.white,
+                                AppKeys.login.tr(context),
+                                style: AppTextStyles.onPrimaryBold.copyWith(
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                       ),
                     ),
                   ),
 
-                  SizedBox(height: 40.h),
+                  const SizedBox(height: 12),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        AppKeys.dontHaveAccount.tr(context),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ForgetScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          AppKeys.forgetPassword.tr(context),
+                          style: AppTextStyles.poppins60014.copyWith(
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
-                      SizedBox(width: 8.w),
-                      GestureDetector(
-                        onTap: () {
+                    ),
+                  ),
+
+                  SizedBox(height: 28.h),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      AppKeys.dontHaveAccount.tr(context),
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.poppins50014.copyWith(
+                        color: AppColors.grey600,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary.withOpacity(0.12),
+                          foregroundColor: AppColors.primary,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -476,17 +596,46 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
                         },
                         child: Text(
                           AppKeys.register.tr(context),
-                          style: const TextStyle(
+                          style: AppTextStyles.poppins60015.copyWith(
                             color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
 
                   SizedBox(height: 30.h),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputTypeTab({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12.r),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : AppColors.transparent,
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: AppTextStyles.poppins60014.copyWith(
+                color: isSelected ? AppColors.white : AppColors.grey700,
               ),
             ),
           ),

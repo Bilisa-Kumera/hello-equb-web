@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import '../../models/financeandothermodel.dart';
+import '../../utils/equb_type_localization.dart';
 import '../../utils/lang_constants.dart';
 import 'equb_list_by_category.dart';
 import 'helpers.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class EqubTabbedScreen extends StatefulWidget {
   final EqubCategory category;
@@ -29,7 +31,7 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
   @override
   Widget build(BuildContext context) {
     final List<EqubType> equbTypesWithAll = [
-      EqubType(id: '', name: AppKeys.all.tr(context)),
+      EqubType(id: '', name: 'All'),
       ...widget.equbTypes,
     ];
 
@@ -40,7 +42,7 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
           leading: IconButton(
               onPressed: () => Navigator.pop(context),
               icon: const Icon(
-                Icons.arrow_back,
+                Icons.arrow_back_ios_new_rounded,
                 color: Colors.white,
               )),
           backgroundColor: const Color.fromARGB(255, 76, 109, 93),
@@ -48,7 +50,7 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
             children: [
               Text(
                 widget.equbType,
-                style: const TextStyle(color: Colors.white),
+                style: AppTextStyles.poppins40014.copyWith(color: Colors.white),
               ),
             ],
           ),
@@ -74,15 +76,19 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 18, vertical: 7),
                       decoration: BoxDecoration(
-                        color: getEqubTypeColor(equbType.name),
+                        color: getEqubTypeColor(
+                          equbType.name,
+                          interval: equbType.interval,
+                        ),
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Text(
-                        equbType.name ?? '',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                        translateEqubTypeName(
+                          context,
+                          equbType.name,
+                          interval: equbType.interval,
                         ),
+                        style: AppTextStyles.poppins60014,
                       ),
                     ),
                   );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/equb_model.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class EqubCard extends StatelessWidget {
   final EqubModel equb;
@@ -38,11 +39,11 @@ class EqubCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
                 "${equb.equbAmount?.toString().replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (m) => "${m[1]},")} Birr",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: AppTextStyles.poppins70018,
             ),
-            const Text(
+            Text(
               "Join Equb",
-              style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600),
+              style: AppTextStyles.poppins60014.copyWith(color: Colors.green),
             )
           ],
         ),

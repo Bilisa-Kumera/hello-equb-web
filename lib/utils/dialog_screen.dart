@@ -16,12 +16,15 @@ import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:mime/mime.dart';
 
 import 'secure_storage.dart';
+
+import 'style_constants.dart';
 
 class MyDialog extends StatefulWidget {
   final String ekubId, ekubAmount, joinOption;
@@ -153,8 +156,7 @@ class _MyDialogState extends State<MyDialog> {
         CustomSnackBar.show(context, 'Payment successful. Wait for approval.',
             AppColors.primary);
 
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => ActiveEqubsScreen()));
+        await navigateToMainShell(context, initialIndex: 0);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -282,7 +284,7 @@ class _MyDialogState extends State<MyDialog> {
         child: Text(
           textScaleFactor: 1.0,
           AppKeys.enterDetails.tr(context),
-          style: const TextStyle(color: AppColors.white),
+          style: AppTextStyles.onPrimaryBold,
         ),
       ),
       content: SingleChildScrollView(
@@ -396,8 +398,7 @@ class _MyDialogState extends State<MyDialog> {
                             Text(
                               AppKeys.uploadPaymentReceipt.tr(context),
                               textScaleFactor: 1.0,
-                              style: const TextStyle(
-                                  color: AppColors.grey, fontSize: 12),
+                              style: AppTextStyles.greyCaption,
                             ),
                           ],
                         ),
@@ -413,7 +414,7 @@ class _MyDialogState extends State<MyDialog> {
           child: Text(
             textScaleFactor: 1.0,
             AppKeys.cancel.tr(context),
-            style: const TextStyle(color: AppColors.red),
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.red),
           ),
         ),
         TextButton(
@@ -428,7 +429,7 @@ class _MyDialogState extends State<MyDialog> {
               : Text(
                   textScaleFactor: 1.0,
                   AppKeys.submit.tr(context),
-                  style: const TextStyle(color: AppColors.primary),
+                  style: AppTextStyles.primaryBody,
                 ),
         ),
       ],

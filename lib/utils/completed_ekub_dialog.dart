@@ -1,6 +1,8 @@
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 
+import 'style_constants.dart';
+
 class ModernDialog {
   static void showEqubCompletedDialog(BuildContext context) {
     showDialog(
@@ -33,22 +35,17 @@ class ModernDialog {
                   size: 50,
                 ),
                 const SizedBox(height: 15),
-                const Text(
+                Text(
                   "Equb Completed",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.white,
-                  ),
+                  style: AppTextStyles.dialogTitle
+                      .copyWith(color: AppColors.white),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   "Please try to join another running Equbs.",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.white60,
-                  ),
+                  style: AppTextStyles.bodyLarge
+                      .copyWith(color: AppColors.white60),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -62,15 +59,12 @@ class ModernDialog {
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     child: Text(
                       "N/A",
-                      style: TextStyle(
-                        color: AppColors.blue,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: AppTextStyles.buttonLarge
+                          .copyWith(color: AppColors.blue),
                     ),
                   ),
                 ),

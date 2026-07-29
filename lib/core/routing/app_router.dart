@@ -5,7 +5,7 @@ import 'package:helloequb/features/superapp_auth/presentation/pages/cbebirr_page
 import 'package:helloequb/features/superapp_auth/presentation/pages/cbebirr_plus_continue_page.dart';
 import 'package:helloequb/features/superapp_auth/presentation/pages/telebirr_continue_page.dart';
 import 'package:helloequb/screens/LoginScreenWithPin.dart';
-import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/screens/main_navigation_screen.dart';
 import 'package:helloequb/screens/language_screen.dart';
 import 'package:helloequb/screens/splash_screen.dart';
 
@@ -62,7 +62,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/home',
-          builder: (context, state) => const HomeScreen(),
+          builder: (context, state) => const MainNavigationScreen(),
         ),
         GoRoute(
           path: '/login',

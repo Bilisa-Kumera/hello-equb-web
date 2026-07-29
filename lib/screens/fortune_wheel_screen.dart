@@ -13,9 +13,11 @@ import 'package:helloequb/models/ekub_category_model.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:confetti/confetti.dart';
 
 import '../utils/secure_storage.dart';
+import 'package:helloequb/utils/style_constants.dart';
 
 class FortuneWheelScreen extends StatefulWidget {
   final int round;
@@ -256,16 +258,16 @@ class _SpinWheelState extends State<FortuneWheelScreen>
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text(
+        title: Text(
           textScaleFactor: 1.0,
           "We're Sorry!",
-          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.redAccent),
+          style: AppTextStyles.poppins70014.copyWith(color: AppColors.redAccent),
         ),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.error_outline, color: AppColors.redAccent, size: 50),
           const SizedBox(height: 20),
           Text(textScaleFactor: 1.0, message,
-              style: const TextStyle(fontSize: 16), textAlign: TextAlign.center),
+              style: AppTextStyles.bodyLarge, textAlign: TextAlign.center),
         ]),
         actions: [
           TextButton(
@@ -286,19 +288,19 @@ class _SpinWheelState extends State<FortuneWheelScreen>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text(
+        title: Text(
           textScaleFactor: 1.0,
           'Winner Announcement',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: AppTextStyles.poppins70018,
         ),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.celebration, size: 50, color: AppColors.orange),
           const SizedBox(height: 16),
           Text(textScaleFactor: 1.0, 'The winner is $winnerLabel!',
-              style: const TextStyle(fontSize: 16)),
+              style: AppTextStyles.bodyLarge),
           const SizedBox(height: 8),
           Text(textScaleFactor: 1.0, 'Round: $round',
-              style: const TextStyle(fontSize: 16)),
+              style: AppTextStyles.bodyLarge),
         ]),
         actions: [
           IconButton(
@@ -334,10 +336,7 @@ class _SpinWheelState extends State<FortuneWheelScreen>
               } else {
                 await loadEkubCategories();
                 if (mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ActiveEqubsScreen()),
-                  );
+                  await navigateToMainShell(context, initialIndex: 0);
                 }
               }
             },
@@ -348,10 +347,7 @@ class _SpinWheelState extends State<FortuneWheelScreen>
               winnersList.length > 1 && currentWinnerIndex < winnersList.length - 1
                   ? 'Next Winner'
                   : 'My Equbs',
-              style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.white,
-                  fontWeight: FontWeight.w600),
+              style: AppTextStyles.poppins60016.copyWith(color: AppColors.white),
             ),
           ),
         ],
@@ -399,8 +395,7 @@ class _SpinWheelState extends State<FortuneWheelScreen>
                 Text(
                   textScaleFactor: 1.0,
                   countdown > 0 ? '$countdown' : 'Spinning...',
-                  style: TextStyle(
-                      fontSize: 28.sp, fontWeight: FontWeight.bold),
+                  style: AppTextStyles.poppins70028,
                 ),
               const SizedBox(height: 20),
               if (!_isLoading && shuffledItems.isNotEmpty)
@@ -549,11 +544,7 @@ class _WheelPainter extends CustomPainter {
     final textPainter = TextPainter(
       text: TextSpan(
         text: label,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: fontSize,
-          fontWeight: FontWeight.w700,
-        ),
+        style: AppTextStyles.poppins70014.copyWith(color: Colors.white),
       ),
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center,

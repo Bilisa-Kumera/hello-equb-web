@@ -6,8 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 
-import 'package:helloequb/screens/home_screen.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:helloequb/utils/colors_constant.dart';
+import 'package:helloequb/utils/style_constants.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/screens/LoginScreenWithPin.dart';
 import 'package:helloequb/screens/waiting_payment.dart';
@@ -114,9 +115,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           children: [
             Text(
               AppKeys.cbeBirrPlusTokenLabel.tr(context),
-              style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
+              style: AppTextStyles.labelMedium.copyWith(
                 color: Colors.grey.shade700,
               ),
             ),
@@ -136,8 +135,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     Expanded(
                       child: SelectableText(
                         token,
-                        style: TextStyle(
-                          fontSize: 13.sp,
+                        style: AppTextStyles.bodySmall.copyWith(
                           height: 1.4,
                           fontFamily: 'monospace',
                         ),
@@ -154,8 +152,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             else
               Text(
                 AppKeys.cbeBirrPlusTokenUnavailable.tr(context),
-                style: TextStyle(
-                  fontSize: 13.sp,
+                style: AppTextStyles.bodySmall.copyWith(
                   color: Colors.red.shade700,
                   height: 1.35,
                 ),
@@ -261,6 +258,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
+  Future<void> _openPendingReceiptUpload() async {
+    final ekubId = widget.ekubId ?? '';
+    if (!mounted) return;
+
+    CustomSnackBar.show(
+      context,
+      AppKeys.pleaseUploadYourPayment.tr(context),
+      AppColors.primary,
+    );
+
+    if (_isPaymentType && ekubId.isNotEmpty) {
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => WaitingEkubsPayment(ekubId: ekubId),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => const WaitingEkubs(),
+      ),
+    );
+  }
+
   Future<void> _handleBankTransfer() async {
     setState(() => _isSubmitting = true);
 
@@ -270,7 +293,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       await _submitLotteryPayment(paymentMethod: 'bankTransfer');
     }
 
-    setState(() => _isSubmitting = false);
+    if (mounted) setState(() => _isSubmitting = false);
   }
 
   // --- Logic: Telebirr ---
@@ -541,15 +564,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return;
       }
 
-      CustomSnackBar.show(
-        context,
-        AppKeys.pleaseUploadYourPayment.tr(context),
-        AppColors.primary,
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const WaitingEkubs()),
-      );
+      await _openPendingReceiptUpload();
     } catch (e) {}
   }
 
@@ -597,19 +612,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           return;
         }
 
-        CustomSnackBar.show(
-          context,
-          AppKeys.pleaseUploadYourPayment.tr(context),
-          AppColors.primary,
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => WaitingEkubsPayment(
-              ekubId: widget.ekubId ?? '',
-            ),
-          ),
-        );
+        await _openPendingReceiptUpload();
       } else {
         setState(() => isLoading = false);
         CustomSnackBar.show(
@@ -686,18 +689,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 color: isSuccess ? Colors.green : Colors.red, size: 28),
             SizedBox(width: 10.w),
             Text(title,
-                style: TextStyle(
+                style: AppTextStyles.listTitle.copyWith(
                     color: isSuccess ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold)),
+                    fontWeight: FontWeight.w700)),
           ],
         ),
-        content: Text(message, style: const TextStyle(fontSize: 16)),
+        content: Text(message, style: AppTextStyles.bodyLarge),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-                (route) => false),
+            onPressed: () async {
+              Navigator.pop(context);
+              if (!isSuccess) return;
+
+              await navigateToMainShell(context);
+            },
             child: Text(AppKeys.ok.tr(context)),
           )
         ],
@@ -734,10 +739,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
             SizedBox(height: 16.h),
             Text(
                 '${AppKeys.confirm.tr(context)} $paymentMethodLabel ${AppKeys.payment.tr(context)}',
-                style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
+                style: AppTextStyles.dialogTitle.copyWith(
+                    fontWeight: FontWeight.w700)),
             SizedBox(height: 8.h),
             Text(AppKeys.enterBeneficiaryPhoneNumber.tr(context),
-                style: TextStyle(fontSize: 14.sp, color: Colors.grey)),
+                style: AppTextStyles.greyBody),
             SizedBox(height: 20.h),
             Container(
               decoration: BoxDecoration(
@@ -751,7 +757,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   contentPadding: const EdgeInsets.symmetric(vertical: 16),
                   border: InputBorder.none,
                   hintText: '*** ** ** **',
-                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  hintStyle: AppTextStyles.hint.copyWith(
+                      color: Colors.grey.shade400),
                 ),
                 initialCountryCode: 'ET',
                 disableLengthCheck: true,
@@ -771,13 +778,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(AppKeys.totalAmount.tr(context),
-                      style: TextStyle(
-                          fontSize: 14.sp, color: Colors.grey.shade600)),
+                      style: AppTextStyles.greyLabel),
                   Text(
                     "${widget.ekubAmount ?? '0'} ${AppKeys.currencyBirr.tr(context)}",
-                    style: TextStyle(
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.bold,
+                    style: AppTextStyles.sectionTitle.copyWith(
+                        fontWeight: FontWeight.w700,
                         color: AppColors.primary),
                   ),
                 ],
@@ -803,9 +808,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   }
                 },
                 child: Text(AppKeys.makePayment.tr(context),
-                    style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w600,
+                    style: AppTextStyles.buttonLarge.copyWith(
                         color: Colors.white)),
               ),
             ),
@@ -873,9 +876,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       const SizedBox(width: 10),
                       Text(
                         AppKeys.companyBankAccounts.tr(context),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                        style: AppTextStyles.listTitle.copyWith(
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       const Spacer(),
@@ -911,16 +913,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                 children: [
                                   Text(
                                     bank.accountName,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                    style: AppTextStyles.listTitle.copyWith(
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     bank.accountNumber,
-                                    style: const TextStyle(
-                                      fontSize: 15,
+                                    style: AppTextStyles.bodyLarge.copyWith(
                                       letterSpacing: 1,
                                     ),
                                   ),
@@ -976,10 +976,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ),
         title: Text(
           AppKeys.payment.tr(context),
-          style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w700,
+          style: AppTextStyles.sectionTitleLarge.copyWith(
               color: Colors.black87),
         ),
         centerTitle: true,
@@ -1012,8 +1009,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           ),
                           SizedBox(width: 12.w),
                           Text(AppKeys.ekubDetail.tr(context),
-                              style: TextStyle(
-                                  fontSize: 16.sp,
+                              style: AppTextStyles.listTitle.copyWith(
                                   fontWeight: FontWeight.w700)),
                         ],
                       ),
@@ -1033,10 +1029,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               SizedBox(height: 24.h),
               Text(AppKeys.pleaseChoosePaymentMethod.tr(context),
-                  style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade600)),
+                  style: AppTextStyles.greyLabel),
               SizedBox(height: 12.h),
               ListView.builder(
                 shrinkWrap: true,
@@ -1108,15 +1101,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               children: [
                                 Text(
                                   (option['textKey'] as String).tr(context),
-                                  style: TextStyle(
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w600),
+                                  style: AppTextStyles.listTitle,
                                 ),
                                 SizedBox(height: 4.h),
                                 Text(
                                   (option['subtitleKey'] as String).tr(context),
-                                  style: TextStyle(
-                                      fontSize: 12.sp, color: Colors.grey),
+                                  style: AppTextStyles.greyCaption,
                                 ),
                               ],
                             ),
@@ -1189,8 +1179,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         )
                       : Text(
                           AppKeys.lblContinue.tr(context),
-                          style: TextStyle(
-                              fontSize: 16.sp,
+                          style: AppTextStyles.buttonLarge.copyWith(
                               fontWeight: FontWeight.w700,
                               color: Colors.white),
                         ),
@@ -1210,10 +1199,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         Icon(icon, size: 18, color: Colors.grey),
         SizedBox(width: 8.w),
         Text(label,
-            style: TextStyle(fontSize: 13.sp, color: Colors.grey.shade600)),
+            style: AppTextStyles.greyBodySmall),
         const Spacer(),
         Text(value,
-            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600)),
+            style: AppTextStyles.labelMedium),
       ],
     );
   }
@@ -1224,7 +1213,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         const Icon(Icons.attach_money, size: 18, color: Colors.grey),
         SizedBox(width: 8.w),
         Text(AppKeys.ekubAmount.tr(context),
-            style: TextStyle(fontSize: 13.sp, color: Colors.grey.shade600)),
+            style: AppTextStyles.greyBodySmall),
         const Spacer(),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1234,10 +1223,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           child: Text(
             "${widget.ekubAmount ?? '0'} ${AppKeys.currencyEtb.tr(context)}",
-            style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary),
+            style: AppTextStyles.primaryLabel.copyWith(
+                fontWeight: FontWeight.w700),
           ),
         ),
       ],
@@ -1303,10 +1290,8 @@ class CustomListItem extends StatelessWidget {
                 child: Text(
                   textScaleFactor: 1.0,
                   text,
-                  style: const TextStyle(
-                      fontSize: 15.0,
+                  style: AppTextStyles.bodyLarge.copyWith(
                       color: AppColors.coolMediumGray,
-                      fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w500),
                   textAlign: TextAlign.right,
                 ),
@@ -1505,9 +1490,11 @@ class _InfoPopupState extends State<InfoPopup> {
             AppKeys.pleaseUploadYourPayment.tr(context),
             AppColors.primary,
           );
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const WaitingEkubs()),
+          if (!mounted) return;
+          await Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => const WaitingEkubs(),
+            ),
           );
         }
       } else {
@@ -1611,12 +1598,15 @@ class _InfoPopupState extends State<InfoPopup> {
             AppKeys.pleaseUploadYourPayment.tr(context),
             AppColors.primary,
           );
-          Navigator.push(
-            context,
+          if (!mounted) return;
+          final ekubId = widget.ekubId ?? '';
+          if (ekubId.isEmpty) {
+            await navigateToMainShell(context);
+            return;
+          }
+          await Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => WaitingEkubsPayment(
-                ekubId: widget.ekubId ?? '',
-              ),
+              builder: (_) => WaitingEkubsPayment(ekubId: ekubId),
             ),
           );
         }
@@ -1727,9 +1717,8 @@ class _InfoPopupState extends State<InfoPopup> {
                 children: [
                   Text(
                     AppKeys.companyBankAccounts.tr(context),
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.sectionTitleLarge.copyWith(
+                      fontWeight: FontWeight.w700,
                       color: AppColors.black87,
                     ),
                   ),
@@ -1774,9 +1763,7 @@ class _InfoPopupState extends State<InfoPopup> {
                               children: [
                                 Text(
                                   item['title']!,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                  style: AppTextStyles.listTitle.copyWith(
                                     color: AppColors.black87,
                                   ),
                                 ),
@@ -1788,8 +1775,7 @@ class _InfoPopupState extends State<InfoPopup> {
                                     Expanded(
                                       child: Text(
                                         item['subtitle']!,
-                                        style: const TextStyle(
-                                          fontSize: 15,
+                                        style: AppTextStyles.bodyLarge.copyWith(
                                           color: AppColors.primary,
                                           fontWeight: FontWeight.w500,
                                         ),

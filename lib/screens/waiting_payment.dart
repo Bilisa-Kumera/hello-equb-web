@@ -1,447 +1,17 @@
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
-import 'package:helloequb/screens/payment_screen.dart';
-import 'package:helloequb/utils/colors_constant.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:helloequb/core/api_url.dart';
-import 'package:helloequb/main.dart';
-import 'package:helloequb/models/ekub_category_model.dart';
-import 'package:helloequb/screens/LoginScreenWithPin.dart';
-import 'package:helloequb/screens/home_screen.dart';
 import 'package:helloequb/screens/my_other_ekubs.dart';
 import 'package:helloequb/utils/app_localizations.dart';
-import 'package:helloequb/utils/custom_snack_bar.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
-import 'package:http_parser/http_parser.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:helloequb/utils/style_constants.dart';
+import 'package:helloequb/widgets/upload_receipt_sheet.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
-import 'package:mime/mime.dart';
 
 import '../utils/secure_storage.dart';
-
-class MyDialog extends StatefulWidget {
-  final String ekubId, ekubAmount, joinOption;
-  const MyDialog(
-      {super.key,
-      required this.ekubAmount,
-      required this.ekubId,
-      required this.joinOption});
-
-  @override
-  _MyDialogState createState() => _MyDialogState();
-}
-
-class _MyDialogState extends State<MyDialog> {
-  TextEditingController _paidAmountController = TextEditingController();
-  TextEditingController referenceController = TextEditingController();
-
-  XFile? _image;
-  Uint8List? _imageBytes;
-  bool _isSubmitting = false;
-  int getPercentage(String joinOption) {
-    if (joinOption.contains('/')) {
-      return int.parse(joinOption.split('/')[1]);
-    } else {
-      return 100;
-    }
-  }
-
-  int percentage = 0;
-  Future<void> _pickImage(ImageSource source) async {
-    percentage = getPercentage(widget.joinOption);
-    final ImagePicker picker = ImagePicker();
-    final XFile? pickedImage = await picker.pickImage(source: source);
-    final pickedBytes =
-        pickedImage == null ? null : await pickedImage.readAsBytes();
-    setState(() {
-      _image = pickedImage;
-      _imageBytes = pickedBytes;
-    });
-  }
-
-  final DataController dataController = DataController();
-
-  Future<List<EqubCategorys>?> loadEkubCategories() async {
-    List<dynamic>? jsonList =
-        dataController.retrieveData<List<dynamic>>('ekubCategories');
-
-    if (jsonList != null) {
-      return jsonList
-          .map((json) => EqubCategorys.fromJson(json as Map<String, dynamic>))
-          .toList();
-    }
-
-    return null; 
-  }
-
-  Future<void> _submit() async {
-    if (bankId.isEmpty) {
-      CustomSnackBar.show(
-          context, AppKeys.selectBankAccount.tr(context), AppColors.red);
-      return;
-    }
-    if (_image == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                textScaleFactor: 1.0, AppKeys.pleaseSelectImage.tr(context))),
-      );
-      return;
-    }
-    if (_imageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                textScaleFactor: 1.0, 'Unable to read the selected image')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-    });
-    String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
-    final fileName = _image!.name.isNotEmpty ? _image!.name : _image!.path;
-    final fileExtension = fileName.split('.').last.toLowerCase();
-    final mimeType = lookupMimeType(fileName) ?? 'application/octet-stream';
-
-    if (!(fileExtension == 'png' ||
-        fileExtension == 'jpg' ||
-        fileExtension == 'jpeg')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                textScaleFactor: 1.0,
-                'Only .png, .jpg, and .jpeg formats are allowed')),
-      );
-      return;
-    }
-
-    try {
-      final Dio dio = Dio();
-
-      Map<String, dynamic> data = {
-        'reference': referenceController.text,
-        'paidAmount': _paidAmountController.text,
-        'paymentMethod': 'bankTransfer',
-        'companyBankAccountId': bankId,
-      };
-
-      if (percentage == 100) {
-        data['stake'] = 100;
-      } else {
-        data['dividedBy'] = percentage;
-      }
-
-      data['picture'] = MultipartFile.fromBytes(
-        _imageBytes!,
-        filename: _image!.name.isNotEmpty ? _image!.name : '1.$fileExtension',
-        contentType: MediaType.parse(mimeType),
-      );
-
-      FormData formData = FormData.fromMap(data);
-
-      final response = await dio.patch(
-        paymentUrl + widget.ekubId,
-        data: formData,
-        options: Options(
-          headers: {
-            "Authorization": "Bearer $bearerToken",
-          },
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        Navigator.of(context).pop();
-        CustomSnackBar.show(context, 'Payment successful. Wait for approval.',
-            AppColors.primary);
-
-
-        Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const ActiveEqubsScreen()));
-      } else {
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  textScaleFactor: 1.0, AppKeys.errorTryAgain.tr(context))),
-        );
-      }
-    } on DioError catch (e) {
-      if (e.response != null && e.response?.statusCode == 401) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text(textScaleFactor: 1.0, AppKeys.tokenExpired.tr(context))),
-        );
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => LoginScreenWithPin(phoneNumber: '')));
-      } else if (e.response != null && e.response?.statusCode == 400) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  textScaleFactor: 1.0,
-                  'Error ${e.response?.data['message']}')),
-        );
-      } else if (e.response != null && e.response?.statusCode == 404) {
-        if (kDebugMode) {}
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  textScaleFactor: 1.0,
-                  'Error ${e.response?.data['message']}')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  textScaleFactor: 1.0, AppKeys.errorTryAgain.tr(context))),
-        );
-      }
-    
-    } catch (e) {
-      
-    } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
-    }
-  }
-
-  CompanyBankAccountsResponse? companyBankAccountsResponse;
-  Future<List<CompanyBankAccount>>? _companyBanksFuture;
-  Future<List<CompanyBankAccount>> getCompanyBanks() async {
-    final Dio dio = Dio();
-
-    try {
-      final response = await dio.get(companyBankUrl);
-
-      if (response.statusCode == 200) {
-        final jsonResponse = response.data; // Use response.data directly
-        companyBankAccountsResponse =
-            CompanyBankAccountsResponse.fromJson(jsonResponse);
-        return companyBankAccountsResponse!.data.companyBankAccounts;
-      }
-    } catch (e) {}
-    return [];
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _companyBanksFuture = getCompanyBanks();
-    _paidAmountController =
-        TextEditingController(text: widget.ekubAmount ?? '0 Birr');
-  }
-
-  void _showImageSourceOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
-              title: Text(AppKeys.camera.tr(context), textScaleFactor: 1.0),
-              onTap: () async {
-                await requestCameraAndGalleryPermissions();
-
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo, color: AppColors.primary),
-              title: Text(AppKeys.gallery.tr(context), textScaleFactor: 1.0),
-              onTap: () async {
-                await requestCameraAndGalleryPermissions();
-
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  String bankId = '';
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      titlePadding: EdgeInsets.zero,
-      title: Container(
-        color: AppColors.primary,
-        padding: const EdgeInsets.all(16.0),
-        child: const Text(
-          textScaleFactor: 1.0,
-          'Enter Details',
-          style: TextStyle(color: AppColors.white),
-        ),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FutureBuilder<List<CompanyBankAccount>>(
-              future: _companyBanksFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: LoadingAnimationWidget.threeRotatingDots(
-                      color: AppColors.vibrantGreen,
-                      size: 30,
-                    ),
-                  );
-                } else if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                  return DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: AppKeys.selectBankAccount.tr(context),
-                      border: const OutlineInputBorder(),
-                    ),
-                    value: null,
-                    items: snapshot.data!.map((CompanyBankAccount account) {
-                      return DropdownMenuItem<String>(
-                        value: account.id,
-                        child: Text(
-                          '${account.accountName} ${account.accountNumber}',
-                          textScaleFactor: 1.0,
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        bankId = newValue ?? '';
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return AppKeys.selectBankAccount.tr(context);
-                      }
-                      return null;
-                    },
-                  );
-                } else {
-                  return Text(AppKeys.noData.tr(context));
-                }
-              },
-            ),
-            TextField(
-              controller: referenceController,
-              decoration:  InputDecoration(
-                labelText: AppKeys.referenceNumber.tr(context),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16.0),
-            TextField(
-              enabled: false,
-              controller: _paidAmountController,
-              decoration:  InputDecoration(
-                labelText: AppKeys.paidAmount.tr(context),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16.0),
-            GestureDetector(
-              onTap: _showImageSourceOptions,
-              child: Container(
-                height: 100,
-                width: 160.sw,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.grey200, AppColors.grey300],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(color: AppColors.grey400),
-                  borderRadius: BorderRadius.circular(10.0),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppColors.black26,
-                      blurRadius: 4.0,
-                      offset: Offset(2, 2),
-                    ),
-                  ],
-                ),
-                      child: _imageBytes != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(10.0),
-                              child: Image.memory(
-                                _imageBytes!,
-                                fit: BoxFit.cover,
-                                height: 100,
-                                width: 100,
-                              ),
-                            )
-                    :  Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.add_a_photo,
-                              color: AppColors.grey,
-                              size: 30,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              AppKeys.uploadReceipt.tr(context),
-                              textScaleFactor: 1.0,
-                              style: const TextStyle(
-                                  color: AppColors.grey, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child:  Text(
-            textScaleFactor: 1.0,
-            AppKeys.cancel.tr(context),
-            style: const TextStyle(color: AppColors.red),
-          ),
-        ),
-        TextButton(
-          onPressed: _isSubmitting
-              ? null
-              : _submit, // Disable button during submission
-          child: _isSubmitting
-              ? const Center(
-                  child: SpinKitFadingCircle(
-                    color: AppColors.primary,
-                    size: 20.0,
-                  ),
-                )
-              :  Text(
-                  textScaleFactor: 1.0,
-                  AppKeys.submit.tr(context),
-                  style: const TextStyle(color: AppColors.primary),
-                ),
-        ),
-      ],
-    );
-  }
-}
 
 class LotteryPayment {
   final double amount;
@@ -590,312 +160,288 @@ class _WaitingEkubsState extends State<WaitingEkubsPayment> {
     stopProgressAfterDelay();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-        return false;
-      },
-      child: Scaffold(
-        backgroundColor: Colors.grey.shade50,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 12, top: 8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const HomeScreen()),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    )
-                  ],
-                ),
-                padding: const EdgeInsets.all(6),
-                child: const Icon(Icons.arrow_back_ios_new,
-                    color: AppColors.black, size: 18),
-              ),
-            ),
+  Future<void> _openUploadSheet(Payment item) async {
+    await UploadReceiptSheet.show(
+      context,
+      ekubAmount: numberFormat.format(item.amount),
+      ekubId: item.id,
+      joinOption: '100',
+    );
+    if (mounted) fetchWaitingEkubs();
+  }
+
+  void _showSubmittedInfo() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(AppKeys.paymentInfo.tr(context)),
+        content: Text(AppKeys.youHaveAlreadySubmitted.tr(context)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppKeys.ok.tr(context)),
           ),
-          title: Text(
-            AppKeys.pendingPayments.tr(context),
-            style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.black),
-          ),
-          centerTitle: true,
-        ),
-        body: RefreshIndicator(
-          onRefresh: _onRefresh,
-          child: pendingEqubs.isNotEmpty
-              ? ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  itemCount: pendingEqubs.length,
-                  itemBuilder: (context, index) {
-                    final item = pendingEqubs[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 18),
-                      elevation: 4,
-                      shadowColor: Colors.black12,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: LinearGradient(
-                            colors: [Colors.white, Colors.grey.shade50],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            /// Ekub Name
-                            _infoRow(
-                              icon: Icons.group,
-                              label: AppKeys.ekubName.tr(context),
-                              value: item.equbName ?? '',
-                              valueStyle: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.black),
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            /// Total Amount
-                            _infoRow(
-                              icon: Icons.attach_money_rounded,
-                              label: AppKeys.totalAmount.tr(context),
-                              value: numberFormat.format(item.amount),
-                              valueStyle: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.vibrantGreen),
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            /// Lottery + Amounts Grid
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 3.8,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 10,
-                              ),
-                              itemCount: item.payments.length * 2,
-                              itemBuilder: (context, index) {
-                                final payment = item.payments[index ~/ 2];
-                                return (index.isEven)
-                                    ? _infoRow(
-                                        icon: Icons.confirmation_num,
-                                        label: AppKeys.lottery.tr(context),
-                                        value: payment.lotteryNumber ?? '',
-                                      )
-                                    : _infoRow(
-                                        icon: Icons.payments,
-                                        label: AppKeys.amount.tr(context),
-                                        value:
-                                            numberFormat.format(payment.amount),
-                                      );
-                              },
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            /// Status
-                            Row(
-                              children: [
-                                Text(
-                                  AppKeys.paymentStatus.tr(context),
-                                  style: const TextStyle(
-                                      fontSize: 14,
-                                      color: AppColors.neutralGray,
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                const SizedBox(width: 8),
-                                Chip(
-                                  label: Text(AppKeys.pending.tr(context)),
-                                  labelStyle: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600),
-                                  backgroundColor: AppColors.red,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 2),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 22),
-
-                            /// Confirm or Waiting
-                            item.picture == null
-                                ? SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.primary,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 16),
-                                        elevation: 2,
-                                      ),
-                                      onPressed: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) {
-                                            return MyDialog(
-                                              ekubAmount: numberFormat
-                                                  .format(item.amount),
-                                              ekubId: item.id ?? '',
-                                              joinOption: '100',
-                                            );
-                                          },
-                                        );
-                                      },
-                                      child: Text(
-                                        AppKeys.uploadReceipt.tr(context),
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: Colors.white),
-                                      ),
-                                    ),
-                                  )
-                                : Center(
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        Text(
-                                          AppKeys.waitingForApproval
-                                              .tr(context),
-                                          style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.blue),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.info_outline,
-                                              color: AppColors.blue),
-                                          onPressed: () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (_) => AlertDialog(
-                                                shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            16)),
-                                                title: Text(AppKeys.paymentInfo
-                                                    .tr(context)),
-                                                content: Text(AppKeys
-                                                    .youHaveAlreadySubmitted
-                                                    .tr(context)),
-                                                actions: [
-                                                  TextButton(
-                                                    child: Text(
-                                                        AppKeys.ok.tr(context)),
-                                                    onPressed: () =>
-                                                        Navigator.pop(context),
-                                                  )
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                )
-              : progress
-                  ? Center(
-                      child: LoadingAnimationWidget.threeRotatingDots(
-                        color: AppColors.vibrantGreen,
-                        size: 30,
-                      ),
-                    )
-                  : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.inbox_outlined,
-                              size: 64, color: AppColors.neutralGray),
-                          const SizedBox(height: 12),
-                          Text(AppKeys.noData.tr(context),
-                              style: const TextStyle(
-                                  fontSize: 16, color: AppColors.neutralGray)),
-                        ],
-                      ),
-                    ),
-        ),
+        ],
       ),
     );
   }
 
-  /// reusable row builder for info
-  Widget _infoRow({
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FA),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.black87,
+            size: 18,
+          ),
+        ),
+        title: Text(
+          AppKeys.pendingPayments.tr(context),
+          style: AppTextStyles.poppins60014.copyWith(color: Colors.black87),
+        ),
+        centerTitle: false,
+      ),
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: _onRefresh,
+        child: pendingEqubs.isNotEmpty
+            ? ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                itemCount: pendingEqubs.length,
+                itemBuilder: (context, index) {
+                  final item = pendingEqubs[index];
+                  return _buildPaymentCard(item);
+                },
+              )
+            : progress
+                ? ListView(
+                    children: [
+                      SizedBox(height: 120.h),
+                      Center(
+                        child: LoadingAnimationWidget.threeRotatingDots(
+                          color: AppColors.primary,
+                          size: 28,
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView(
+                    children: [
+                      SizedBox(height: 120.h),
+                      Icon(Icons.inbox_outlined,
+                          size: 48.sp, color: Colors.grey.shade400),
+                      SizedBox(height: 12.h),
+                      Center(
+                        child: Text(
+                          AppKeys.noData.tr(context),
+                          style: AppTextStyles.captionMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentCard(Payment item) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.groups_rounded,
+                    color: AppColors.primary, size: 20),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppKeys.ekubName.tr(context),
+                      style: AppTextStyles.captionMuted,
+                    ),
+                    Text(
+                      item.equbName,
+                      style: AppTextStyles.listTitle.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 14.h),
+          _detailTile(
+            label: AppKeys.totalAmount.tr(context),
+            value: numberFormat.format(item.amount),
+            valueColor: AppColors.vibrantGreen,
+            emphasized: true,
+          ),
+          if (item.payments.isNotEmpty) ...[
+            SizedBox(height: 12.h),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: item.payments.expand((payment) {
+                return [
+                  _lotteryChip(
+                    '${AppKeys.lottery.tr(context)} ${payment.lotteryNumber ?? '-'}',
+                  ),
+                  _lotteryChip(
+                    '${AppKeys.amount.tr(context)} ${numberFormat.format(payment.amount)}',
+                  ),
+                ];
+              }).toList(),
+            ),
+          ],
+          SizedBox(height: 14.h),
+          Row(
+            children: [
+              Text(
+                AppKeys.paymentStatus.tr(context),
+                style: AppTextStyles.captionMuted,
+              ),
+              SizedBox(width: 8.w),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Text(
+                  AppKeys.pending.tr(context),
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: Colors.orange.shade800,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          if (item.picture == null)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _openUploadSheet(item),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  minimumSize: Size(double.infinity, 40.h),
+                  padding: EdgeInsets.symmetric(vertical: 8.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  AppKeys.uploadReceipt.tr(context),
+                  style: AppTextStyles.buttonLarge.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.sp,
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              width: double.infinity,
+              height: 40.h,
+              padding: EdgeInsets.symmetric(horizontal: 12.w),
+              decoration: BoxDecoration(
+                color: AppColors.blue.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.hourglass_top_rounded,
+                      color: AppColors.blue, size: 16),
+                  SizedBox(width: 6.w),
+                  Text(
+                    AppKeys.waitingForApproval.tr(context),
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.blue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.info_outline,
+                        color: AppColors.blue, size: 16),
+                    onPressed: _showSubmittedInfo,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailTile({
     required String label,
     required String value,
-    IconData? icon,
-    TextStyle? valueStyle,
+    Color? valueColor,
+    bool emphasized = false,
   }) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        if (icon != null) ...[
-          Icon(icon, size: 18, color: AppColors.neutralGray),
-          const SizedBox(width: 6),
-        ],
+        Text(label, style: AppTextStyles.captionMuted),
         Text(
-          label,
-          style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.neutralGray),
-        ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            value,
-            style: valueStyle ??
-                const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.black),
+          value,
+          style: (emphasized
+                  ? AppTextStyles.sectionTitleLarge
+                  : AppTextStyles.labelMedium)
+              .copyWith(
+            color: valueColor ?? Colors.black87,
+            fontWeight: emphasized ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _lotteryChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Text(text, style: AppTextStyles.labelSmall),
     );
   }
 }
