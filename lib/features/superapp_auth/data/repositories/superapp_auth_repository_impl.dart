@@ -212,7 +212,11 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       token: launchToken,
     );
     AppLogger.success('CBEBirr Plus auto-login response received');
-    final session = await _persistSessionFromPayload(remote, payload);
+    final session = await _persistSessionFromPayload(
+      remote,
+      payload,
+      persistCbeBirrPhone: true,
+    );
     _dataController.storeData('isFromTelebirrMiniApp', false);
     _dataController.storeData('isCbeBirr', true);
     return session;
@@ -222,6 +226,7 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
     SuperAppAuthRemoteDataSource remote,
     Map<String, dynamic> payload, {
     String? phoneNumber,
+    bool persistCbeBirrPhone = false,
   }) async {
     final session = remote.sessionFromLoginPayload(payload);
     AppLogger.log(
@@ -237,23 +242,18 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
     }
     _dataController.storeData('isLoggedIn', true);
 
+    String? persistedPhoneNumber;
     final user = remote.userFromLoginPayload(payload);
     if (user != null) {
-      _dataController.storeData('userId', user['id']);
-      _dataController.storeData('open_id', user['open_id'] ?? user['openId']);
-      _dataController.storeData('identityId', user['identityId']);
-      _dataController.storeData('fullName', user['fullName']);
-      _dataController.storeData('phoneNumber', user['phoneNumber']);
-      _dataController.storeData('lastName', user['lastName']);
-      _dataController.storeData('firstName', user['firstName']);
-      _dataController.storeData('middleName', user['middleName']);
-      _dataController.storeData('email', user['email']);
+      persistedPhoneNumber = _persistUserIdentity(user);
     } else if (phoneNumber != null && phoneNumber.isNotEmpty) {
       _dataController.storeData('phoneNumber', phoneNumber);
+      persistedPhoneNumber = phoneNumber;
     }
     final payloadPhoneNumber = _phoneNumberFromPayload(payload);
     if (payloadPhoneNumber != null && payloadPhoneNumber.isNotEmpty) {
       _dataController.storeData('phoneNumber', payloadPhoneNumber);
+      persistedPhoneNumber = payloadPhoneNumber;
     }
 
     try {
@@ -268,12 +268,113 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
       );
       final profile = await authedRemote.fetchProfile();
       _dataController.storeData('profile', profile);
+      persistedPhoneNumber =
+          _persistProfileIdentity(profile) ?? persistedPhoneNumber;
       AppLogger.log('profile fetched and cached');
     } catch (e) {
       AppLogger.warn('profile fetch skipped/failed after login: $e');
     }
 
+    if (persistCbeBirrPhone &&
+        persistedPhoneNumber != null &&
+        persistedPhoneNumber.trim().isNotEmpty) {
+      _dataController.storeData('cbeBirrPlusPhone', persistedPhoneNumber);
+    }
+
     return session;
+  }
+
+  String? _persistUserIdentity(Map<String, dynamic> user) {
+    _storeIfPresent(
+        'userId', _stringAt(user, ['id', '_id', 'userId', 'userID']));
+    _storeIfPresent('open_id', _stringAt(user, ['open_id', 'openId']));
+    _storeIfPresent(
+        'identityId', _stringAt(user, ['identityId', 'identity_id']));
+    _storeIfPresent('firstName', _stringAt(user, ['firstName', 'first_name']));
+    _storeIfPresent(
+        'middleName', _stringAt(user, ['middleName', 'middle_name']));
+    _storeIfPresent('lastName', _stringAt(user, ['lastName', 'last_name']));
+    _storeIfPresent('email', _stringAt(user, ['email']));
+    final phoneNumber =
+        _stringAt(user, ['phoneNumber', 'phone', 'mobile', 'identifier']);
+    _storeIfPresent('phoneNumber', phoneNumber);
+
+    final fullName = _stringAt(user, ['fullName', 'name']) ??
+        _joinNameParts(
+          _stringAt(user, ['firstName', 'first_name']),
+          _stringAt(user, ['middleName', 'middle_name']),
+          _stringAt(user, ['lastName', 'last_name']),
+        );
+    _storeIfPresent('fullName', fullName);
+    return phoneNumber;
+  }
+
+  String? _persistProfileIdentity(Map<String, dynamic> profile) {
+    final user = _mapAt(profile, [
+      'user',
+      'data.user',
+      'data.profile.user',
+      'profile.user',
+    ]);
+
+    if (user != null) {
+      return _persistUserIdentity(user);
+    }
+
+    final flatProfile =
+        _mapAt(profile, ['data.profile', 'profile', 'data']) ?? profile;
+    return _persistUserIdentity(flatProfile);
+  }
+
+  Map<String, dynamic>? _mapAt(
+      Map<String, dynamic> payload, List<String> paths) {
+    for (final path in paths) {
+      dynamic current = payload;
+      for (final part in path.split('.')) {
+        if (current is Map) {
+          current = current[part];
+        } else {
+          current = null;
+          break;
+        }
+      }
+      if (current is Map<String, dynamic>) return current;
+      if (current is Map) return Map<String, dynamic>.from(current);
+    }
+    return null;
+  }
+
+  String? _stringAt(Map<String, dynamic> payload, List<String> paths) {
+    for (final path in paths) {
+      dynamic current = payload;
+      for (final part in path.split('.')) {
+        if (current is Map) {
+          current = current[part];
+        } else {
+          current = null;
+          break;
+        }
+      }
+      final value = current?.toString().trim();
+      if (value != null && value.isNotEmpty && value != 'null') return value;
+    }
+    return null;
+  }
+
+  String? _joinNameParts(
+      String? firstName, String? middleName, String? lastName) {
+    final parts = [firstName, middleName, lastName]
+        .where((part) => part != null && part.trim().isNotEmpty)
+        .map((part) => part!.trim())
+        .toList();
+    if (parts.isEmpty) return null;
+    return parts.join(' ');
+  }
+
+  void _storeIfPresent(String key, String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty || trimmed == 'null') return;
+    _dataController.storeData(key, trimmed);
   }
 
   String? _phoneNumberFromPayload(Map<String, dynamic> payload) {

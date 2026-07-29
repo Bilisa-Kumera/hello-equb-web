@@ -191,6 +191,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void dispose() {
     _paymentResultSub?.cancel();
     _amountController.dispose();
+    phoneController.dispose();
     super.dispose();
   }
 
@@ -682,6 +683,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }) {
     final bool isTelebirrMiniApp =
         paymentMethodId == 'telebirr' && _isFromTelebirrMiniApp;
+    final bool isCbeBirrPlusPayment =
+        paymentMethodId == 'cbe' && _isInsideCbeBirrPlus;
+    final String cbeBirrPlusPhone =
+        dataController.retrieveData<String>('cbeBirrPlusPhone')?.trim() ??
+            dataController.retrieveData<String>('phoneNumber')?.trim() ??
+            '';
+    if (isCbeBirrPlusPayment && cbeBirrPlusPhone.isNotEmpty) {
+      phoneController.text = cbeBirrPlusPhone;
+      phoneNumber = cbeBirrPlusPhone;
+    }
     return Container(
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -720,18 +731,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade200),
                 ),
-                child: IntlPhoneField(
-                  controller: phoneController,
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                    border: InputBorder.none,
-                    hintText: '*** ** ** **',
-                    hintStyle: TextStyle(color: Colors.grey.shade400),
-                  ),
-                  initialCountryCode: 'ET',
-                  disableLengthCheck: true,
-                  onChanged: (phone) => phoneNumber = phone.completeNumber,
-                ),
+                child: isCbeBirrPlusPayment
+                    ? TextFormField(
+                        controller: phoneController,
+                        readOnly: true,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          border: InputBorder.none,
+                          hintText: '*** ** ** **',
+                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                          suffixIcon: const Icon(Icons.lock_outline),
+                        ),
+                      )
+                    : IntlPhoneField(
+                        controller: phoneController,
+                        decoration: InputDecoration(
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 16),
+                          border: InputBorder.none,
+                          hintText: '*** ** ** **',
+                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                        ),
+                        initialCountryCode: 'ET',
+                        disableLengthCheck: true,
+                        onChanged: (phone) =>
+                            phoneNumber = phone.completeNumber,
+                      ),
               ),
               SizedBox(height: 20.h),
               Container(
@@ -770,9 +799,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     elevation: 0,
                   ),
                   onPressed: () {
-                    if (isTelebirrMiniApp || phoneController.text.isNotEmpty) {
+                    final submittedPhone =
+                        isCbeBirrPlusPayment ? cbeBirrPlusPhone : phoneNumber;
+                    if (isTelebirrMiniApp ||
+                        submittedPhone.trim().isNotEmpty ||
+                        phoneController.text.isNotEmpty) {
                       _processPhonePayment(
-                        phone: phoneNumber,
+                        phone: submittedPhone,
                         paymentMethod: paymentMethodId,
                       );
                     }

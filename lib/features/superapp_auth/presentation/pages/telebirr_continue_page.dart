@@ -208,7 +208,7 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
                 _TelebirrLogo(),
                 SizedBox(height: 18.h),
                 Text(
-                  'Continue with Telebirr',
+                  'Continue with telebirr',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 22.sp,
