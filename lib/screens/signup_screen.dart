@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/main.dart';
 import 'package:helloequb/screens/create_new_password_screen.dart';
 import 'package:helloequb/utils/app_localizations.dart';
@@ -28,17 +27,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   TextEditingController phoneNumberController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController referalController = TextEditingController();
-  final FocusNode _phoneFocusNode = FocusNode();
-  final FocusNode _emailFocusNode = FocusNode();
-  bool _isPhoneTabActive = true;
-
 
   @override
   void initState() {
     super.initState();
 
     final isPhone = widget.phoneNumber.trim().startsWith('+251');
-    _isPhoneTabActive = isPhone;
     if (phoneNumberController.text.isEmpty) {
       phoneNumberController.text = '+251';
     }
@@ -64,8 +58,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     phoneNumberController.dispose();
     emailController.dispose();
     referalController.dispose();
-    _phoneFocusNode.dispose();
-    _emailFocusNode.dispose();
     super.dispose();
   }
 
@@ -86,7 +78,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  // Method to display an image selection option
   void _showImagePicker() {
     showModalBottomSheet(
       context: context,
@@ -121,29 +112,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  void _switchContactTab(bool isPhoneTab) {
-    if (_isPhoneTabActive == isPhoneTab) return;
-    _phoneFocusNode.unfocus();
-    _emailFocusNode.unfocus();
-    FocusScope.of(context).unfocus();
-    setState(() {
-      _isPhoneTabActive = isPhoneTab;
-    });
-    Future.delayed(const Duration(milliseconds: 120), () {
-      if (!mounted) return;
-      if (isPhoneTab) {
-        _phoneFocusNode.requestFocus();
-      } else {
-        _emailFocusNode.requestFocus();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final contactLabel = _isPhoneTabActive
-        ? AppKeys.phoneNumber.tr(context)
-        : '${AppKeys.email.tr(context)} (Opt)';
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
@@ -167,7 +137,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
             ),
-          
             Padding(
               padding: const EdgeInsets.only(left: 28.0, right: 26, top: 16),
               child: Text(
@@ -186,8 +155,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 borderWidth: 0.6,
               ),
             ),
-
-              Padding(
+            Padding(
               padding: const EdgeInsets.only(left: 28.0, right: 26, top: 6),
               child: Text(
                 AppKeys.middleName.tr(context),
@@ -205,7 +173,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 borderWidth: 0.6,
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.only(left: 28.0, right: 26, top: 16),
               child: Text(
@@ -225,77 +192,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(left: 26.0, right: 26, top: 16),
-              child: Container(
-                padding: EdgeInsets.all(4.w),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.lightBlueGray,
-                    width: 0.6,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildContactTab(
-                        label: AppKeys.phoneNumber.tr(context),
-                        isSelected: _isPhoneTabActive,
-                        onTap: () => _switchContactTab(true),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: _buildContactTab(
-                        label: AppKeys.email.tr(context),
-                        isSelected: !_isPhoneTabActive,
-                        onTap: () => _switchContactTab(false),
-                      ),
-                    ),
-                  ],
-                ),
+              padding: const EdgeInsets.only(left: 28.0, right: 26, top: 16),
+              child: Text(
+                '${AppKeys.email.tr(context)} (Opt)',
+                style: AppTextStyles.poppins70016,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 26.0, right: 26, top: 6),
+              child: CustomTextField(
+                hintText: 'example@gmail.com',
+                controller: emailController,
+                borderRadius: BorderRadius.circular(8),
+                height: 56,
+                width: double.infinity,
+                borderWidth: 0.6,
+                keyboardType: TextInputType.emailAddress,
               ),
             ),
             Padding(
               padding: const EdgeInsets.only(left: 28.0, right: 26, top: 16),
               child: Text(
-                contactLabel,
+                AppKeys.phoneNumber.tr(context),
                 style: AppTextStyles.poppins70016,
               ),
             ),
             Padding(
               padding: const EdgeInsets.only(
                   left: 26.0, right: 26, top: 6, bottom: 20),
-              child: _isPhoneTabActive
-                  ? TextFormField(
-                      controller: phoneNumberController,
-                      focusNode: _phoneFocusNode,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        hintText: '+251...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(13),
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'^\+?[0-9]*$'),
-                        ),
-                      ],
-                    )
-                  : TextFormField(
-                      controller: emailController,
-                      focusNode: _emailFocusNode,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        hintText: 'example@gmail.com',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
+              child: TextFormField(
+                controller: phoneNumberController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  hintText: '+251...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(13),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\+?[0-9]*$')),
+                ],
+              ),
             ),
             Padding(
               padding: const EdgeInsets.only(left: 28.0, right: 26, top: 10),
@@ -342,38 +280,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 textColor: AppColors.white,
               ),
             ),
-          
             const SizedBox(height: 36),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContactTab({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: AppTextStyles.poppins60014.copyWith(
-                color: isSelected ? AppColors.white : AppColors.grey,
-              ),
-            ),
-          ),
         ),
       ),
     );

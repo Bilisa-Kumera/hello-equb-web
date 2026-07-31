@@ -876,66 +876,28 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                try {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => MyEkubDetailScreen(
-                                        ekubType:
-                                            widget.equb.equbType?.values.first,
-                                        ekubAmount: widget.equb.equbAmount ?? 0,
-                                        ekubCycle: 3,
-                                        ekubId: widget.equb.id ?? '',
-                                        ekubName: widget.equb.name ?? '',
-                                        ekubRequest: true,
-                                        ekubersNumber: 2,
-                                        nextRoundDate:
-                                            widget.equb.nextRoundDate ?? '',
-                                        nextRoundLotteryType:
-                                            widget.equb.nextRoundLotteryType ??
-                                                '',
-                                        nextRoundTime:
-                                            widget.equb.nextRoundTime ?? '',
-                                        serviceCharge: widget.equb.serviceCharge
-                                            .toString(),
-                                      ),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Invalid input values. Please check the ekub details.'),
-                                      backgroundColor: AppColors.red,
-                                    ),
-                                  );
-                                }
-                              },
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${AppKeys.youHaveJoined.tr(context)} $joinedAmount ${AppKeys.lotteriesBefore.tr(context)}',
-                                    style: AppTextStyles.poppins70014.copyWith(
-                                        color: AppColors.primary, height: 1.4),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    AppKeys.tapToViewDetails.tr(context),
-                                    style: AppTextStyles.poppins40012
-                                        .copyWith(color: AppColors.primary),
-                                  ),
-                                ],
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${AppKeys.youHaveJoined.tr(context)} $joinedAmount ${AppKeys.lotteriesBefore.tr(context)}',
+                                  style: AppTextStyles.poppins70014.copyWith(
+                                      color: AppColors.primary, height: 1.4),
+                                ),
+                                // const SizedBox(height: 4),
+                                // Text(
+                                //   AppKeys.tapToViewDetails.tr(context),
+                                //   style: AppTextStyles.poppins40012
+                                //       .copyWith(color: AppColors.primary),
+                                // ),
+                              ],
                             ),
                           ),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            color: AppColors.primary.withOpacity(0.5),
-                            size: 16,
-                          ),
+                          // Icon(
+                          //   Icons.arrow_forward_ios_rounded,
+                          //   color: AppColors.primary.withOpacity(0.5),
+                          //   size: 16,
+                          // ),
                         ],
                       ),
                     )
