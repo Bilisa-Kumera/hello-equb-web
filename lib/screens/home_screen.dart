@@ -2,7 +2,6 @@
 
 import 'package:dio/dio.dart';
 import 'package:helloequb/core/api_service_elper.dart';
-import 'package:helloequb/screens/join_ekub_detail.dart';
 import 'package:helloequb/screens/my_other_ekubs.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/colors_constant.dart';
@@ -303,27 +302,14 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
               );
             }
             final equb = sortedEqubs[index];
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EqubJoinDetail(
-                      equb: equb,
-                      equbType: equb.equbType?.entries.first.value ?? '',
-                    ),
-                  ),
-                );
-              },
-              child: EqubDetailCard(
-                key: ValueKey(equb.id),
-                equb: equb,
-                equbType: equb.equbType?.entries.first.value ?? '',
-                type: equb.equbType?['name'],
-                imageUrl: widget.imageUrl,
-                image: equb.image,
-                description: widget.description,
-              ),
+            return EqubDetailCard(
+              key: ValueKey(equb.id),
+              equb: equb,
+              equbType: equb.equbType?.entries.first.value ?? '',
+              type: equb.equbType?['name'],
+              imageUrl: widget.imageUrl,
+              image: equb.image,
+              description: widget.description,
             );
           },
         );

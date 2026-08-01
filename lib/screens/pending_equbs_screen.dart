@@ -122,10 +122,8 @@ class _WaitingEkubsState extends State<WaitingEkubs> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
+      onWillPop: ()  async {
+        await navigateToMainShell(context, initialIndex: 0);
         return false;
       },
       child: Scaffold(

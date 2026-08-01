@@ -3,7 +3,6 @@ import '../../models/financeandothermodel.dart';
 import 'package:helloequb/provider/equb_provider.dart';
 import 'package:provider/provider.dart';
 import '../equb_detail_card.dart';
-import '../join_ekub_detail.dart';
 import '../../utils/colors_constant.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import '../../utils/lang_constants.dart';
@@ -146,24 +145,11 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
               );
             }
             final equb = provider.equbs[index];
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EqubJoinDetail(
-                      equb: equb,
-                      equbType: equb.equbType?.entries.first.value ?? '',
-                    ),
-                  ),
-                );
-              },
-              child: EqubDetailCard(
-                key: ValueKey(equb.id),
-                equb: equb,
-                equbType: equb.equbType?.entries.first.value ?? '',
-                type: equb.equbType?['name'],
-              ),
+            return EqubDetailCard(
+              key: ValueKey(equb.id),
+              equb: equb,
+              equbType: equb.equbType?.entries.first.value ?? '',
+              type: equb.equbType?['name'],
             );
           },
         );

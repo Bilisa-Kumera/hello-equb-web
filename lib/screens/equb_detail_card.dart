@@ -167,6 +167,22 @@ class _EqubDetailCardState extends State<EqubDetailCard> {
   int get _neededCount => equb.numberOfEqubers ?? 0;
   bool get _isFilled => _neededCount > 0 && _joinedCount >= _neededCount;
 
+  Future<void> _openDetailIfAllowed() async {
+    if (_isFilled) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EqubJoinDetail(
+          equb: equb,
+          equbType: widget.equbType,
+        ),
+      ),
+    );
+    if (mounted) {
+      await _loadJoinStatus(forceRefresh: true);
+    }
+  }
+
   void _showFullScreenImage(
     BuildContext context,
     String heroTag,
@@ -372,82 +388,73 @@ class _EqubDetailCardState extends State<EqubDetailCard> {
     final currentRound = equb.currentRound ?? 0;
     final totalRounds = equb.numberOfEqubers ?? 0;
 
-    return EqubTileCard(
-      title: equbName,
-      amountText: '$amount ${AppKeys.currencyBirr.tr(context)}',
-      badgeText: status,
-      isJoined: _checkedJoin && _isJoined,
-      topSection: _buildTopSection(context),
-      details: [
-        EqubTileDetail(
-          icon: Icons.account_balance_wallet_outlined,
-          label: AppKeys.totalAmount.tr(context),
-          value: '$totalAmount ${AppKeys.currencyBirr.tr(context)}',
-        ),
-        EqubTileDetail(
-          icon: Icons.calendar_today_outlined,
-          label: AppKeys.expectedStartDate.tr(context),
-          value: startParts.ethiopian,
-          secondaryValue:
-              startParts.gregorian == '-' ? null : startParts.gregorian,
-        ),
-        EqubTileDetail(
-          icon: Icons.event_outlined,
-          label: AppKeys.expectedEndDate.tr(context),
-          value: endParts.ethiopian,
-          secondaryValue:
-              endParts.gregorian == '-' ? null : endParts.gregorian,
-        ),
-        EqubTileDetail(
-          icon: Icons.autorenew_rounded,
-          label: AppKeys.round.tr(context),
-          value: '$currentRound/$totalRounds',
-        ),
-
-      ],
-      // bottomSection: _buildMembersProgress(context),
-      actionRow: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: () async {
-            if (_isFilled) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(AppKeys.alreadyFilled.tr(context)),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-              return;
-            }
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EqubJoinDetail(
-                  equb: equb,
-                  equbType: widget.equbType,
-                ),
-              ),
-            );
-            if (mounted) {
-              await _loadJoinStatus(forceRefresh: true);
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-                _isFilled ? Colors.grey.shade500 : AppColors.primary,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            padding: EdgeInsets.symmetric(vertical: 10.h),
+    return GestureDetector(
+      onTap: _isFilled ? null : _openDetailIfAllowed,
+      child: EqubTileCard(
+        title: equbName,
+        amountText: '$amount ${AppKeys.currencyBirr.tr(context)}',
+        badgeText: status,
+        isJoined: _checkedJoin && _isJoined,
+        topSection: _buildTopSection(context),
+        details: [
+          EqubTileDetail(
+            icon: Icons.account_balance_wallet_outlined,
+            label: AppKeys.totalAmount.tr(context),
+            value: '$totalAmount ${AppKeys.currencyBirr.tr(context)}',
           ),
-          child: Text(
-            _isFilled
-                ? AppKeys.alreadyFilled.tr(context)
-                : _isJoined
-                    ? AppKeys.joinAgain.tr(context)
-                    : AppKeys.join.tr(context),
-            style: AppTextStyles.button.copyWith(color: Colors.white),
+          EqubTileDetail(
+            icon: Icons.calendar_today_outlined,
+            label: AppKeys.expectedStartDate.tr(context),
+            value: startParts.ethiopian,
+            secondaryValue:
+                startParts.gregorian == '-' ? null : startParts.gregorian,
+          ),
+          EqubTileDetail(
+            icon: Icons.event_outlined,
+            label: AppKeys.expectedEndDate.tr(context),
+            value: endParts.ethiopian,
+            secondaryValue:
+                endParts.gregorian == '-' ? null : endParts.gregorian,
+          ),
+          EqubTileDetail(
+            icon: Icons.autorenew_rounded,
+            label: AppKeys.round.tr(context),
+            value: '$currentRound/$totalRounds',
+          ),
+        ],
+        // bottomSection: _buildMembersProgress(context),
+        actionRow: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () async {
+              if (_isFilled) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppKeys.alreadyFilled.tr(context)),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              await _openDetailIfAllowed();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  _isFilled ? Colors.grey.shade500 : AppColors.primary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              padding: EdgeInsets.symmetric(vertical: 10.h),
+            ),
+            child: Text(
+              _isFilled
+                  ? AppKeys.alreadyFilled.tr(context)
+                  : _isJoined
+                      ? AppKeys.joinAgain.tr(context)
+                      : AppKeys.join.tr(context),
+              style: AppTextStyles.button.copyWith(color: Colors.white),
+            ),
           ),
         ),
       ),

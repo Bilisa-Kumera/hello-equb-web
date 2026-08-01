@@ -5,7 +5,6 @@ import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/core/api_url.dart';
 
 import 'equb_detail_card.dart';
-import 'join_ekub_detail.dart';
 import 'package:helloequb/utils/style_constants.dart';
 
 class CooperateListScreen extends StatelessWidget {
@@ -34,26 +33,11 @@ class CooperateListScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               itemBuilder: (context, index) {
                 final e = equbs[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EqubJoinDetail(
-                          equb: e,
-                          equbType: e.equbType?.entries.first.value ??
-                              e.equbType?['name'] ??
-                              'N/A',
-                        ),
-                      ),
-                    );
-                  },
-                  child: EqubDetailCard(
-                    key: ValueKey(e.id),
-                    equb: e,
-                    equbType: e.equbType?.entries.first.value ?? '',
-                    type: e.equbType?['name'] ?? '',
-                  ),
+                return EqubDetailCard(
+                  key: ValueKey(e.id),
+                  equb: e,
+                  equbType: e.equbType?.entries.first.value ?? '',
+                  type: e.equbType?['name'] ?? '',
                 );
               },
               separatorBuilder: (_, __) => const SizedBox(height: 12),
