@@ -121,7 +121,7 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
 
     if (widget.cfg.merchantAppId.trim().isEmpty) {
       setState(() => _error =
-          'Missing merchant app id (set MERCHANT_APP_ID or SUPERAPP_APP_ID in .env).');
+          'Missing merchant app id (set MERCHANT_APP_ID via --dart-define).');
       setState(() => _isAuthenticating = false);
       return;
     }

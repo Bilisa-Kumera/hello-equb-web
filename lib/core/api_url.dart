@@ -1,4 +1,4 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:helloequb/core/env_config.dart';
 import 'package:intl/intl.dart';
 
 const String _defaultBaseUrl = 'http://localhost:8000/';
@@ -10,8 +10,8 @@ String _normalizeBaseUrl(String raw) {
 }
 
 String get _baseUrlEnv {
-  final env = dotenv.env['BASE_URL'];
-  if (env == null || env.trim().isEmpty) return _defaultBaseUrl;
+  final env = EnvConfig.baseUrl;
+  if (env.trim().isEmpty) return _defaultBaseUrl;
   return env;
 }
 

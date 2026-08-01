@@ -184,7 +184,7 @@ class _LoginScreenWithPinState extends State<LoginScreenWithPin> {
             throw FormatException(
               'Received HTML instead of JSON from ${response.realUri}. '
               'Your app likely called Firebase Hosting (rewrite to index.html) instead of the API. '
-              'Check BASE_URL/.env and hard refresh.',
+              'Check BASE_URL dart-define and hard refresh.',
             );
           }
           body = jsonDecode(raw) as Map<String, dynamic>;

@@ -1,4 +1,4 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:helloequb/core/env_config.dart';
 
 class SuperAppAuthConfig {
   const SuperAppAuthConfig({
@@ -22,9 +22,7 @@ class SuperAppAuthConfig {
   final String cbeBirrPlusAutoLoginUrl;
 
   static SuperAppAuthConfig fromEnv() {
-    final merchantAppId =
-        (dotenv.env['MERCHANT_APP_ID'] ?? '')
-            .trim();
+    final merchantAppId = EnvConfig.merchantAppId.trim();
 
     String? normalizeBaseUrlOverride(String raw) {
       final v = raw.trim();
@@ -37,11 +35,13 @@ class SuperAppAuthConfig {
     }
 
     final apiBaseUrlOverride = normalizeBaseUrlOverride(
-      dotenv.env['SUPERAPP_BASE_URL'] ?? dotenv.env['TELEBIRR_BASE_URL'] ?? '',
+      EnvConfig.superappBaseUrl.isNotEmpty
+          ? EnvConfig.superappBaseUrl
+          : EnvConfig.telebirrBaseUrl,
     );
 
     // These are paths relative to the API base URL (which in this project is
-    // typically `${BASE_URL}/api/v1`). You can override them in `.env`.
+    // typically `${BASE_URL}/api/v1`). Override via --dart-define.
     //
     // If your backend expects root paths like `/auth/token`, set
     // `SUPERAPP_TOKEN_EXCHANGE_PATH=/auth/token`.
@@ -53,25 +53,26 @@ class SuperAppAuthConfig {
     }
 
     final tokenExchangePath = normalizePath(
-      dotenv.env['SUPERAPP_TOKEN_EXCHANGE_PATH'] ??
-          'user/auth/login-for-miniapp',
+      EnvConfig.superappTokenExchangePath.isNotEmpty
+          ? EnvConfig.superappTokenExchangePath
+          : 'user/auth/login-for-miniapp',
     );
     final profilePath = normalizePath(
-      dotenv.env['SUPERAPP_PROFILE_PATH'] ?? 'user/profile/me',
+      EnvConfig.superappProfilePath.isNotEmpty
+          ? EnvConfig.superappProfilePath
+          : 'user/profile/me',
     );
 
     const defaultTelebirrAutoLoginUrl =
         'https://api.hello-equb.com/api/v1/user/auth/auto-login-telebirr-miniapp';
-    final telebirrRaw =
-        (dotenv.env['TELEBIRR_GATEWAY_AUTH_TOKEN_URL'] ?? '').trim();
+    final telebirrRaw = EnvConfig.telebirrGatewayAuthTokenUrl.trim();
     final telebirrGatewayAuthTokenUrl = telebirrRaw.isNotEmpty
         ? telebirrRaw
         : defaultTelebirrAutoLoginUrl;
 
     const defaultCbeBirrPlusAutoLoginUrl =
         'https://api.hello-equb.com/api/v1/user/auth/auto-login-cbebirr-miniapp';
-    final cbeRaw =
-        (dotenv.env['CBEBIRR_PLUS_AUTO_LOGIN_URL'] ?? '').trim();
+    final cbeRaw = EnvConfig.cbebirrPlusAutoLoginUrl.trim();
     final cbeBirrPlusAutoLoginUrl = cbeRaw.isNotEmpty
         ? cbeRaw
         : defaultCbeBirrPlusAutoLoginUrl;

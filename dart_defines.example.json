@@ -1,0 +1,10 @@
+{
+  "BASE_URL": "https://api.hello-equb.com/",
+  "MERCHANT_APP_ID": "your-merchant-app-id",
+  "SUPERAPP_TOKEN_EXCHANGE_PATH": "/auth/token",
+  "SUPERAPP_BASE_URL": "https://your-superapp-base-url",
+  "SUPERAPP_DEBUG": "false",
+  "CBEBIRR_PLUS_COMPANY_NAME": "HelloEqub",
+  "CBEBIRR_PLUS_KEY": "your-cbebirr-plus-key",
+  "CBE_GATEWAY_BASE_URL": ""
+}

@@ -11,7 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: flutter pub get && flutter build web
+      - name: Prepare dart defines
+        run: |
+          if [ -n "${{ secrets.DART_DEFINES_JSON }}" ]; then
+            echo '${{ secrets.DART_DEFINES_JSON }}' > dart_defines.json
+          else
+            cp dart_defines.example.json dart_defines.json
+          fi
+      - run: flutter pub get && flutter build web --dart-define-from-file=dart_defines.json
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

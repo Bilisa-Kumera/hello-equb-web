@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:helloequb/core/env_config.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
@@ -66,7 +66,7 @@ class CbeBirrPlusGatewayService {
   final CbeBirrPlusBridge _bridge;
 
   String get _gatewayBaseUrl {
-    final raw = dotenv.env['CBE_GATEWAY_BASE_URL'] ?? '';
+    final raw = EnvConfig.cbeGatewayBaseUrl;
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';
     return trimmed.endsWith('/')

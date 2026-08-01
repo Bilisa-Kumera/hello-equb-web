@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:helloequb/core/env_config.dart';
 
 class AppLogger {
   // Telebirr SuperApp WebView typically has no accessible console, so we keep
@@ -13,7 +13,7 @@ class AppLogger {
   static ValueListenable<List<String>> get lines => _lines;
 
   static void initFromEnv() {
-    final raw = (dotenv.env['SUPERAPP_DEBUG'] ?? '').trim().toLowerCase();
+    final raw = EnvConfig.superappDebug.trim().toLowerCase();
     if (raw.isEmpty) return;
     _enabled = raw == '1' || raw == 'true' || raw == 'yes' || raw == 'on';
   }

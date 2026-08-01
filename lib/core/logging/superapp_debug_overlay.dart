@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:helloequb/core/env_config.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dart';
@@ -58,7 +58,7 @@ class _SuperAppDebugOverlayState extends State<SuperAppDebugOverlay> {
     final merchantId = SuperAppAuthConfig.fromEnv().merchantAppId;
     if (merchantId.isEmpty) {
       AppLogger.error(
-        'Telebirr merchant ID is missing. Set MERCHANT_APP_ID or SUPERAPP_APP_ID.',
+        'Telebirr merchant ID is missing. Set MERCHANT_APP_ID via --dart-define.',
       );
       return;
     }
@@ -116,7 +116,7 @@ class _SuperAppDebugOverlayState extends State<SuperAppDebugOverlay> {
   }
 
   static bool? _debugEnvOverride() {
-    final value = (dotenv.env['SUPERAPP_DEBUG'] ?? '').trim();
+    final value = EnvConfig.superappDebug.trim();
     if (value.isEmpty) return null;
     return _isTruthy(value);
   }

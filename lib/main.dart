@@ -37,9 +37,6 @@ import 'package:helloequb/core/web_leave_guard.dart';
 import 'provider/allequb_payment.dart';
 import 'provider/cooperate_equbs_provider.dart';
 import 'provider/joined_equbs_status_provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-import 'provider/joined_equbs_status_provider.dart';
 
 Future<void> requestCameraAndGalleryPermissions() async {
   if (kIsWeb) return;
@@ -118,7 +115,6 @@ dynamic _handleNotificationNavigation(Map<String, dynamic> data) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
   AppLogger.initFromEnv();
   initSuperAppJsLogForwarder();
   initWebLeaveGuard();
