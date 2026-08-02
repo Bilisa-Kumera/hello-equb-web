@@ -55,7 +55,7 @@ android {
 
     defaultConfig {
         applicationId "com.hello.equb"
-        minSdkVersion flutter.minSdkVersion
+        minSdkVersion 21
         targetSdk  36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
