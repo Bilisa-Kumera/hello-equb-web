@@ -48,7 +48,7 @@ class SuperAppEntryPage extends StatelessWidget {
                   ),
                   SizedBox(height: 28.h),
                   _EntryButton(
-                    label: 'Continue with Telebirr',
+                    label: 'Continue with telebirr',
                     icon: Icons.account_balance_wallet_rounded,
                     onPressed: () => context.go('/telebirr'),
                   ),

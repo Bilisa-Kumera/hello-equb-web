@@ -395,7 +395,7 @@ class _TelebirrMiniAppLoginViewState extends State<_TelebirrMiniAppLoginView> {
                     _TelebirrLogo(),
                     SizedBox(height: 18.h),
                     Text(
-                      'Continue with Telebirr',
+                      'Continue with telebirr',
                       textAlign: TextAlign.center,
                     style: AppTextStyles.poppins70022
                         .copyWith(color: AppColors.deepForestGreen),

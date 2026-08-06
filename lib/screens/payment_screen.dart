@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 
-import 'package:helloequb/screens/home_screen.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/screens/LoginScreenWithPin.dart';
@@ -15,6 +14,7 @@ import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:helloequb/core/telebirr_service.dart';
 import 'package:helloequb/core/telebirr/telebirr.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
@@ -138,8 +138,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.initState();
     _isInsideCbeBirrPlus =
         dataController.retrieveData<bool>('isCbeBirr') ?? false;
-    _isFromTelebirrMiniApp =
-        dataController.retrieveData<bool>('isFromTelebirrMiniApp') ?? false;
+    _isFromTelebirrMiniApp = dataController.retrieveData<bool>('isFromTelebirrMiniApp') ?? false;
     if (_isFromTelebirrMiniApp) {
       selectedIndex = 0;
       selectedPaymentMethodId = 'telebirr';
@@ -147,8 +146,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     // Ensure runtime detection when possible (e.g., when navigated directly to payment)
     _detectCbeBirrBridge();
     _amountController = TextEditingController(
-      text:
-          '${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
+      text:'${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
     );
     _subscribeToTelebirrPaymentResults();
   }
@@ -167,8 +165,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final ok =
           await bridge.waitUntilAvailable(timeout: const Duration(seconds: 6));
       dataController.storeData('isCbeBirr', ok);
-      if (ok && !_isInsideCbeBirrPlus)
+      if (ok && !_isInsideCbeBirrPlus) {
         setState(() => _isInsideCbeBirrPlus = true);
+      }
     } catch (_) {
       // ignore errors; leave flag as-is
     }
@@ -209,6 +208,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   // --- Logic: Telebirr ---
   Future<void> _handleTelebirr() async {
+    final String loggedInPhone =
+        dataController.retrieveData<String>('phoneNumber')?.trim() ?? '';
+
+    if (loggedInPhone.isNotEmpty) {
+      phoneController.text = loggedInPhone;
+      phoneNumber = loggedInPhone;
+      await _processPhonePayment(
+        phone: loggedInPhone,
+        paymentMethod: 'telebirr',
+        shouldCloseBottomSheet: false,
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -235,10 +248,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _processPhonePayment({
     required String phone,
     required String paymentMethod,
+    bool shouldCloseBottomSheet = true,
   }) async {
     final bool useTelebirrMiniApp =
         paymentMethod == 'telebirr' && _isFromTelebirrMiniApp;
-    if (!useTelebirrMiniApp) {
+    if (!useTelebirrMiniApp && shouldCloseBottomSheet) {
       Navigator.pop(context);
     }
 
@@ -665,10 +679,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         content: Text(message, style: const TextStyle(fontSize: 16)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-                (route) => false),
+            onPressed: () => navigateToMainShell(context, initialIndex: 0),
             child: Text(AppKeys.ok.tr(context)),
           )
         ],
@@ -1082,7 +1093,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
+                            color: Colors.transparent.withOpacity(0.03),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -1091,7 +1102,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       child: Row(
                         children: [
                           Container(
-                            width: 48,
+                            width: 78,
                             height: 48,
                             decoration: BoxDecoration(
                               color: option['color'],
