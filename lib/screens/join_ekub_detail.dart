@@ -36,6 +36,18 @@ class ListItem {
   String subtitle;
 
   ListItem({required this.title, required this.subtitle});
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'subtitle': subtitle,
+      };
+
+  factory ListItem.fromJson(Map<String, dynamic> json) {
+    return ListItem(
+      title: json['title'] as String,
+      subtitle: json['subtitle'] as String,
+    );
+  }
 }
 
 class EqubDetail extends StatelessWidget {

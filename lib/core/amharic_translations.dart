@@ -156,7 +156,7 @@ final Map<String, String> amET = {
   "lbl_finance_equbs": "ፋይናንስ + ሌሎች",
   "lbl_special_finance_equbs": "ልዩ ፋይናንስ",
   "lbl_see_all": "ሁሉንም ይመልከቱ",
-  "lbl_no_ekubs": "ዕቁብ የለም",
+  "lbl_no_ekubs": "እስካሁን ምንም ዕቁብ አልተቀላቀሉም",
   "lbl_join_equb": "ተቀላቀል",
   "lbl_finance_and_other": "ፋይናንስ እና ሌሎች",
   "nb_only_one_person_will_be_winner": "ማስታወሻ: _አሸናፊ የሚሆነው አንድ ሰው ብቻ ነው፡",

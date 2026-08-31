@@ -4,6 +4,7 @@ import 'package:helloequb/provider/joined_equbs_status_provider.dart';
 import 'package:helloequb/screens/home_screen.dart';
 import 'package:helloequb/screens/my_other_ekubs.dart';
 import 'package:helloequb/screens/profile_screen.dart';
+import 'package:go_router/go_router.dart';
 import 'package:helloequb/utils/custom_bottom_nav.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:provider/provider.dart';
@@ -28,8 +29,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    final showMyEqub =
-        DataController().retrieveData<bool>('hasJoinedEqubs') ?? false;
+    final showMyEqub = kIsWeb ||
+        (DataController().retrieveData<bool>('hasJoinedEqubs') ?? false);
     _lastShowMyEqub = showMyEqub;
     _currentIndex = widget.initialIndex.clamp(0, showMyEqub ? 2 : 1);
 
@@ -41,6 +42,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         provider.startApprovalWatch();
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant MainNavigationScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex == widget.initialIndex) return;
+
+    final showMyEqub = kIsWeb ||
+        (DataController().retrieveData<bool>('hasJoinedEqubs') ?? false);
+    final resolvedIndex = widget.initialIndex.clamp(0, showMyEqub ? 2 : 1);
+
+    if (_currentIndex != resolvedIndex) {
+      setState(() => _currentIndex = resolvedIndex);
+    }
   }
 
   void _setNavBarVisible(bool visible) {
@@ -113,6 +128,27 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _onTabTapped(int index) {
     if (_currentIndex == index) return;
     _setNavBarVisible(true);
+
+    // Web: update the browser URL when switching between base tabs.
+    // Otherwise the location stays stuck at `/my-equbs`, which breaks the
+    // websocket `payment-success` navigation that relies on URL changes.
+    if (kIsWeb && GoRouter.maybeOf(context) != null) {
+      final targetBasePath = index == 0 ? '/my-equbs' : '/home';
+      final currentBasePath = Uri.base.path;
+
+      if (currentBasePath != targetBasePath) {
+        // `/home` is the base route for both Home (tab=1) and Profile (tab=2).
+        // When switching away from `/my-equbs`, preserve the exact tab index
+        // using an optional `?tab=` query parameter.
+        if (targetBasePath == '/my-equbs') {
+          context.go(index == 0 ? '/my-equbs' : '/my-equbs?tab=$index');
+        } else {
+          context.go(index == 1 ? '/home' : '/home?tab=$index');
+        }
+        return; // Let the router rebuild with the correct tab.
+      }
+    }
+
     setState(() => _currentIndex = index);
   }
 
@@ -135,7 +171,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     return Consumer<JoinedEqubsStatusProvider>(
       builder: (context, joinStatus, _) {
-        final showMyEqub = joinStatus.hasJoinedEqubs;
+        final showMyEqub = kIsWeb || joinStatus.hasJoinedEqubs;
 
         final pages = _buildPages(showMyEqub);
         final stackIndex = _resolveStackIndex(showMyEqub, pages.length);

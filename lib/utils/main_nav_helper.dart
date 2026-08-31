@@ -14,12 +14,25 @@ Future<void> navigateToMainShell(
 
   if (!context.mounted) return;
 
-  final showMyEqub = provider.hasJoinedEqubs;
+  // On web we treat the "My Equbs" tab as always available so that
+  // navigation (and URL path mapping) stays consistent across screens.
+  final showMyEqub = kIsWeb || provider.hasJoinedEqubs;
   final maxIndex = showMyEqub ? 2 : 1;
   final safeIndex = (initialIndex ?? 0).clamp(0, maxIndex);
 
   if (kIsWeb && GoRouter.maybeOf(context) != null) {
-    context.go('/home');
+    // Web: keep the browser URL in sync with the visible base/tabs.
+    // `/home` is the base route for both Home (tab=1) and Profile (tab=2),
+    // so we use `?tab=` to preserve which tab is active.
+    String targetPath = '/home';
+    if (showMyEqub) {
+      targetPath = safeIndex == 0 ? '/my-equbs' : '/home';
+      if (targetPath == '/home' && safeIndex == 2) {
+        targetPath = '/home?tab=2';
+      }
+    }
+
+    context.go(targetPath);
     return;
   }
 
@@ -32,12 +45,12 @@ Future<void> navigateToMainShell(
 }
 
 int newEqubTabIndex(BuildContext context) {
-  final showMyEqub = context.read<JoinedEqubsStatusProvider>().hasJoinedEqubs;
+  final showMyEqub = kIsWeb || context.read<JoinedEqubsStatusProvider>().hasJoinedEqubs;
   return showMyEqub ? 1 : 0;
 }
 
 int accountTabIndex(BuildContext context) {
-  final showMyEqub = context.read<JoinedEqubsStatusProvider>().hasJoinedEqubs;
+  final showMyEqub = kIsWeb || context.read<JoinedEqubsStatusProvider>().hasJoinedEqubs;
   return showMyEqub ? 2 : 1;
 }
 

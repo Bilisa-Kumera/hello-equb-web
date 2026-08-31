@@ -34,6 +34,7 @@ class PendingEqub {
   final EqubCategoryss? equbCategory;
   final List<Equber>? equbers;
   final Branch? branch;
+  final String? totalPaid;
 
   PendingEqub({
     required this.id,
@@ -66,6 +67,7 @@ class PendingEqub {
     this.equbCategory,
     this.equbers,
     this.branch,
+    this.totalPaid,
   });
 
   /// Earliest payment by [currentUserId] on this equb ≈ when they joined.

@@ -366,6 +366,8 @@ class _HomeScreenState extends State<HomeScreen>
     Provider.of<BannerProvider>(context, listen: false).fetchBanners();
     context.read<CooperateEqubsProvider>().fetchCooperates();
     _fetchEqubsForCurrentTab(context);
+    // Refresh joined status check
+    context.read<JoinedEqubsStatusProvider>().refresh(silent: true);
     await Future<void>.delayed(const Duration(seconds: 1));
   }
 
@@ -391,6 +393,7 @@ class _HomeScreenState extends State<HomeScreen>
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CooperateEqubsProvider>().fetchCooperates();
+      context.read<JoinedEqubsStatusProvider>().refresh(silent: true);
     });
     Future.microtask(() =>
         Provider.of<EqubTypeProvider>(context, listen: false).fetchEqubTypes());

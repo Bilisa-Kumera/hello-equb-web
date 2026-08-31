@@ -8,6 +8,7 @@ import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/screens/my_equb_screen.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/utils/secure_storage.dart';
 
 class JoinedEqubsStatusProvider extends ChangeNotifier
@@ -107,7 +108,12 @@ class JoinedEqubsStatusProvider extends ChangeNotifier
         .toList();
   }
 
-  Future<void> refresh({bool silent = false}) async {
+  Future<void> refresh({
+    bool silent = false,
+    String type = '',
+    String category = '',
+  }) async {
+    AppLogger.log('JoinedEqubsStatusProvider.refresh() initiated.');
     if (!silent) {
       _isLoading = true;
       notifyListeners();
@@ -115,17 +121,21 @@ class JoinedEqubsStatusProvider extends ChangeNotifier
 
     try {
       final accessToken = await SecureStorageHelper.getAccessToken() ?? '';
-      final userId = await SecureStorageHelper.getUserId() ?? '';
-      if (accessToken.isEmpty || userId.isEmpty) return;
+      final userId = (await SecureStorageHelper.getUserId())?.trim() ?? '';
+      AppLogger.log('JoinedEqubsStatusProvider: retrieved userId="$userId", tokenLength=${accessToken.length}');
+      if (accessToken.isEmpty) {
+        AppLogger.warn('JoinedEqubsStatusProvider: aborting refresh - access token is empty');
+        return;
+      }
+
+      final String url =
+          '$ekubsUrl?_page&_limit&equbType=$type&equbCategory=$category&user=$userId&status=joined';
+
+      AppLogger.log('JoinedEqubsStatusProvider: GET $url');
+      AppLogger.log('JoinedEqubsStatusProvider: Headers: Authorization="Bearer ${accessToken.substring(0, accessToken.length > 8 ? 8 : accessToken.length)}..."');
 
       final response = await _dio.get(
-        ekubsUrl,
-        queryParameters: {
-          '_page': '1',
-          '_limit': '50',
-          'user': userId,
-          'status': 'joined',
-        },
+        url,
         options: Options(
           headers: {
             'Content-Type': 'application/json',
@@ -134,9 +144,12 @@ class JoinedEqubsStatusProvider extends ChangeNotifier
         ),
       );
 
-      if (response.statusCode == 200) {
+      AppLogger.success('JoinedEqubsStatusProvider: API response status=${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final equbs = _parseJoinedEqubs(response.data);
         final nextValue = equbs.any(_isActiveJoinedEqub);
+        AppLogger.log('JoinedEqubsStatusProvider: parsed ${equbs.length} equbs, active joined found: $nextValue');
 
         if (_hasJoinedEqubs != nextValue) {
           _hasJoinedEqubs = nextValue;
@@ -144,7 +157,8 @@ class JoinedEqubsStatusProvider extends ChangeNotifier
           notifyListeners();
         }
       }
-    } catch (_) {
+    } catch (e) {
+      AppLogger.error('JoinedEqubsStatusProvider: API refresh error: $e');
       // Keep cached value on failure.
     } finally {
       if (!silent && _isLoading) {

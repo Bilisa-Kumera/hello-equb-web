@@ -7,6 +7,7 @@ import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
 import 'package:helloequb/core/superapp/superapp_bridge.dart';
+import 'package:helloequb/core/telebirr/telebirr.dart';
 import 'package:helloequb/features/superapp_auth/config/superapp_auth_config.dart';
 import 'package:helloequb/features/superapp_auth/data/repositories/superapp_auth_repository_impl.dart';
 import 'package:helloequb/features/superapp_auth/domain/usecases/attempt_superapp_auto_login.dart';
@@ -119,6 +120,15 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
       return;
     }
 
+    final bridge = createSuperAppBridge();
+    final telebirrDetector = createTelebirrMiniAppDetector();
+    if (!bridge.isAvailable && !telebirrDetector.isTelebirrMiniApp()) {
+      AppLogger.log('Normal browser detected; redirecting to login');
+      if (!mounted) return;
+      context.go('/login');
+      return;
+    }
+
     if (widget.cfg.merchantAppId.trim().isEmpty) {
       setState(() => _error =
           'Missing merchant app id (set MERCHANT_APP_ID via --dart-define).');
@@ -129,7 +139,6 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
     // ── Step 0: wait for bridge ───────────────────────────────────────────────
     _updateStep(0, _StepStatus.loading);
     AppLogger.log('Telebirr: waiting for bridge');
-    final bridge = createSuperAppBridge();
     final bridgeOk = await bridge.waitUntilAvailable(
       timeout: const Duration(seconds: 30),
       pollInterval: const Duration(milliseconds: 140),
@@ -137,11 +146,8 @@ class _TelebirrTokenGateViewState extends State<_TelebirrTokenGateView> {
     if (!mounted) return;
     if (!bridgeOk) {
       _updateStep(0, _StepStatus.error, detail: 'Bridge not found after 30 s');
-      setState(() {
-        _error = 'Not running inside Telebirr super app.';
-        _canRetry = true;
-        _isAuthenticating = false;
-      });
+      AppLogger.log('No Telebirr bridge detected; redirecting to login');
+      context.go('/login');
       return;
     }
     _updateStep(0, _StepStatus.success, detail: 'Bridge connected');

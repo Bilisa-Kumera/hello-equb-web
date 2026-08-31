@@ -245,6 +245,13 @@ class SuperAppAuthRepositoryImpl implements SuperAppAuthRepository {
     String? persistedPhoneNumber;
     final user = remote.userFromLoginPayload(payload);
     if (user != null) {
+      // `JoinedEqubsStatusProvider.refresh()` depends on `SecureStorageHelper.getUserId()`
+      // (mobile uses the secure storage path; web mini-app auth also needs this persisted).
+      final userIdRaw = _stringAt(user, ['id', '_id', 'userId', 'userID']);
+      final userId = userIdRaw?.trim();
+      if (userId != null && userId.isNotEmpty) {
+        await SecureStorageHelper.saveUserId(userId);
+      }
       persistedPhoneNumber = _persistUserIdentity(user);
     } else if (phoneNumber != null && phoneNumber.isNotEmpty) {
       _dataController.storeData('phoneNumber', phoneNumber);

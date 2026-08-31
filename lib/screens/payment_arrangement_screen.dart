@@ -1,15 +1,15 @@
 // ignore_for_file: must_be_immutable, deprecated_member_use
 
-import 'package:helloequb/screens/home_screen.dart';
-import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/screens/join_ekub_detail.dart';
 import 'package:helloequb/screens/my_ekub_detail_screen.dart';
 import 'package:helloequb/screens/payment_screen.dart';
+import 'package:helloequb/utils/app_localizations.dart';
+import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:helloequb/utils/style_constants.dart';
 
 class PaymentArragement extends StatefulWidget {
@@ -611,12 +611,11 @@ class _PaymentArragementState extends State<PaymentArragement> {
                         onPressed: _isContinuing
                             ? null
                             : () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const HomeScreen(),
-                                  ),
-                                );
+                                if (Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                } else {
+                                  navigateToMainShell(context);
+                                }
                               },
                         child: Text(
                           AppKeys.cancel.tr(context),

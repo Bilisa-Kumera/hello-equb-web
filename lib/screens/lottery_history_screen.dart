@@ -637,71 +637,71 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
     );
   }
 
-  Future<void> _handleClaim(User user) async {
-    if (user.hasClaimed) return;
-    // TODO: re-enable claim flow (guarantor navigation)
-    return;
+  // Future<void> _handleClaim(User user) async {
+  //   if (user.hasClaimed) return;
+  //   // TODO: re-enable claim flow (guarantor navigation)
+  //   return;
 
-    final accessToken = await SecureStorageHelper.getAccessToken() ?? '';
-    final apiService = ApiService();
+  //   final accessToken = await SecureStorageHelper.getAccessToken() ?? '';
+  //   final apiService = ApiService();
 
-    final data = await apiService.readAll(
-      getMyProfile,
-      bearerToken: accessToken,
-    );
+  //   final data = await apiService.readAll(
+  //     getMyProfile,
+  //     bearerToken: accessToken,
+  //   );
 
-    if (data == null) return;
+  //   if (data == null) return;
 
-    if (user.hasGuarantee && !user.hasClaimed) {
-      _showWinningDialog(context, user);
-      return;
-    }
+  //   if (user.hasGuarantee && !user.hasClaimed) {
+  //     _showWinningDialog(context, user);
+  //     return;
+  //   }
 
-    final rawCompletion = data['data']?['user']?['profileCompletion'];
-    final double completion = rawCompletion is num
-        ? rawCompletion.toDouble()
-        : double.tryParse(rawCompletion?.toString() ?? '') ?? 0.0;
+  //   final rawCompletion = data['data']?['user']?['profileCompletion'];
+  //   final double completion = rawCompletion is num
+  //       ? rawCompletion.toDouble()
+  //       : double.tryParse(rawCompletion?.toString() ?? '') ?? 0.0;
 
-    if (completion >= 100) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => GuarantorScreen(
-            serviceCharge: widget.serviceCharge,
-            ekubId: widget.ekubId,
-            ekuberUserId: user.equberUserId,
-            ekubAmount: widget.ekubAmount,
-            ekubCycle: widget.ekubCycle,
-            ekubName: widget.ekubName,
-            ekubRequest: widget.ekubRequest,
-            ekubersNumber: widget.ekubersNumber,
-            nextRoundDate: widget.nextRoundDate,
-            nextRoundLotteryType: widget.nextRoundLotteryType,
-            nextRoundTime: widget.nextRoundTime,
-          ),
-        ),
-      );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => CompleteProfileScreen(
-            serviceCharge: widget.serviceCharge,
-            ekubId: widget.ekubId,
-            ekubersUserId: user.equberUserId,
-            ekubAmount: widget.ekubAmount,
-            ekubCycle: widget.ekubCycle,
-            ekubName: widget.ekubName,
-            ekubRequest: widget.ekubRequest,
-            ekubersNumber: widget.ekubersNumber,
-            nextRoundDate: widget.nextRoundDate,
-            nextRoundLotteryType: widget.nextRoundLotteryType,
-            nextRoundTime: widget.nextRoundTime,
-          ),
-        ),
-      );
-    }
-  }
+  //   if (completion >= 100) {
+  //     Navigator.push(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (_) => GuarantorScreen(
+  //           serviceCharge: widget.serviceCharge,
+  //           ekubId: widget.ekubId,
+  //           ekuberUserId: user.equberUserId,
+  //           ekubAmount: widget.ekubAmount,
+  //           ekubCycle: widget.ekubCycle,
+  //           ekubName: widget.ekubName,
+  //           ekubRequest: widget.ekubRequest,
+  //           ekubersNumber: widget.ekubersNumber,
+  //           nextRoundDate: widget.nextRoundDate,
+  //           nextRoundLotteryType: widget.nextRoundLotteryType,
+  //           nextRoundTime: widget.nextRoundTime,
+  //         ),
+  //       ),
+  //     );
+  //   } else {
+  //     Navigator.push(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (_) => CompleteProfileScreen(
+  //           serviceCharge: widget.serviceCharge,
+  //           ekubId: widget.ekubId,
+  //           ekubersUserId: user.equberUserId,
+  //           ekubAmount: widget.ekubAmount,
+  //           ekubCycle: widget.ekubCycle,
+  //           ekubName: widget.ekubName,
+  //           ekubRequest: widget.ekubRequest,
+  //           ekubersNumber: widget.ekubersNumber,
+  //           nextRoundDate: widget.nextRoundDate,
+  //           nextRoundLotteryType: widget.nextRoundLotteryType,
+  //           nextRoundTime: widget.nextRoundTime,
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -838,8 +838,8 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                                   ),
                                 ),
                                 onPressed: user.hasClaimed
-                                    ? null
-                                    : () => _handleClaim(user),
+                                    ? null : (){},
+                                    // : () => _handleClaim(user),
                                 child: Text(
                                   user.hasTakenEqub
                                       ? AppKeys.taken.tr(context)

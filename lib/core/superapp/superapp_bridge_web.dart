@@ -14,11 +14,6 @@ class _SuperAppBridgeWeb implements SuperAppBridge {
   bool get isAvailable {
     final win = js_util.globalThis;
     try {
-      if (js_util.hasProperty(win, 'isSuperAppWebView')) {
-        final result = js_util.callMethod(win, 'isSuperAppWebView', const []);
-        if (result == true) return true;
-      }
-
       final consumerApp = js_util.getProperty(win, 'consumerapp');
       final evaluate = consumerApp == null
           ? null
@@ -27,9 +22,7 @@ class _SuperAppBridgeWeb implements SuperAppBridge {
         return true;
       }
 
-      final xm = js_util.getProperty(win, 'xm');
-      final nativeFn = xm == null ? null : js_util.getProperty(xm, 'native');
-      return nativeFn != null && js_util.typeofEquals(nativeFn, 'function');
+      return false;
     } catch (_) {
       return false;
     }

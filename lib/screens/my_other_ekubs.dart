@@ -1,6 +1,8 @@
-﻿// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/utils/style_constants.dart';
 import 'package:flutter/material.dart';
@@ -52,6 +54,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
   bool _hasFetchedInitial = false;
   bool _isBootstrapping = false;
   bool _isOpeningQuickPayment = false;
+  final Map<String, double> _totalPaidCache = {};
 
   @override
   void initState() {
@@ -305,7 +308,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
         extendBody: !widget.embedInShell,
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: PreferredSize(
-          preferredSize: Size.fromHeight(140.h),
+          preferredSize: Size.fromHeight(180.h),
           child: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -396,7 +399,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                 builder: (context, joinStatus, _) {
                   const currentIndex = 0;
                   return CustomBottomNavigationBar(
-                    showMyEqubTab: joinStatus.hasJoinedEqubs,
+                    showMyEqubTab: kIsWeb || joinStatus.hasJoinedEqubs,
                     currentIndex: currentIndex,
                     onTap: (index) => onMainBottomNavTap(
                       context,
@@ -464,24 +467,74 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
   }
 
   void _openEqubDetail(PendingEqub equb) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MyEkubDetailScreen(
-          ekubType: equb.equbCategory?.name ?? 'Finance',
-          serviceCharge: equb.serviceCharge.toString(),
-          nextRoundTime: equb.nextRoundTime ?? '',
-          ekubCycle: equb.numberOfEqubers,
-          nextRoundDate: equb.nextRoundDate ?? '',
-          ekubAmount: equb.equbAmount * equb.numberOfEqubers,
-          ekubName: equb.name,
-          ekubersNumber: equb.equbers?.length ?? 0,
-          nextRoundLotteryType: equb.nextRoundLotteryType,
-          ekubId: equb.id,
-          ekubRequest: equb.equbCategory?.needsRequest ?? false,
+    if (kIsWeb) {
+      final query = Uri(
+        queryParameters: {
+          'ekubId': equb.id,
+          'ekubName': equb.name,
+          'ekubAmount': (equb.equbAmount * equb.numberOfEqubers).toString(),
+          'ekubersNumber': (equb.equbers?.length ?? 0).toString(),
+          'ekubCycle': equb.numberOfEqubers.toString(),
+          'nextRoundDate': equb.nextRoundDate ?? '',
+          'nextRoundTime': equb.nextRoundTime ?? '',
+          'ekubRequest': (equb.equbCategory?.needsRequest ?? false).toString(),
+          'nextRoundLotteryType': equb.nextRoundLotteryType,
+          'serviceCharge': equb.serviceCharge.toString(),
+          'ekubType': equb.equbCategory?.name ?? 'Finance',
+        },
+      ).query;
+      GoRouter.of(context).go('/my-equb-detail?$query');
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MyEkubDetailScreen(
+            ekubType: equb.equbCategory?.name ?? 'Finance',
+            serviceCharge: equb.serviceCharge.toString(),
+            nextRoundTime: equb.nextRoundTime ?? '',
+            ekubCycle: equb.numberOfEqubers,
+            nextRoundDate: equb.nextRoundDate ?? '',
+            ekubAmount: equb.equbAmount * equb.numberOfEqubers,
+            ekubName: equb.name,
+            ekubersNumber: equb.equbers?.length ?? 0,
+            nextRoundLotteryType: equb.nextRoundLotteryType,
+            ekubId: equb.id,
+            ekubRequest: equb.equbCategory?.needsRequest ?? false,
+          ),
         ),
-      ),
-    );
+      );
+    }
+  }
+
+  Future<double> _fetchTotalPaid(String equbId) async {
+    final cached = _totalPaidCache[equbId];
+    if (cached != null) return cached;
+
+    try {
+      final token = await SecureStorageHelper.getAccessToken() ?? '';
+      final response = await Dio().get(
+        ekubPaymentsUrl + equbId,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      double sum = 0;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final payments =
+            (response.data['data']?['payments'] as List?) ?? [];
+        for (final p in payments) {
+          final amount = p['equbAmount'];
+          if (amount != null) {
+            sum += (amount as num).toDouble();
+          }
+        }
+      }
+
+      _totalPaidCache[equbId] = sum;
+      return sum;
+    } catch (e) {
+      debugPrint('Error fetching total paid for $equbId: $e');
+      return 0;
+    }
   }
 
   Future<void> _openQuickPayment(PendingEqub equb) async {

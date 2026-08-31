@@ -96,7 +96,7 @@ final Map<String, String> omET = {
   "lbl_finance_equbs": "Uquboota Faayinaansii",
   "lbl_special_finance_equbs": "Faayinaansii Addaa",
   "lbl_see_all": "Hunda Ilaali",
-  "lbl_no_ekubs": "Uquboonni Hinjiran",
+  "lbl_no_ekubs": "Hanga ammaatti uqubiitti hin makamne",
   "lbl_join_equb": "Uqubiitti Makamaa",
   "lbl_finance_and_other": "Fiaayinaansii+ kan biroo",
   "nb_only_one_person_will_be_winner":

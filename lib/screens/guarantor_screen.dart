@@ -1,6 +1,8 @@
 
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -35,6 +37,7 @@ class GuarantorScreen extends StatefulWidget {
   final bool? ekubRequest;
   final String? nextRoundLotteryType;
   final String serviceCharge;
+  final String? ekubType; // added to carry ekub type, default handled in usage
 
   const GuarantorScreen(
       {super.key,
@@ -48,6 +51,7 @@ class GuarantorScreen extends StatefulWidget {
       this.nextRoundTime,
       this.ekubRequest,
       this.nextRoundLotteryType,
+      this.ekubType,
       required this.serviceCharge});
 
   @override
@@ -161,24 +165,43 @@ class _GuarantorScreenState extends State<GuarantorScreen> {
         });
 
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MyEkubDetailScreen(
-              ekubType: 'Finance',
-              ekubAmount: widget.ekubAmount ?? 0,
-              ekubCycle: widget.ekubCycle ?? 0,
-              ekubId: widget.ekubId,
-              ekubName: widget.ekubName ?? '',
-              ekubRequest: widget.ekubRequest ?? false,
-              ekubersNumber: widget.ekubersNumber ?? 0,
-              nextRoundDate: widget.nextRoundDate ?? '',
-              nextRoundLotteryType: widget.nextRoundLotteryType ?? '',
-              nextRoundTime: widget.nextRoundTime ?? '',
-              serviceCharge: widget.serviceCharge ?? '',
-            ),
+        if (kIsWeb) {
+      final query = Uri(
+        queryParameters: {
+          'ekubId': widget.ekubId,
+          'ekubName': widget.ekubName ?? '',
+          'ekubAmount': (widget.ekubAmount ?? 0).toString(),
+          'ekubersNumber': (widget.ekubersNumber ?? 0).toString(),
+          'ekubCycle': (widget.ekubCycle ?? 0).toString(),
+          'nextRoundDate': widget.nextRoundDate ?? '',
+          'nextRoundTime': widget.nextRoundTime ?? '',
+          'ekubRequest': (widget.ekubRequest ?? false).toString(),
+          'nextRoundLotteryType': widget.nextRoundLotteryType ?? '',
+          'serviceCharge': widget.serviceCharge ?? '',
+          'ekubType': widget.ekubType ?? 'Finance',
+        },
+      ).query;
+      GoRouter.of(context).go('/my-equb-detail?$query');
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MyEkubDetailScreen(
+            ekubType: widget.ekubType ?? 'Finance',
+            ekubAmount: widget.ekubAmount ?? 0,
+            ekubCycle: widget.ekubCycle ?? 0,
+            ekubId: widget.ekubId,
+            ekubName: widget.ekubName ?? '',
+            ekubRequest: widget.ekubRequest ?? false,
+            ekubersNumber: widget.ekubersNumber ?? 0,
+            nextRoundDate: widget.nextRoundDate ?? '',
+            nextRoundLotteryType: widget.nextRoundLotteryType ?? '',
+            nextRoundTime: widget.nextRoundTime ?? '',
+            serviceCharge: widget.serviceCharge ?? '',
           ),
-        );
+        ),
+      );
+    }
       } else {
         _handleError(
           context,

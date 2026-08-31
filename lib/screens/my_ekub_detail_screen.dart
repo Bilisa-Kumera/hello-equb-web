@@ -27,6 +27,8 @@ import 'package:flutter/material.dart';
 import 'package:helloequb/utils/carousel_card.dart';
 import 'package:provider/provider.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:go_router/go_router.dart';
+// duplicate import removed
 
 import '../provider/lottery_provider.dart';
 import '../utils/secure_storage.dart';
@@ -41,6 +43,20 @@ class ListItems {
   final String userIds;
   ListItems(
       {required this.title, required this.subtitle, required this.userIds});
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'subtitle': subtitle,
+        'userIds': userIds,
+      };
+
+  factory ListItems.fromJson(Map<String, dynamic> json) {
+    return ListItems(
+      title: json['title'] as String,
+      subtitle: json['subtitle'] as String,
+      userIds: json['userIds'] as String,
+    );
+  }
 }
 
 class ApiResp {
@@ -1007,6 +1023,18 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
       // Cache only — never spin before 0:00.
     });
 
+    socket!.on('payment-success', (data) {
+      if (data is! Map) return;
+      if (data['status'] != 'success') return;
+      if (mounted) {
+        // Web: navigation depends on the URL path changing. If the user has
+        // already moved to `/home`, we must force the route to `/my-equbs`.
+        final currentBasePath = Uri.base.path;
+        if (currentBasePath != '/my-equbs') {
+          context.go('/my-equbs');
+        }
+      }
+    });
     socket!.connect();
   }
 
@@ -1262,7 +1290,16 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
       systemNavigationBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        if (Navigator.canPop(context)) {
+          return true;
+        } else {
+          GoRouter.of(context).go('/my-equbs');
+          return false;
+        }
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       extendBody: true,
       extendBodyBehindAppBar: true,
@@ -1286,10 +1323,11 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           ],
         ),
       ),
-    );
+    ));
   }
 
   // ── Header ─────────────────────────────────────────────────────────────────
+
 
   Widget _buildHeader(BuildContext context) {
     return Container(
@@ -1309,7 +1347,13 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           Row(
             children: [
               GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
+                onTap: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    GoRouter.of(context).go('/my-equbs');
+                  }
+                },
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(

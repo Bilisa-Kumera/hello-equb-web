@@ -2,9 +2,11 @@
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:helloequb/core/api_url.dart';
+import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:helloequb/utils/lang_constants.dart';
 
 import 'style_constants.dart';
 
@@ -111,8 +113,8 @@ class CarouselCard extends StatelessWidget {
                       children: [
                         Text(
                             textScaleFactor: 1.0,
-                            ekubName ?? '',
-                            style: AppTextStyles.poppins60012
+                            AppKeys.totalPaid.tr(context),
+                            style: AppTextStyles.poppins70028
                                 .copyWith(color: AppColors.white)),
                         SizedBox(
                           width: 120.w,

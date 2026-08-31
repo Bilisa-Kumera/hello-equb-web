@@ -33,6 +33,7 @@ import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/core/logging/superapp_debug_overlay.dart';
 import 'package:helloequb/core/superapp/superapp_js_log_forwarder.dart';
 import 'package:helloequb/core/web_leave_guard.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'provider/allequb_payment.dart';
 import 'provider/cooperate_equbs_provider.dart';
@@ -115,6 +116,7 @@ dynamic _handleNotificationNavigation(Map<String, dynamic> data) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
   AppLogger.initFromEnv();
   initSuperAppJsLogForwarder();
   initWebLeaveGuard();

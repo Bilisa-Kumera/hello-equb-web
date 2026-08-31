@@ -18,6 +18,7 @@ import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:helloequb/core/telebirr_service.dart';
 import 'package:helloequb/core/telebirr/telebirr.dart';
 import 'package:helloequb/core/cbebirr_plus/cbebirr_plus_bridge.dart';
+import 'package:helloequb/core/logging/app_logger.dart';
 import 'package:helloequb/utils/secure_storage.dart';
 
 import 'package:helloequb/screens/join_ekub_detail.dart';
@@ -138,7 +139,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.initState();
     _isInsideCbeBirrPlus =
         dataController.retrieveData<bool>('isCbeBirr') ?? false;
-    _isFromTelebirrMiniApp = dataController.retrieveData<bool>('isFromTelebirrMiniApp') ?? false;
+    _isFromTelebirrMiniApp =
+        dataController.retrieveData<bool>('isFromTelebirrMiniApp') ?? false;
     if (_isFromTelebirrMiniApp) {
       selectedIndex = 0;
       selectedPaymentMethodId = 'telebirr';
@@ -146,7 +148,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     // Ensure runtime detection when possible (e.g., when navigated directly to payment)
     _detectCbeBirrBridge();
     _amountController = TextEditingController(
-      text:'${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
+      text:
+          '${numberFormat.format(double.tryParse(widget.ekubAmount?.toString().replaceAll(',', '') ?? '0') ?? 0)} Birr',
     );
     _subscribeToTelebirrPaymentResults();
   }
@@ -351,12 +354,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _paymentRequestBaseUrl(useMiniAppEndpoint: useMiniAppEndpoint) +
             (widget.ekubId ?? '');
 
-    debugPrint('Payment request url: $url');
-    debugPrint('Payment request body: ${jsonEncode(data)}');
     if (useMiniAppEndpoint) {
-      debugPrint(
-        'Waiting for ${_isPaymentType ? 'makePaymentMiniAppUrl' : 'joinMiniAppEkubUrl'} response...',
-      );
+      // Waiting for response...
     }
 
     try {
@@ -369,7 +368,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       if (response.statusCode == 200) {
         final responseData = response.data['data'];
-        debugPrint('Payment response: ${jsonEncode(response.data)}');
 
         final dynamic orderResult = responseData?['orderResult'];
         final String rawRequest =
@@ -401,9 +399,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             cbePaymentToken.isNotEmpty) {
           await _sendCbeMiniAppPaymentToken(cbePaymentToken);
         } else if (paymentMethod == 'cbe' && useMiniAppEndpoint) {
-          debugPrint(
-            'processedPaymentToken not found in joinMiniAppEkubUrl response.',
-          );
+          // Token not found in response
         }
 
         final newReceiveCode = (responseData?['receiveCode'] ??
@@ -435,9 +431,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       } else {}
     } on DioError catch (e) {
       if (useMiniAppEndpoint) {
-        debugPrint(
-          'MiniApp payment error before bridge call: ${e.response != null ? jsonEncode(e.response?.data) : e.message}',
-        );
+        // Handle error
       }
       _handleDioError(e);
     }
@@ -452,46 +446,42 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _startTelebirrMiniAppPayment(String rawRequest) async {
     final trimmedRawRequest = rawRequest.trim();
     if (trimmedRawRequest.isEmpty) {
-      debugPrint('Telebirr raw_request not found in API response.');
+      AppLogger.error('Telebirr raw_request not found in API response.');
       return;
     }
 
-    debugPrint(
-      'raw_request received (${trimmedRawRequest.length} chars). Calling window.consumerapp.evaluate(js_fun_start_pay)...',
+    AppLogger.log(
+      'raw_request received (${trimmedRawRequest.length} chars). Calling Telebirr bridge...',
     );
 
     final detector = createTelebirrMiniAppDetector();
     final result = await detector.startTelebirrPayment(trimmedRawRequest);
     if (!mounted) return;
 
-    debugPrint(
-      'Telebirr MiniApp bridge result: ${jsonEncode({
-            'bridge': 'window.consumerapp.evaluate',
-            'functionName': 'js_fun_start_pay',
-            'result': result,
-          })}',
+    AppLogger.log(
+      'Telebirr MiniApp bridge result: ${jsonEncode(result)}',
     );
+
+    if (result['success'] == true) {
+      AppLogger.success(
+          'Telebirr payment succeeded or initiated successfully. Redirecting to home screen.');
+      navigateToMainShell(context, initialIndex: 0);
+    } else {
+      AppLogger.error(
+          'Telebirr payment failed or bridge rejected the request: ${result['error'] ?? 'unknown error'}');
+    }
   }
 
   Future<void> _sendCbeMiniAppPaymentToken(String token) async {
     final tokenLength = token.trim().length;
-    debugPrint(
-      'processedPaymentToken received (length: $tokenLength). Initiating window.myJsChannel.postMessage(data)...',
-    );
 
     final bridge = createCbeBirrPlusBridge();
     final sent = await bridge.sendPaymentToken(token);
     if (!mounted) return;
 
     if (!sent) {
-      debugPrint(
-          'CBEBirr Plus payment token could not be sent to myJsChannel.');
       return;
     }
-
-    debugPrint(
-      'Success: window.myJsChannel.postMessage(data) initiated with processedPaymentToken.',
-    );
   }
 
   Future<void> _submitJoinRequest({
@@ -550,9 +540,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         (useMiniAppEndpoint ? makePaymentMiniAppUrl : makePaymentUrl) +
             (widget.ekubId ?? '');
 
-    debugPrint('Payment request url: $url');
-    debugPrint('Payment request body: ${jsonEncode(data)}');
-
     try {
       final Dio dio = Dio();
       final response = await dio.post(
@@ -569,9 +556,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           if (useMiniAppEndpoint && cbePaymentToken.isNotEmpty) {
             await _sendCbeMiniAppPaymentToken(cbePaymentToken);
           } else if (useMiniAppEndpoint) {
-            debugPrint(
-              'processedPaymentToken not found in joinMiniAppEkubUrl response.',
-            );
+            // Token not found
           }
 
           CustomSnackBar.show(

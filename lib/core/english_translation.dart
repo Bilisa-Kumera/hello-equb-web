@@ -246,7 +246,7 @@ final Map<String, String> enUS = {
   "lbl_finance_equbs": "Finance Equbs",
   "lbl_special_finance_equbs": "Special Finance",
   "lbl_see_all": "See All",
-  "lbl_no_ekubs": "No Equbs",
+  "lbl_no_ekubs": "You haven't joined equbs yet",
   "lbl_join_equb": "Join Equb",
   "lbl_finance_and_other": "Finance + Other",
   "nb_only_one_person_will_be_winner":

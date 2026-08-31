@@ -85,6 +85,7 @@ final Map<String, String> tgET = {
   " nb _only_one_person_will_be_winner":
       "መዘኻኸሪ: ነዚ ዙር ዕቑብ ሓደ ሰብ ጥራይ እዩ ተዓዋቲ ዝኸውን ",
   "lbl_ekub_name": " ስም ዕቑብ ",
+  "lbl_no_ekubs": "ክሳብ ሕጂ ኣብ ዝኾነ እቁብ ኣይተሳተፍኩምን",
   "lbl_እንኳዕ_ተዓዋቲ_ዩ": "እንኳዕ ሓጎሰካ ! ተዓዋቲ:",
   "lbl_winners_lottery_number": "ቁፅሪ ሎተሪ ተዓዋቲ:",
   "lbl_close": "ዕፀው",

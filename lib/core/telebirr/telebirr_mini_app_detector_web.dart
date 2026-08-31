@@ -19,12 +19,6 @@ class _TelebirrMiniAppDetectorWeb implements TelebirrMiniAppDetector {
     _cachedConsumerApp = _safeGet(win, 'consumerapp');
     if (_cachedConsumerApp != null) return true;
 
-    _cachedXm = _safeGet(win, 'xm');
-    final nativeFn = _safeGet(_cachedXm, 'native');
-    if (nativeFn != null && js_util.typeofEquals(nativeFn, 'function')) {
-      return true;
-    }
-
     final navigator = _safeGet(win, 'navigator');
     final ua = _safeGet(navigator, 'userAgent')?.toString().toLowerCase();
     return ua != null &&
