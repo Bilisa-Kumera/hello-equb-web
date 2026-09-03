@@ -71,7 +71,8 @@ class _LotteryWheelState extends State<LotteryWheel>
   void didUpdateWidget(covariant LotteryWheel old) {
     super.didUpdateWidget(old);
     if (old.winnerLotteryNumber != widget.winnerLotteryNumber ||
-        old.isTimeUp != widget.isTimeUp) {
+        old.isTimeUp != widget.isTimeUp ||
+        old.lotteryNumbers.join(',') != widget.lotteryNumbers.join(',')) {
       _hasSpun = false;
       if (!_ctrl.isAnimating) {
         _ctrl.reset();

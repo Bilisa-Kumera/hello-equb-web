@@ -32,6 +32,7 @@ String get equbTypeUrl => "$baseUrl/user/equb-type";
 String get equbCategoriesUrl => "$baseUrl/user/equb-category";
 String get deviceTokenUrl => '$baseUrl/user/device-token';
 String get bannersUrl => '$baseUrl/user/banner?state=active';
+String get appPromoActiveUrl => '$baseUrl/user/app-promo/active';
 String get updatePersonnalUrl => '$baseUrl/user/profile/personal-info/';
 String get banksUrl => '$baseUrl/user/profile/banks';
 String get addFinancialUrl => '$baseUrl/user/profile/financial-info/';

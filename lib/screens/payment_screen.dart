@@ -77,6 +77,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool get _isPaymentType =>
       (widget.type ?? '').trim().toLowerCase() == 'payment';
 
+  double _parsePaymentAmount(String value) =>
+      double.tryParse(value.replaceAll(',', '')) ?? 0;
+
+  List<Map<String, dynamic>> _buildLotteryPaymentPayload() {
+    final lottery = <Map<String, dynamic>>[];
+    for (final item in widget.selectedJoinOptions ?? []) {
+      final paidAmount = _parsePaymentAmount(item.subtitle);
+      if (paidAmount <= 0) continue;
+      lottery.add({
+        "id": item.userIds,
+        "paidAmount": paidAmount,
+      });
+    }
+    return lottery;
+  }
+
   List<Map<String, dynamic>> get _visiblePaymentOptions {
     if (_isFromTelebirrMiniApp) {
       return paymentOptions
@@ -326,14 +342,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     };
 
     if (_isPaymentType) {
-      final List<Map<String, dynamic>> lottery = [];
-      for (var item in widget.selectedJoinOptions ?? []) {
-        lottery.add({
-          "id": item.userIds,
-          "paidAmount": double.tryParse(item.subtitle.replaceAll(',', '')) ?? 0,
-        });
-      }
-      data["lottery"] = lottery;
+      data["lottery"] = _buildLotteryPaymentPayload();
     } else {
       final List<Map<String, dynamic>> equbers = [];
       for (var item in widget.selectedJoinOption ?? []) {
@@ -529,14 +538,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }) async {
     String bearerToken = await SecureStorageHelper.getAccessToken() ?? '';
 
-    List<Map<String, dynamic>> lottery = [];
-
-    for (var item in widget.selectedJoinOptions ?? []) {
-      lottery.add({
-        "id": item.userIds,
-        "paidAmount": double.tryParse(item.subtitle) ?? 0,
-      });
-    }
+    List<Map<String, dynamic>> lottery = _buildLotteryPaymentPayload();
 
     final data = {
       "paidAmount": double.tryParse(widget.ekubAmount ?? '0.0') ?? 0,
@@ -679,7 +681,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
         content: Text(message, style: const TextStyle(fontSize: 16)),
         actions: [
           TextButton(
-            onPressed: () => navigateToMainShell(context, initialIndex: 0),
+            // onPressed: () => navigateToMainShell(context, initialIndex: 0),
+            onPressed: () {
+              // Close this dialog, then the payment page (one screen back).
+              Navigator.of(context).pop();
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
+            },
             child: Text(AppKeys.ok.tr(context)),
           )
         ],
@@ -990,7 +999,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         backgroundColor: Colors.grey.shade50,
         elevation: 0,
         leading: IconButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
         ),
         title: Text(
@@ -1575,11 +1584,10 @@ class _InfoPopupState extends State<InfoPopup> {
     List<Map<String, dynamic>> lottery = [];
 
     for (var item in percentage) {
-      String id = item.userIds;
-      double paid = double.tryParse(item.subtitle) ?? 0;
-
+      final paid = double.tryParse(item.subtitle.replaceAll(',', '')) ?? 0;
+      if (paid <= 0) continue;
       lottery.add({
-        "id": id,
+        "id": item.userIds,
         "paidAmount": paid,
       });
     }

@@ -1,6 +1,5 @@
 // ignore_for_file: must_be_immutable, deprecated_member_use
 
-import 'package:helloequb/screens/home_screen.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -71,10 +70,14 @@ class _PaymentArragementState extends State<PaymentArragement> {
     }
 
     final options = widget.selectedJoinOption ?? [];
-    stepAmounts = options.map(_stepAmountForItem).toList();
+    stepAmounts = options
+        .asMap()
+        .entries
+        .map((entry) => _stepAmountForItem(entry.key, entry.value))
+        .toList();
     controllers = options.asMap().entries.map((entry) {
       final item = entry.value;
-      final initialAmount = _initialAmountForItem(item);
+      final initialAmount = _initialAmountForItem(entry.key, item);
       final controller =
           TextEditingController(text: _formatAmount(initialAmount));
       controller.addListener(_updateTotal);
@@ -90,20 +93,52 @@ class _PaymentArragementState extends State<PaymentArragement> {
   double _parseAmount(String value) =>
       double.tryParse(value.replaceAll(',', '')) ?? 0;
 
-  double _stepAmountForItem(ListItem item) {
-    // Prefer subtitle — it holds the per-round amount from the API.
-    // widget.ekubAmount is sometimes the total pot (amount × members).
+  double _stepAmountForItem(int index, ListItem item) {
+    if (widget.type == 'payment' &&
+        widget.selectedJoinOptions != null &&
+        index < widget.selectedJoinOptions!.length) {
+      final roundAmount = widget.selectedJoinOptions![index].roundAmount;
+      if (roundAmount > 0) return roundAmount;
+    }
+
     final fromSubtitle = _parseAmount(item.subtitle);
     if (fromSubtitle > 0) return fromSubtitle;
 
     return _parseAmount(widget.ekubAmount ?? '');
   }
 
-  double _initialAmountForItem(ListItem item) {
+  double _initialAmountForItem(int index, ListItem item) {
+    if (_isFullyPaid(index)) return 0;
+
     final fromSubtitle = _parseAmount(item.subtitle);
     if (fromSubtitle > 0) return fromSubtitle;
 
     return _parseAmount(widget.ekubAmount ?? '');
+  }
+
+  bool _isFullyPaid(int index) {
+    return widget.type == 'payment' &&
+        widget.selectedJoinOptions != null &&
+        index < widget.selectedJoinOptions!.length &&
+        widget.selectedJoinOptions![index].isFullyPaid;
+  }
+
+  double _maxPayableForItem(int index) {
+    if (widget.type == 'payment' &&
+        widget.selectedJoinOptions != null &&
+        index < widget.selectedJoinOptions!.length) {
+      return widget.selectedJoinOptions![index].maxPayableAmount;
+    }
+    return double.infinity;
+  }
+
+  bool _canIncrement(int index) {
+    if (_isFullyPaid(index)) return false;
+    final step = stepAmounts[index];
+    if (step <= 0) return false;
+    final current = _parseAmount(controllers[index].text);
+    final maxPayable = _maxPayableForItem(index);
+    return current < maxPayable - 0.01;
   }
 
   String _formatAmount(double amount) {
@@ -134,13 +169,19 @@ class _PaymentArragementState extends State<PaymentArragement> {
   }
 
   void _incrementAmount(int index) {
+    if (_isFullyPaid(index)) return;
     final step = stepAmounts[index];
     if (step <= 0) return;
     final current = _parseAmount(controllers[index].text);
-    _setAmount(index, current + step);
+    final maxPayable = _maxPayableForItem(index);
+    if (current >= maxPayable - 0.01) return;
+    final next = (current + step).clamp(0.0, maxPayable);
+    if (next <= current) return;
+    _setAmount(index, next);
   }
 
   void _decrementAmount(int index) {
+    if (_isFullyPaid(index)) return;
     final step = stepAmounts[index];
     if (step <= 0) return;
     final current = _parseAmount(controllers[index].text);
@@ -180,6 +221,10 @@ class _PaymentArragementState extends State<PaymentArragement> {
 
     bool hasValidationError = false;
     for (int i = 0; i < controllers.length; i++) {
+      if (_isFullyPaid(i)) {
+        hasError[i] = false;
+        continue;
+      }
       final text = controllers[i].text.trim();
       if (text.isEmpty) {
         hasError[i] = true;
@@ -303,7 +348,9 @@ class _PaymentArragementState extends State<PaymentArragement> {
     required double currentAmount,
     required double step,
     required bool canDecrement,
+    required bool canIncrement,
     required bool isSkipped,
+    required bool isLockedAtZero,
   }) {
     final isPayment = widget.type == 'payment';
     final stakeTitle = isPayment
@@ -362,7 +409,23 @@ class _PaymentArragementState extends State<PaymentArragement> {
                   ],
                 ),
               ),
-              if (isPayment && isSkipped)
+              if (isPayment && isLockedAtZero)
+                Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.earthySuccessGreen.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Text(
+                    AppKeys.paid.tr(context),
+                    style: AppTextStyles.captionMuted.copyWith(
+                      color: AppColors.earthySuccessGreen,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              else if (isPayment && isSkipped)
                 Container(
                   padding:
                       EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -437,41 +500,44 @@ class _PaymentArragementState extends State<PaymentArragement> {
               ),
             ),
           ],
-          SizedBox(height: 12.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _amountStepButton(
-                icon: Icons.remove_rounded,
-                onPressed:
-                    canDecrement ? () => _decrementAmount(index) : null,
-              ),
-              SizedBox(width: 16.w),
-              Column(
-                children: [
-                  Text(
-                    AppKeys.amount.tr(context),
-                    style: AppTextStyles.captionMuted.copyWith(
-                      color: Colors.grey.shade500,
-                      fontSize: 10.sp,
+          if (!isLockedAtZero) ...[
+            SizedBox(height: 12.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _amountStepButton(
+                  icon: Icons.remove_rounded,
+                  onPressed:
+                      canDecrement ? () => _decrementAmount(index) : null,
+                ),
+                SizedBox(width: 16.w),
+                Column(
+                  children: [
+                    Text(
+                      AppKeys.amount.tr(context),
+                      style: AppTextStyles.captionMuted.copyWith(
+                        color: Colors.grey.shade500,
+                        fontSize: 10.sp,
+                      ),
                     ),
-                  ),
-                  Text(
-                    numberFormat.format(step),
-                    style: AppTextStyles.poppins60013.copyWith(
-                      color: AppColors.primary,
+                    Text(
+                      numberFormat.format(step),
+                      style: AppTextStyles.poppins60013.copyWith(
+                        color: AppColors.primary,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(width: 16.w),
-              _amountStepButton(
-                icon: Icons.add_rounded,
-                onPressed: () => _incrementAmount(index),
-                filled: true,
-              ),
-            ],
-          ),
+                  ],
+                ),
+                SizedBox(width: 16.w),
+                _amountStepButton(
+                  icon: Icons.add_rounded,
+                  onPressed:
+                      canIncrement ? () => _incrementAmount(index) : null,
+                  filled: true,
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -489,7 +555,7 @@ class _PaymentArragementState extends State<PaymentArragement> {
         elevation: 0,
         surfaceTintColor: Colors.white,
         leading: IconButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context).maybePop(),
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
             color: Colors.black87,
@@ -544,8 +610,10 @@ class _PaymentArragementState extends State<PaymentArragement> {
                   final item = widget.selectedJoinOption![index];
                   final currentAmount = _parseAmount(controllers[index].text);
                   final step = stepAmounts[index];
-                  final canDecrement = currentAmount > 0;
-                  final isSkipped = currentAmount == 0;
+                  final isLockedAtZero = _isFullyPaid(index);
+                  final canDecrement = !isLockedAtZero && currentAmount > 0;
+                  final canIncrement = _canIncrement(index);
+                  final isSkipped = !isLockedAtZero && currentAmount == 0;
 
                   return _buildStakeCard(
                     context: context,
@@ -554,7 +622,9 @@ class _PaymentArragementState extends State<PaymentArragement> {
                     currentAmount: currentAmount,
                     step: step,
                     canDecrement: canDecrement,
+                    canIncrement: canIncrement,
                     isSkipped: isSkipped,
+                    isLockedAtZero: isLockedAtZero,
                   );
                 },
               ),
@@ -610,14 +680,7 @@ class _PaymentArragementState extends State<PaymentArragement> {
                         ),
                         onPressed: _isContinuing
                             ? null
-                            : () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const HomeScreen(),
-                                  ),
-                                );
-                              },
+                            : () => Navigator.of(context).maybePop(),
                         child: Text(
                           AppKeys.cancel.tr(context),
                           style: AppTextStyles.poppins60014

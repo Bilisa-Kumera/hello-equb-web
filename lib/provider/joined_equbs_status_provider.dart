@@ -20,6 +20,7 @@ class JoinedEqubsStatusProvider extends ChangeNotifier
   bool _hasJoinedEqubs;
   bool _isLoading = false;
   bool _isWatching = false;
+  Set<String> _joinedEqubIds = {};
 
   JoinedEqubsStatusProvider()
       : _hasJoinedEqubs =
@@ -27,6 +28,7 @@ class JoinedEqubsStatusProvider extends ChangeNotifier
 
   bool get hasJoinedEqubs => _hasJoinedEqubs;
   bool get isLoading => _isLoading;
+  Set<String> get joinedEqubIds => Set.unmodifiable(_joinedEqubIds);
 
   void setHasJoinedEqubs(bool value) {
     if (_hasJoinedEqubs == value) return;
@@ -136,6 +138,7 @@ class JoinedEqubsStatusProvider extends ChangeNotifier
 
       if (response.statusCode == 200) {
         final equbs = _parseJoinedEqubs(response.data);
+        _joinedEqubIds = equbs.map((equb) => equb.id).toSet();
         final nextValue = equbs.any(_isActiveJoinedEqub);
 
         if (_hasJoinedEqubs != nextValue) {

@@ -309,6 +309,7 @@ final Map<String, String> enUS = {
   "lbl_payments": "Payments",
   "lbl_lotteries": "Lotteries",
   "lbl_next_round": "Next Round",
+  "lbl_current_round": "Current round",
   "lbl_days": "Days",
   "lbl_hours": "Hours",
   "lbl_minutes": "Min",

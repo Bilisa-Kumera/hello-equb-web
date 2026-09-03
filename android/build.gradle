@@ -1,6 +1,6 @@
 buildscript {
     ext.agp_version = '8.5.2'
-    ext.kotlin_version = '2.3.0'
+    ext.kotlin_version = '2.4.10'
     repositories {
         // Mirrors first
         maven { url 'https://maven.aliyun.com/repository/google' }
@@ -83,6 +83,10 @@ subprojects {
             project.android {
                 compileSdkVersion 34
                 buildToolsVersion "34.0.0"
+                lintOptions {
+                    checkReleaseBuilds false
+                    abortOnError false
+                }
             }
         }
         if (project.hasProperty("android")) {

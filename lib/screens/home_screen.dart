@@ -208,8 +208,8 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<EqubProvider>(
-      builder: (context, provider, _) {
+    return Consumer2<EqubProvider, JoinedEqubsStatusProvider>(
+      builder: (context, provider, joinedStatus, _) {
         if (provider.isLoading) {
           return Center(
             child: LoadingAnimationWidget.threeRotatingDots(
@@ -254,10 +254,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
           );
         }
 
-        final sortedEqubs = provider.equbs
-            .where((equb) => equb.isActive == true)
-            .toList()
-          ..sort((a, b) => (a.equbAmount ?? 0).compareTo(b.equbAmount ?? 0));
+        final sortedEqubs = provider.activeSortedEqubs;
 
         if (sortedEqubs.isEmpty) {
           return Center(
@@ -302,14 +299,18 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
               );
             }
             final equb = sortedEqubs[index];
+            final equbId = equb.id ?? '';
             return EqubDetailCard(
               key: ValueKey(equb.id),
-              equb: equb,
-              equbType: equb.equbType?.entries.first.value ?? '',
-              type: equb.equbType?['name'],
-              imageUrl: widget.imageUrl,
-              image: equb.image,
-              description: widget.description,
+                equb: equb,
+                equbType: equb.equbType?.entries.first.value ?? '',
+                type: equb.equbType?['name'],
+                imageUrl: widget.imageUrl,
+                image: equb.image,
+                description: widget.description,
+                isJoined: equbId.isNotEmpty
+                    ? joinedStatus.joinedEqubIds.contains(equbId)
+                    : false,
             );
           },
         );
@@ -390,8 +391,8 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CooperateEqubsProvider>().fetchCooperates();
-    });
+    context.read<CooperateEqubsProvider>().fetchCooperates();
+  });
     Future.microtask(() =>
         Provider.of<EqubTypeProvider>(context, listen: false).fetchEqubTypes());
     Future.microtask(() =>
@@ -441,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   String profileAvatarUrl = '';
-
+  
   Future<void> getProfileImage() async {
     final cachedAvatar =
         dataController.retrieveData<String>('profileUrl') ?? '';
@@ -778,13 +779,13 @@ class _HomeScreenState extends State<HomeScreen>
                                         }
 
                                         return SliverToBoxAdapter(
-                                          child: Container(
-                                            color: Colors.white,
-                                            child: Padding(
+                                      child: Container(
+                                          color: Colors.white,
+                                        child: Padding(
                                               padding: EdgeInsets.fromLTRB(
                                                   12.w, 8.h, 12.w, 16.h),
-                                              child: Column(
-                                                crossAxisAlignment:
+                                          child: Column(
+                                            crossAxisAlignment:
                                                     CrossAxisAlignment.stretch,
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
@@ -808,29 +809,29 @@ class _HomeScreenState extends State<HomeScreen>
                                                       crossAxisAlignment:
                                                           CrossAxisAlignment
                                                               .stretch,
-                                                      children: [
-                                                        Padding(
+                                            children: [
+                                              Padding(
                                                           padding:
                                                               EdgeInsets.only(
                                                                   top: 8.h,
                                                                   bottom: 10.h),
-                                                          child: Center(
-                                                            child: Text(
+                                                child: Center(
+                                                  child: Text(
                                                               AppKeys
                                                                   .joinEqubsToday
-                                                                  .tr(context),
+                                                        .tr(context),
                                                               style: AppTextStyles
                                                                   .sectionTitle
                                                                   .copyWith(
-                                                                color: AppColors
+                                                      color: AppColors
                                                                     .richDeepGreen,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w600,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                                         LayoutBuilder(
                                                           builder: (context,
                                                               constraints) {
@@ -854,7 +855,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                                     spacing,
                                                                 runSpacing: 8.h,
                                                                 children:
-                                                                    filteredCategories
+                                                        filteredCategories
                                                                         .map(
                                                                             (category) {
                                                                   final networkUrl = (category.imageIcon !=
@@ -863,7 +864,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                                               .imageIcon!
                                                                               .isNotEmpty)
                                                                       ? '${mediaUrl}images/category/${category.imageIcon}'
-                                                                      : null;
+                                                          : null;
                                                                   return SizedBox(
                                                                     width:
                                                                         itemWidth,
@@ -877,16 +878,16 @@ class _HomeScreenState extends State<HomeScreen>
                                                                             () {
                                                                           Navigator
                                                                               .push(
-                                                                            context,
-                                                                            MaterialPageRoute(
+                                                              context,
+                                                              MaterialPageRoute(
                                                                               builder: (_) => EqubTabbedScreen(
                                                                                 equbType: category.name ?? '',
                                                                                 equbTypes: equbTypes,
                                                                                 category: category,
                                                                                 equbTypeId: category.id ?? '',
-                                                                              ),
-                                                                            ),
-                                                                          );
+                                                                ),
+                                                              ),
+                                                            );
                                                                         },
                                                                         child:
                                                                             Container(
@@ -895,16 +896,16 @@ class _HomeScreenState extends State<HomeScreen>
                                                                               10.h,
                                                                               8.w,
                                                                               8.h),
-                                                                          decoration:
-                                                                              BoxDecoration(
-                                                                            color:
-                                                                                AppColors.white,
-                                                                            borderRadius:
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color:
+                                                                AppColors.white,
+                                                            borderRadius:
                                                                                 BorderRadius.circular(12.r),
                                                                             border:
                                                                                 Border.all(color: Colors.grey.shade200),
                                                                           ),
-                                                                          child:
+                                                                  child:
                                                                               Column(
                                                                             children: [
                                                                               Expanded(
@@ -929,55 +930,55 @@ class _HomeScreenState extends State<HomeScreen>
                                                                     ),
                                                                   );
                                                                 }).toList(),
-                                                              ),
-                                                            );
-                                                          },
+                                                        ),
+                                                      );
+                                                    },
                                                         ),
                                                       ],
-                                                    );
-                                                  }),
-                                                  Builder(builder: (context) {
-                                                    final otherCategories =
-                                                        equbCategories
-                                                            .where((cat) =>
-                                                                cat.otherTypeEqub ==
-                                                                true)
-                                                            .toList();
+                                                  );
+                                                }),
+                                              Builder(builder: (context) {
+                                                final otherCategories =
+                                                    equbCategories
+                                                        .where((cat) =>
+                                                            cat.otherTypeEqub ==
+                                                            true)
+                                                        .toList();
 
                                                     if (otherCategories
                                                         .isEmpty) {
                                                       return const SizedBox
                                                           .shrink();
-                                                    }
+                                                }
 
-                                                    return Column(
+                                                return Column(
                                                       mainAxisSize:
                                                           MainAxisSize.min,
-                                                      crossAxisAlignment:
+                                                  crossAxisAlignment:
                                                           CrossAxisAlignment
                                                               .stretch,
-                                                      children: [
-                                                        Padding(
+                                                  children: [
+                                                    Padding(
                                                           padding:
                                                               EdgeInsets.only(
                                                                   top: 16.h,
                                                                   bottom: 10.h),
                                                           child: Center(
-                                                            child: Text(
+                                                      child: Text(
                                                               AppKeys
                                                                   .otherEqubType
-                                                                  .tr(context),
+                                                            .tr(context),
                                                               style: AppTextStyles
                                                                   .sectionTitle
                                                                   .copyWith(
-                                                                color: AppColors
-                                                                    .richDeepGreen,
+                                                          color: AppColors
+                                                              .richDeepGreen,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w600,
-                                                              ),
-                                                            ),
-                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
                                                         ),
                                                         LayoutBuilder(
                                                           builder: (context,
@@ -1002,7 +1003,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                                     spacing,
                                                                 runSpacing: 8.h,
                                                                 children:
-                                                                    otherCategories
+                                                                      otherCategories
                                                                         .map(
                                                                             (category) {
                                                                   final networkUrl = (category.imageIcon !=
@@ -1011,7 +1012,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                                               .imageIcon!
                                                                               .isNotEmpty)
                                                                       ? '${mediaUrl}images/category/${category.imageIcon}'
-                                                                      : null;
+                                                              : null;
                                                                   return SizedBox(
                                                                     width:
                                                                         itemWidth,
@@ -1025,18 +1026,18 @@ class _HomeScreenState extends State<HomeScreen>
                                                                             () {
                                                                           Navigator
                                                                               .push(
-                                                                            context,
-                                                                            MaterialPageRoute(
+                                                                  context,
+                                                                  MaterialPageRoute(
                                                                               builder: (_) => EqubTabbedScreen(
-                                                                                imageUrl: category.imageIcon,
-                                                                                description: category.description,
+                                                                      imageUrl: category.imageIcon,
+                                                                      description: category.description,
                                                                                 equbType: category.name ?? '',
                                                                                 equbTypes: equbTypes,
                                                                                 category: category,
                                                                                 equbTypeId: category.id ?? '',
-                                                                              ),
-                                                                            ),
-                                                                          );
+                                                                    ),
+                                                                  ),
+                                                                );
                                                                         },
                                                                         child:
                                                                             Container(
@@ -1045,16 +1046,16 @@ class _HomeScreenState extends State<HomeScreen>
                                                                               10.h,
                                                                               8.w,
                                                                               8.h),
-                                                                          decoration:
-                                                                              BoxDecoration(
+                                                              decoration:
+                                                                  BoxDecoration(
                                                                             color:
                                                                                 AppColors.white,
-                                                                            borderRadius:
+                                                                borderRadius:
                                                                                 BorderRadius.circular(12.r),
                                                                             border:
                                                                                 Border.all(color: Colors.grey.shade200),
                                                                           ),
-                                                                          child:
+                                                                  child:
                                                                               Column(
                                                                             children: [
                                                                               Expanded(
@@ -1082,63 +1083,63 @@ class _HomeScreenState extends State<HomeScreen>
                                                               ),
                                                             );
                                                           },
-                                                        ),
-                                                      ],
-                                                    );
-                                                  }),
+                                                    ),
+                                                  ],
+                                                );
+                                              }),
                                                   Consumer<
                                                       CooperateEqubsProvider>(
-                                                    builder:
-                                                        (context, coopProv, _) {
-                                                      if (!coopProv.isLoading &&
+                                                builder:
+                                                    (context, coopProv, _) {
+                                                  if (!coopProv.isLoading &&
                                                           coopProv.cooperates
                                                               .isEmpty &&
                                                           coopProv.error ==
                                                               null) {
-                                                        WidgetsBinding.instance
-                                                            .addPostFrameCallback(
-                                                                (_) {
-                                                          coopProv
-                                                              .fetchCooperates();
-                                                        });
-                                                      }
+                                                    WidgetsBinding.instance
+                                                        .addPostFrameCallback(
+                                                            (_) {
+                                                      coopProv
+                                                          .fetchCooperates();
+                                                    });
+                                                  }
 
-                                                      if (coopProv.isLoading) {
+                                                  if (coopProv.isLoading) {
                                                         return const SizedBox
                                                             .shrink();
                                                       }
 
                                                       if (coopProv.error !=
                                                           null) {
-                                                        if (coopProv.error ==
-                                                            'Token is not valid') {
+                                                    if (coopProv.error ==
+                                                        'Token is not valid') {
                                                           WidgetsBinding
                                                               .instance
-                                                              .addPostFrameCallback(
-                                                                  (_) {
+                                                          .addPostFrameCallback(
+                                                              (_) {
                                                             Navigator.of(
                                                                     context)
-                                                                .pushAndRemoveUntil(
-                                                              MaterialPageRoute(
-                                                                  builder: (_) =>
-                                                                      LoginScreenWithPin(
-                                                                          phoneNumber:
-                                                                              '')),
-                                                              (route) => false,
-                                                            );
-                                                          });
-                                                        }
+                                                            .pushAndRemoveUntil(
+                                                          MaterialPageRoute(
+                                                              builder: (_) =>
+                                                                  LoginScreenWithPin(
+                                                                      phoneNumber:
+                                                                          '')),
+                                                          (route) => false,
+                                                        );
+                                                      });
+                                                    }
                                                         return const SizedBox
                                                             .shrink();
                                                       }
 
                                                       final List<Cooperate>
                                                           items =
-                                                          coopProv.cooperates;
-                                                      if (items.isEmpty) {
-                                                        return const SizedBox
-                                                            .shrink();
-                                                      }
+                                                      coopProv.cooperates;
+                                                  if (items.isEmpty) {
+                                                    return const SizedBox
+                                                        .shrink();
+                                                  }
 
                                                       return Column(
                                                         mainAxisSize:
@@ -1148,7 +1149,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                                 .stretch,
                                                         children: [
                                                           Padding(
-                                                            padding:
+                                                        padding:
                                                                 EdgeInsets.only(
                                                                     top: 16.h,
                                                                     bottom:
@@ -1213,20 +1214,20 @@ class _HomeScreenState extends State<HomeScreen>
                                                                             GestureDetector(
                                                                           onTap:
                                                                               () async {
-                                                                            final TextEditingController
-                                                                                codeController =
+                                                              final TextEditingController
+                                                                  codeController =
                                                                                 TextEditingController(text: item.code ?? '');
                                                                             final formKey =
                                                                                 GlobalKey<FormState>();
 
-                                                                            await showDialog(
+                                                              await showDialog(
                                                                               context: context,
                                                                               barrierDismissible: false,
-                                                                              builder: (ctx) {
+                                                                builder: (ctx) {
                                                                                 bool isSubmitting = false;
-                                                                                return StatefulBuilder(
+                                                                  return StatefulBuilder(
                                                                                   builder: (context, setLocalState) {
-                                                                                    return Dialog(
+                                                                      return Dialog(
                                                                                       shape: RoundedRectangleBorder(
                                                                                         borderRadius: BorderRadius.circular(18),
                                                                                       ),
@@ -1235,244 +1236,244 @@ class _HomeScreenState extends State<HomeScreen>
                                                                                         padding: const EdgeInsets.all(24.0),
                                                                                         child: Column(
                                                                                           mainAxisSize: MainAxisSize.min,
-                                                                                          children: [
-                                                                                            const Icon(
-                                                                                              Icons.lock_open_rounded,
-                                                                                              size: 50,
-                                                                                              color: AppColors.primary,
-                                                                                            ),
-                                                                                            const SizedBox(height: 18),
-                                                                                            Text(
-                                                                                              AppKeys.enterCodeTitle.tr(context),
+                                                                            children: [
+                                                                              const Icon(
+                                                                                Icons.lock_open_rounded,
+                                                                                size: 50,
+                                                                                color: AppColors.primary,
+                                                                              ),
+                                                                              const SizedBox(height: 18),
+                                                                              Text(
+                                                                                AppKeys.enterCodeTitle.tr(context),
                                                                                               style: AppTextStyles.dialogTitle.copyWith(
                                                                                                 fontWeight: FontWeight.w700,
-                                                                                                color: AppColors.vibrantGreen,
-                                                                                              ),
-                                                                                            ),
-                                                                                            const SizedBox(height: 18),
-                                                                                            Form(
+                                                                                  color: AppColors.vibrantGreen,
+                                                                                ),
+                                                                              ),
+                                                                              const SizedBox(height: 18),
+                                                                              Form(
                                                                                               key: formKey,
-                                                                                              child: TextFormField(
-                                                                                                controller: codeController,
-                                                                                                decoration: InputDecoration(
-                                                                                                  labelText: AppKeys.codeLabel.tr(context),
-                                                                                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                                                                                  prefixIcon: const Icon(Icons.vpn_key, color: Colors.deepPurple),
-                                                                                                ),
-                                                                                                textInputAction: TextInputAction.done,
-                                                                                                validator: (val) => (val == null || val.trim().isEmpty) ? AppKeys.codeRequired.tr(context) : null,
-                                                                                              ),
-                                                                                            ),
-                                                                                            const SizedBox(height: 22),
-                                                                                            Row(
-                                                                                              children: [
-                                                                                                Expanded(
-                                                                                                  child: TextButton(
-                                                                                                    onPressed: isSubmitting
-                                                                                                        ? null
-                                                                                                        : () {
-                                                                                                            Navigator.pop(ctx);
-                                                                                                          },
-                                                                                                    style: TextButton.styleFrom(
-                                                                                                      foregroundColor: Colors.grey[700],
+                                                                                child: TextFormField(
+                                                                                  controller: codeController,
+                                                                                  decoration: InputDecoration(
+                                                                                    labelText: AppKeys.codeLabel.tr(context),
+                                                                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                                                                    prefixIcon: const Icon(Icons.vpn_key, color: Colors.deepPurple),
+                                                                                  ),
+                                                                                  textInputAction: TextInputAction.done,
+                                                                                  validator: (val) => (val == null || val.trim().isEmpty) ? AppKeys.codeRequired.tr(context) : null,
+                                                                                ),
+                                                                              ),
+                                                                              const SizedBox(height: 22),
+                                                                              Row(
+                                                                                children: [
+                                                                                  Expanded(
+                                                                                    child: TextButton(
+                                                                                      onPressed: isSubmitting
+                                                                                          ? null
+                                                                                          : () {
+                                                                                              Navigator.pop(ctx);
+                                                                                            },
+                                                                                      style: TextButton.styleFrom(
+                                                                                        foregroundColor: Colors.grey[700],
                                                                                                       textStyle: AppTextStyles.buttonMedium,
-                                                                                                    ),
-                                                                                                    child: Text(AppKeys.cancel.tr(context)),
-                                                                                                  ),
-                                                                                                ),
-                                                                                                const SizedBox(width: 12),
-                                                                                                Expanded(
-                                                                                                  child: ElevatedButton(
-                                                                                                    style: ElevatedButton.styleFrom(
-                                                                                                      backgroundColor: AppColors.primary,
-                                                                                                      shadowColor: Colors.greenAccent,
-                                                                                                      shape: RoundedRectangleBorder(
-                                                                                                        borderRadius: BorderRadius.circular(10),
-                                                                                                      ),
-                                                                                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                                                                                    ),
-                                                                                                    onPressed: isSubmitting
-                                                                                                        ? null
-                                                                                                        : () async {
+                                                                                      ),
+                                                                                      child: Text(AppKeys.cancel.tr(context)),
+                                                                                    ),
+                                                                                  ),
+                                                                                  const SizedBox(width: 12),
+                                                                                  Expanded(
+                                                                                    child: ElevatedButton(
+                                                                                      style: ElevatedButton.styleFrom(
+                                                                                        backgroundColor: AppColors.primary,
+                                                                                        shadowColor: Colors.greenAccent,
+                                                                                        shape: RoundedRectangleBorder(
+                                                                                          borderRadius: BorderRadius.circular(10),
+                                                                                        ),
+                                                                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                                                                      ),
+                                                                                      onPressed: isSubmitting
+                                                                                          ? null
+                                                                                          : () async {
                                                                                                             if (!(formKey.currentState?.validate() ?? false)) return;
 
-                                                                                                            final token = await SecureStorageHelper.getAccessToken() ?? '';
-                                                                                                            if (token.isEmpty) {
-                                                                                                              await showDialog(
-                                                                                                                context: context,
-                                                                                                                builder: (dialogCtx) => AlertDialog(
-                                                                                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                                                                  backgroundColor: Colors.red[50],
-                                                                                                                  title: Row(
-                                                                                                                    children: [
-                                                                                                                      const Icon(Icons.error_outline, color: Colors.red, size: 28),
-                                                                                                                      const SizedBox(width: 6),
-                                                                                                                      Text(AppKeys.notAuthorizedTitle.tr(dialogCtx)),
-                                                                                                                    ],
-                                                                                                                  ),
-                                                                                                                  content: Text(AppKeys.loginToContinue.tr(dialogCtx)),
-                                                                                                                  actions: [
-                                                                                                                    TextButton(
-                                                                                                                      onPressed: () {
-                                                                                                                        Navigator.pop(dialogCtx);
-                                                                                                                      },
-                                                                                                                      child: Text(AppKeys.ok.tr(dialogCtx)),
-                                                                                                                    ),
-                                                                                                                  ],
-                                                                                                                ),
-                                                                                                              );
-                                                                                                              return;
-                                                                                                            }
-
-                                                                                                            setLocalState(() => isSubmitting = true);
-                                                                                                            try {
-                                                                                                              final dio = Dio(
-                                                                                                                BaseOptions(
-                                                                                                                  connectTimeout: const Duration(seconds: 12),
-                                                                                                                  receiveTimeout: const Duration(seconds: 12),
-                                                                                                                  headers: {
-                                                                                                                    'Authorization': 'Bearer $token',
-                                                                                                                    'Content-Type': 'application/json',
-                                                                                                                  },
-                                                                                                                ),
-                                                                                                              );
-
-                                                                                                              final response = await dio.post(
-                                                                                                                validateCooperateUrl,
-                                                                                                                data: {
-                                                                                                                  'id': item.id,
-                                                                                                                  'code': codeController.text.trim(),
-                                                                                                                },
-                                                                                                              );
-
-                                                                                                              final dynamic data = response.data;
-                                                                                                              final bool ok = (response.statusCode == 200 || response.statusCode == 201) && (data is Map && ((data['status'] == 'success') || (data['success'] == true)));
-
-                                                                                                              Navigator.pop(ctx);
-
-                                                                                                              if (ok) {
-                                                                                                                Navigator.push(
-                                                                                                                  context,
-                                                                                                                  MaterialPageRoute(
-                                                                                                                    builder: (_) => CooperateListScreen(
-                                                                                                                      title: item.name ?? 'Equbs',
-                                                                                                                      equbs: item.equbs ?? const [],
-                                                                                                                    ),
-                                                                                                                  ),
-                                                                                                                );
-                                                                                                              } else {
-                                                                                                                final String errorMsg = (data is Map && data['message'] is String) ? data['message'] as String : AppKeys.validationFailedMessage.tr(context);
-                                                                                                                await showDialog(
-                                                                                                                  context: context,
-                                                                                                                  builder: (dialogCtx) => AlertDialog(
-                                                                                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                                                                    backgroundColor: Colors.red[50],
-                                                                                                                    title: Row(
-                                                                                                                      children: [
-                                                                                                                        const Icon(Icons.clear_rounded, color: Colors.red, size: 28),
-                                                                                                                        const SizedBox(width: 6),
-                                                                                                                        Text(AppKeys.failedTitle.tr(dialogCtx)),
-                                                                                                                      ],
-                                                                                                                    ),
-                                                                                                                    content: Text(errorMsg, style: AppTextStyles.bodyLarge),
-                                                                                                                    actions: [
-                                                                                                                      TextButton(
-                                                                                                                        onPressed: () {
-                                                                                                                          Navigator.pop(dialogCtx);
-                                                                                                                        },
-                                                                                                                        child: Text(AppKeys.ok.tr(dialogCtx)),
-                                                                                                                      ),
-                                                                                                                    ],
-                                                                                                                  ),
-                                                                                                                );
-                                                                                                              }
-                                                                                                            } on DioError catch (e) {
-                                                                                                              Navigator.pop(ctx);
-                                                                                                              String message = AppKeys.genericErrorMessage.tr(context);
-                                                                                                              if (e.type == DioErrorType.connectionTimeout || e.type == DioErrorType.receiveTimeout) {
-                                                                                                                message = AppKeys.timeoutErrorMessage.tr(context);
-                                                                                                              } else if (e.response != null) {
-                                                                                                                final data = e.response?.data;
-                                                                                                                if (data is Map && data['message'] is String) {
-                                                                                                                  message = data['message'] as String;
-                                                                                                                } else if (e.response?.statusCode == 401) {
-                                                                                                                  message = AppKeys.sessionExpiredMessage.tr(context);
-                                                                                                                }
-                                                                                                              }
-                                                                                                              await showDialog(
-                                                                                                                context: context,
-                                                                                                                builder: (dialogCtx) => AlertDialog(
-                                                                                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                                                                  backgroundColor: Colors.red[50],
-                                                                                                                  title: Row(
-                                                                                                                    children: [
-                                                                                                                      const Icon(Icons.error_outline, color: Colors.red, size: 28),
-                                                                                                                      const SizedBox(width: 6),
-                                                                                                                      Text(AppKeys.errorTitle.tr(dialogCtx)),
-                                                                                                                    ],
-                                                                                                                  ),
-                                                                                                                  content: Text(message, style: AppTextStyles.bodyLarge),
-                                                                                                                  actions: [
-                                                                                                                    TextButton(
-                                                                                                                      onPressed: () => Navigator.pop(dialogCtx),
-                                                                                                                      child: Text(AppKeys.ok.tr(dialogCtx)),
-                                                                                                                    ),
-                                                                                                                  ],
-                                                                                                                ),
-                                                                                                              );
-                                                                                                            } catch (e) {
-                                                                                                              Navigator.pop(ctx);
-                                                                                                              await showDialog(
-                                                                                                                context: context,
-                                                                                                                builder: (dialogCtx) => AlertDialog(
-                                                                                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                                                                                  backgroundColor: Colors.red[50],
-                                                                                                                  title: Row(
-                                                                                                                    children: [
-                                                                                                                      const Icon(Icons.error_outline, color: Colors.red, size: 28),
-                                                                                                                      const SizedBox(width: 6),
-                                                                                                                      Text(AppKeys.errorTitle.tr(dialogCtx)),
-                                                                                                                    ],
-                                                                                                                  ),
-                                                                                                                  content: Text('${AppKeys.exceptionErrorPrefix.tr(dialogCtx)}$e', style: AppTextStyles.bodyLarge),
-                                                                                                                  actions: [
-                                                                                                                    TextButton(
-                                                                                                                      onPressed: () => Navigator.pop(dialogCtx),
-                                                                                                                      child: Text(AppKeys.ok.tr(dialogCtx)),
-                                                                                                                    ),
-                                                                                                                  ],
-                                                                                                                ),
-                                                                                                              );
-                                                                                                            } finally {
-                                                                                                              if (mounted) {
-                                                                                                                setLocalState(() => isSubmitting = false);
-                                                                                                              }
-                                                                                                            }
-                                                                                                          },
-                                                                                                    child: isSubmitting
-                                                                                                        ? const SizedBox(
-                                                                                                            height: 20,
-                                                                                                            width: 20,
-                                                                                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                                                                                          )
-                                                                                                        : Text(AppKeys.join.tr(context), style: AppTextStyles.onPrimaryBold.copyWith(fontWeight: FontWeight.w700)),
+                                                                                              final token = await SecureStorageHelper.getAccessToken() ?? '';
+                                                                                              if (token.isEmpty) {
+                                                                                                await showDialog(
+                                                                                                  context: context,
+                                                                                                  builder: (dialogCtx) => AlertDialog(
+                                                                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                                                    backgroundColor: Colors.red[50],
+                                                                                                    title: Row(
+                                                                                                      children: [
+                                                                                                        const Icon(Icons.error_outline, color: Colors.red, size: 28),
+                                                                                                        const SizedBox(width: 6),
+                                                                                                        Text(AppKeys.notAuthorizedTitle.tr(dialogCtx)),
+                                                                                                      ],
+                                                                                                    ),
+                                                                                                    content: Text(AppKeys.loginToContinue.tr(dialogCtx)),
+                                                                                                    actions: [
+                                                                                                      TextButton(
+                                                                                                        onPressed: () {
+                                                                                                          Navigator.pop(dialogCtx);
+                                                                                                        },
+                                                                                                        child: Text(AppKeys.ok.tr(dialogCtx)),
+                                                                                                      ),
+                                                                                                    ],
                                                                                                   ),
-                                                                                                ),
-                                                                                              ],
-                                                                                            ),
-                                                                                          ],
-                                                                                        ),
-                                                                                      ),
-                                                                                    );
-                                                                                  },
-                                                                                );
-                                                                              },
-                                                                            );
-                                                                          },
+                                                                                                );
+                                                                                                return;
+                                                                                              }
+
+                                                                                              setLocalState(() => isSubmitting = true);
+                                                                                              try {
+                                                                                                final dio = Dio(
+                                                                                                  BaseOptions(
+                                                                                                    connectTimeout: const Duration(seconds: 12),
+                                                                                                    receiveTimeout: const Duration(seconds: 12),
+                                                                                                    headers: {
+                                                                                                      'Authorization': 'Bearer $token',
+                                                                                                      'Content-Type': 'application/json',
+                                                                                                    },
+                                                                                                  ),
+                                                                                                );
+
+                                                                                                final response = await dio.post(
+                                                                                                  validateCooperateUrl,
+                                                                                                  data: {
+                                                                                                    'id': item.id,
+                                                                                                    'code': codeController.text.trim(),
+                                                                                                  },
+                                                                                                );
+
+                                                                                                final dynamic data = response.data;
+                                                                                                final bool ok = (response.statusCode == 200 || response.statusCode == 201) && (data is Map && ((data['status'] == 'success') || (data['success'] == true)));
+
+                                                                                                Navigator.pop(ctx);
+
+                                                                                                if (ok) {
+                                                                                                  Navigator.push(
+                                                                                                    context,
+                                                                                                    MaterialPageRoute(
+                                                                                                      builder: (_) => CooperateListScreen(
+                                                                                                        title: item.name ?? 'Equbs',
+                                                                                                        equbs: item.equbs ?? const [],
+                                                                                                      ),
+                                                                                                    ),
+                                                                                                  );
+                                                                                                } else {
+                                                                                                  final String errorMsg = (data is Map && data['message'] is String) ? data['message'] as String : AppKeys.validationFailedMessage.tr(context);
+                                                                                                  await showDialog(
+                                                                                                    context: context,
+                                                                                                    builder: (dialogCtx) => AlertDialog(
+                                                                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                                                      backgroundColor: Colors.red[50],
+                                                                                                      title: Row(
+                                                                                                        children: [
+                                                                                                          const Icon(Icons.clear_rounded, color: Colors.red, size: 28),
+                                                                                                          const SizedBox(width: 6),
+                                                                                                          Text(AppKeys.failedTitle.tr(dialogCtx)),
+                                                                                                        ],
+                                                                                                      ),
+                                                                                                                    content: Text(errorMsg, style: AppTextStyles.bodyLarge),
+                                                                                                      actions: [
+                                                                                                        TextButton(
+                                                                                                          onPressed: () {
+                                                                                                            Navigator.pop(dialogCtx);
+                                                                                                          },
+                                                                                                          child: Text(AppKeys.ok.tr(dialogCtx)),
+                                                                                                        ),
+                                                                                                      ],
+                                                                                                    ),
+                                                                                                  );
+                                                                                                }
+                                                                                              } on DioError catch (e) {
+                                                                                                Navigator.pop(ctx);
+                                                                                                String message = AppKeys.genericErrorMessage.tr(context);
+                                                                                                if (e.type == DioErrorType.connectionTimeout || e.type == DioErrorType.receiveTimeout) {
+                                                                                                  message = AppKeys.timeoutErrorMessage.tr(context);
+                                                                                                } else if (e.response != null) {
+                                                                                                  final data = e.response?.data;
+                                                                                                  if (data is Map && data['message'] is String) {
+                                                                                                    message = data['message'] as String;
+                                                                                                  } else if (e.response?.statusCode == 401) {
+                                                                                                    message = AppKeys.sessionExpiredMessage.tr(context);
+                                                                                                  }
+                                                                                                }
+                                                                                                await showDialog(
+                                                                                                  context: context,
+                                                                                                  builder: (dialogCtx) => AlertDialog(
+                                                                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                                                    backgroundColor: Colors.red[50],
+                                                                                                    title: Row(
+                                                                                                      children: [
+                                                                                                        const Icon(Icons.error_outline, color: Colors.red, size: 28),
+                                                                                                        const SizedBox(width: 6),
+                                                                                                        Text(AppKeys.errorTitle.tr(dialogCtx)),
+                                                                                                      ],
+                                                                                                    ),
+                                                                                                                  content: Text(message, style: AppTextStyles.bodyLarge),
+                                                                                                    actions: [
+                                                                                                      TextButton(
+                                                                                                        onPressed: () => Navigator.pop(dialogCtx),
+                                                                                                        child: Text(AppKeys.ok.tr(dialogCtx)),
+                                                                                                      ),
+                                                                                                    ],
+                                                                                                  ),
+                                                                                                );
+                                                                                              } catch (e) {
+                                                                                                Navigator.pop(ctx);
+                                                                                                await showDialog(
+                                                                                                  context: context,
+                                                                                                  builder: (dialogCtx) => AlertDialog(
+                                                                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                                                                    backgroundColor: Colors.red[50],
+                                                                                                    title: Row(
+                                                                                                      children: [
+                                                                                                        const Icon(Icons.error_outline, color: Colors.red, size: 28),
+                                                                                                        const SizedBox(width: 6),
+                                                                                                        Text(AppKeys.errorTitle.tr(dialogCtx)),
+                                                                                                      ],
+                                                                                                    ),
+                                                                                                                  content: Text('${AppKeys.exceptionErrorPrefix.tr(dialogCtx)}$e', style: AppTextStyles.bodyLarge),
+                                                                                                    actions: [
+                                                                                                      TextButton(
+                                                                                                        onPressed: () => Navigator.pop(dialogCtx),
+                                                                                                        child: Text(AppKeys.ok.tr(dialogCtx)),
+                                                                                                      ),
+                                                                                                    ],
+                                                                                                  ),
+                                                                                                );
+                                                                                              } finally {
+                                                                                                if (mounted) {
+                                                                                                  setLocalState(() => isSubmitting = false);
+                                                                                                }
+                                                                                              }
+                                                                                            },
+                                                                                      child: isSubmitting
+                                                                                          ? const SizedBox(
+                                                                                              height: 20,
+                                                                                              width: 20,
+                                                                                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                                                                            )
+                                                                                                        : Text(AppKeys.join.tr(context), style: AppTextStyles.onPrimaryBold.copyWith(fontWeight: FontWeight.w700)),
+                                                                                    ),
+                                                                                  ),
+                                                                                ],
+                                                                              ),
+                                                                            ],
+                                                                          ),
+                                                                        ),
+                                                                      );
+                                                                    },
+                                                                  );
+                                                                },
+                                                              );
+                                                            },
                                                                           child:
                                                                               Container(
-                                                                            decoration:
-                                                                                BoxDecoration(
+                                                              decoration:
+                                                                  BoxDecoration(
                                                                               color: Colors.white,
                                                                               borderRadius: BorderRadius.circular(12.r),
                                                                               border: Border.all(color: Colors.grey.shade200),
@@ -1482,7 +1483,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                                                 10.h,
                                                                                 8.w,
                                                                                 8.h),
-                                                                            child:
+                                                                      child:
                                                                                 Column(
                                                                               children: [
                                                                                 Expanded(
@@ -1492,33 +1493,33 @@ class _HomeScreenState extends State<HomeScreen>
                                                                                     ),
                                                                                   ),
                                                                                 ),
-                                                                                Text(
+                                                                  Text(
                                                                                   item.name ?? '-',
                                                                                   textAlign: TextAlign.center,
-                                                                                  maxLines: 2,
+                                                                    maxLines: 2,
                                                                                   overflow: TextOverflow.ellipsis,
                                                                                   style: AppTextStyles.labelSmall.copyWith(
                                                                                     fontWeight: FontWeight.w600,
-                                                                                  ),
-                                                                                ),
-                                                                              ],
+                                                                    ),
+                                                                  ),
+                                                                ],
                                                                             ),
                                                                           ),
-                                                                        ),
+                                                              ),
                                                                       ),
                                                                     );
                                                                   }).toList(),
-                                                                ),
-                                                              );
-                                                            },
+                                                            ),
+                                                          );
+                                                        },
                                                           ),
                                                         ],
                                                       );
-                                                    },
-                                                  ),
-                                                ],
+                                                },
                                               ),
-                                            ),
+                                            ],
+                                          ),
+                                        ),
                                           ),
                                         );
                                       },
@@ -1540,13 +1541,13 @@ class _HomeScreenState extends State<HomeScreen>
                             showMyEqubTab: joinStatus.hasJoinedEqubs,
                             currentIndex: currentIndex,
                             onTap: (index) => onMainBottomNavTap(
-                              context,
+                            context,
                               tappedIndex: index,
                               currentIndex: currentIndex,
                             ),
                           );
-                        },
-                      ),
+                  },
+                ),
               ),
             ),
           );

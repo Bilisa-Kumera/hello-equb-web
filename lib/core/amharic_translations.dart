@@ -218,6 +218,7 @@ final Map<String, String> amET = {
   "lbl_payments": "ክፍያዎች",
   "lbl_lotteries": "ዕጣዎች",
   "lbl_next_round": "ቀጣዩ ዙር",
+  "lbl_current_round": "አሁን ያለው ዙር",
   "lbl_days": "ቀናት",
   "lbl_hours": "ሰዓታት",
   "lbl_minutes": "ደቂቃዎች",

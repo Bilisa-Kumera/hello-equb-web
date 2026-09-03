@@ -41,16 +41,21 @@ class Payment {
 class Equb {
   final String id;
   final String name;
+  final String status;
 
   Equb({
     required this.id,
     required this.name,
+    this.status = '',
   });
+
+  bool get isCompleted => status.toLowerCase() == 'completed';
 
   factory Equb.fromJson(Map<String, dynamic> json) {
     return Equb(
       id: json['id'],
       name: json['name'],
+      status: json['status']?.toString() ?? '',
     );
   }
 
@@ -58,6 +63,7 @@ class Equb {
     return {
       'id': id,
       'name': name,
+      'status': status,
     };
   }
 }
@@ -100,5 +106,19 @@ class PaymentsResponse {
             List<dynamic>.from(paymentsReceived.map((x) => x.toJson())),
       },
     };
+  }
+
+  /// Excludes payments tied to completed equbs (shown on Equb History instead).
+  PaymentsResponse withoutCompletedEqubs() {
+    bool isOpen(Payment p) => !p.equb.isCompleted;
+    final made = paymentsMade.where(isOpen).toList();
+    final received = paymentsReceived.where(isOpen).toList();
+    return PaymentsResponse(
+      status: status,
+      totalPaid: made.fold(0.0, (sum, p) => sum + p.amount),
+      totalReceived: received.fold(0.0, (sum, p) => sum + p.amount),
+      paymentsMade: made,
+      paymentsReceived: received,
+    );
   }
 }

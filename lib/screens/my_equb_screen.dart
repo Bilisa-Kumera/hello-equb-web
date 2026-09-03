@@ -35,6 +35,9 @@ class PendingEqub {
   final List<Equber>? equbers;
   final Branch? branch;
 
+  /// Derived from approved equb payments on the joined-list payload.
+  final int lastPaidRound;
+
   PendingEqub({
     required this.id,
     required this.name,
@@ -66,7 +69,14 @@ class PendingEqub {
     this.equbCategory,
     this.equbers,
     this.branch,
+    this.lastPaidRound = 0,
   });
+
+  int get slotCount => (equbers?.isNotEmpty ?? false) ? equbers!.length : 1;
+
+  /// Fully paid up for every lottery slot in this equb.
+  bool get isFullyPaid =>
+      lastPaidRound >= numberOfEqubers && numberOfEqubers > 0;
 
   /// Earliest payment by [currentUserId] on this equb ≈ when they joined.
   static DateTime? joinedAtFromJson(
@@ -94,6 +104,35 @@ class PendingEqub {
       }
     }
     return earliestRegistering ?? earliestAny;
+  }
+
+  /// Last paid-up-to round from joined-list `Payment` rows (no detail fetch).
+  static int lastPaidRoundFromJson(Map<String, dynamic> json) {
+    final payments = json['Payment'] ?? json['payments'];
+    if (payments is! List || payments.isEmpty) return 0;
+
+    final roundAmount = (json['equbAmount'] as num?)?.toInt() ?? 0;
+    if (roundAmount <= 0) return 0;
+
+    final slots = json['equbers'] is List ? (json['equbers'] as List).length : 1;
+    final slotCount = slots > 0 ? slots : 1;
+
+    var paymentSum = 0.0;
+    var maxRound = 0;
+    for (final raw in payments) {
+      if (raw is! Map) continue;
+      final type = raw['type']?.toString().toLowerCase() ?? '';
+      if (type == 'lottery') continue;
+      if (raw['approved'] != true) continue;
+      if (raw['state']?.toString() == 'deleted') continue;
+
+      paymentSum += (raw['amount'] as num?)?.toDouble() ?? 0;
+      final round = int.tryParse(raw['round']?.toString() ?? '') ?? 0;
+      if (round > maxRound) maxRound = round;
+    }
+
+    final fromSum = (paymentSum / (roundAmount * slotCount)).floor();
+    return fromSum > maxRound ? fromSum : maxRound;
   }
 
   /// Newest join first. Falls back to equb [createdAt] when join time is unknown.
@@ -145,6 +184,7 @@ class PendingEqub {
           ? List<Equber>.from(json['equbers'].map((x) => Equber.fromJson(x)))
           : null,
       branch: json['branch'] != null ? Branch.fromJson(json['branch']) : null,
+      lastPaidRound: lastPaidRoundFromJson(json),
     );
   }
 }

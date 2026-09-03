@@ -19,7 +19,6 @@ import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/claim_winning_dialog.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
-import 'package:helloequb/utils/payment_bottom_sheet.dart';
 import 'package:helloequb/utils/request_item_popup.dart';
 import 'package:helloequb/utils/token_helper.dart';
 import 'package:intl/intl.dart';
@@ -39,8 +38,19 @@ class ListItems {
   final String title;
   String subtitle;
   final String userIds;
-  ListItems(
-      {required this.title, required this.subtitle, required this.userIds});
+  final double roundAmount;
+  final bool isFullyPaid;
+  /// Max ETB still owed for this lottery (e.g. until 105/105); caps + button.
+  final double maxPayableAmount;
+
+  ListItems({
+    required this.title,
+    required this.subtitle,
+    required this.userIds,
+    this.roundAmount = 0,
+    this.isFullyPaid = false,
+    this.maxPayableAmount = double.infinity,
+  });
 }
 
 class ApiResp {
@@ -186,7 +196,7 @@ class Payment {
   final String name, id, lotteryNumber, equbersId;
   final int totalPaid, paidRound;
   final double amountPaid, equbAmount;
-  final bool paid, isGroup;
+  final bool paid, isGroup, fullyPaid;
   final Request? request;
   Payment({
     required this.name,
@@ -199,6 +209,7 @@ class Payment {
     required this.equbAmount,
     required this.paid,
     required this.isGroup,
+    this.fullyPaid = false,
     this.request,
   });
   factory Payment.fromJson(Map<String, dynamic> json) => Payment(
@@ -224,9 +235,42 @@ class Payment {
                 double.parse(json['equbAmount'].toString()).toStringAsFixed(2)),
         paid: json['paid'] == true,
         isGroup: json['isGroup'] == true,
+        fullyPaid: json['fullyPaid'] == true,
         request:
             json['request'] != null ? Request.fromJson(json['request']) : null,
       );
+
+  /// True when this lottery spot has paid all rounds in the equb (e.g. 105/105).
+  bool isFullyPaidForEqub(int numberOfEqubers) {
+    if (fullyPaid) return true;
+    if (equbAmount <= 0 || numberOfEqubers <= 0) return false;
+    final maxTotal = equbAmount * numberOfEqubers;
+    final paidTotal = totalPaid.toDouble();
+    return paidRound >= numberOfEqubers || paidTotal >= maxTotal - 0.01;
+  }
+
+  /// Amount due now for this spot (0 when fully paid for the whole equb).
+  double remainingPaymentAmount(int numberOfEqubers) {
+    if (isFullyPaidForEqub(numberOfEqubers)) return 0;
+
+    final maxTotal = equbAmount * numberOfEqubers;
+    final remainingTotal =
+        (maxTotal - totalPaid.toDouble()).clamp(0.0, maxTotal);
+
+    if (amountPaid < equbAmount) {
+      final roundGap = (equbAmount - amountPaid).clamp(0.0, equbAmount);
+      return roundGap.clamp(0.0, remainingTotal);
+    }
+
+    return equbAmount.clamp(0.0, remainingTotal);
+  }
+
+  /// Total ETB still allowed for this lottery before 105/105 (or full equb cycle).
+  double maxRemainingPayable(int numberOfEqubers) {
+    if (isFullyPaidForEqub(numberOfEqubers)) return 0;
+    final maxTotal = equbAmount * numberOfEqubers;
+    return (maxTotal - totalPaid.toDouble()).clamp(0.0, maxTotal);
+  }
 }
 
 class Request {
@@ -335,6 +379,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   List<Payment> _payments = [];
   List<Lottery> _lotteries = [];
+  int _totalEqubRounds = 0;
   List<BankAccount> bankAccounts = [];
   BankAccount? selectedAccount;
 
@@ -366,6 +411,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   @override
   void initState() {
     super.initState();
+    _totalEqubRounds = widget.ekubCycle;
 
     Future.microtask(() {
       context.read<LotteryProvider>().fetchLotteries(widget.ekubId);
@@ -405,13 +451,43 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     super.dispose();
   }
 
+  /// Lottery numbers that have already won (all past draws).
+  /// Eligible-member APIs omit winners, so the full-slot wheel must use
+  /// [getEkubLotteries] (`_lotteries`) plus any winner flags on the provider.
+  Set<int> _winnerSlotNumbers(LotteryProvider provider) {
+    int? parseNum(dynamic value) {
+      if (value is int) return value;
+      return int.tryParse(value?.toString() ?? '');
+    }
+
+    bool isWinner(LotteryModel m) =>
+        m.hasWonEqub || (m.winRound != null && m.winRound! > 0);
+
+    final fromHistory = <int>{};
+    for (final lottery in _lotteries) {
+      for (final user in lottery.users) {
+        final n = parseNum(user.lotteryNumber);
+        if (n != null && n > 0) fromHistory.add(n);
+      }
+    }
+
+    return {
+      ...fromHistory,
+      ...provider.eligibleMembers.where(isWinner).map((m) => m.lotteryNumber),
+      ...provider.winners.map((m) => m.lotteryNumber),
+      ...provider.lotteries.where(isWinner).map((m) => m.lotteryNumber),
+      ..._revealedWinnerNumbers,
+    };
+  }
+
   /// When more than 2 days remain, show every round slot (1..total rounds)
-  /// so the wheel looks fully filled. Within 2 days (and during reveal), show
-  /// the real joined-equber list.
+  /// except winner numbers. Within 2 days (and during reveal), show the real
+  /// joined-equber list, also without already-won slots.
   ///
   /// Note: [ekubCycle] carries API `numberOfEqubers` (total rounds).
   /// [ekubersNumber] is the joined equbers count.
   List<int> _wheelSlotNumbers(LotteryProvider provider) {
+    final winnerSlots = _winnerSlotNumbers(provider);
     final showAllRoundSlots = remainingTime > const Duration(days: 2) &&
         !_isRevealing &&
         !_holdingEarlyDrawReveal &&
@@ -421,7 +497,9 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     if (showAllRoundSlots) {
       final totalRounds = widget.ekubCycle;
       if (totalRounds <= 0) return const <int>[];
-      return List<int>.generate(totalRounds, (i) => i + 1);
+      return List<int>.generate(totalRounds, (i) => i + 1)
+          .where((n) => n > 0 && !winnerSlots.contains(n))
+          .toList();
     }
 
     final keepOnWheel = {
@@ -434,11 +512,12 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
     final numbers = provider.eligibleMembers
         .where((m) =>
-            !m.hasWonEqub || keepOnWheel.contains(m.lotteryNumber))
+            !winnerSlots.contains(m.lotteryNumber) ||
+            keepOnWheel.contains(m.lotteryNumber))
         .map((m) => m.lotteryNumber)
         .where((n) => n > 0)
         .where((n) =>
-            !_revealedWinnerNumbers.contains(n) || keepOnWheel.contains(n))
+            !winnerSlots.contains(n) || keepOnWheel.contains(n))
         .toSet()
         .toList();
 
@@ -1072,6 +1151,11 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         ekubRound = res.data['data']['equbRound'].toString();
         totalPaid = res.data['data']['equbersPaid'].toString();
         equbers = res.data['data']['equbers'].toString();
+        final apiRounds =
+            int.tryParse(res.data['data']['numberOfEqubers']?.toString() ?? '');
+        if (apiRounds != null && apiRounds > 0) {
+          _totalEqubRounds = apiRounds;
+        }
 
         lotteryNumbers.clear();
         paidPerEachLottery.clear();
@@ -1203,7 +1287,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
 
   void _showPaymentsBottomSheet(BuildContext context, List<Payment> payments) {
     final total =
-        payments.fold<double>(0, (s, p) => s + (p.equbAmount * p.paidRound));
+        payments.fold<double>(0, (s, p) => s + p.totalPaid.toDouble());
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1216,32 +1300,54 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   void _showPaymentArrangementDialog() {
     listItemss.clear();
     listItems.clear();
-    final Set<String> seen = {};
-    for (int i = 0; i < lotteryNumbers.length; i++) {
-      if (seen.add(lotteryNumbers[i])) {
-        listItemss.add(ListItems(
-            title: lotteryNumbers[i],
-            subtitle: paidPerEachLottery[i].toString(),
-            userIds: equbUserIds[i]));
-        listItems.add(ListItem(
-            title: lotteryNumbers[i],
-            subtitle: paidPerEachLottery[i].toString()));
-      }
+    // Total equb rounds (e.g. 105) — NOT joined lottery count (ekubersNumber).
+    final numberOfEqubers = _totalEqubRounds > 0
+        ? _totalEqubRounds
+        : (widget.ekubCycle > 0 ? widget.ekubCycle : widget.ekubersNumber);
+
+    for (final p in _payments) {
+      final isFullyPaid = p.fullyPaid || p.isFullyPaidForEqub(numberOfEqubers);
+      final initialAmount = p.remainingPaymentAmount(numberOfEqubers);
+
+      listItemss.add(ListItems(
+        title: p.lotteryNumber,
+        subtitle: initialAmount.toString(),
+        userIds: p.equbersId,
+        roundAmount: p.equbAmount,
+        isFullyPaid: isFullyPaid,
+        maxPayableAmount: p.maxRemainingPayable(numberOfEqubers),
+      ));
+      listItems.add(ListItem(
+        title: p.lotteryNumber,
+        subtitle: initialAmount.toString(),
+      ));
     }
+
+    if (listItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppKeys.noData.tr(context)),
+        ),
+      );
+      return;
+    }
+
     double expected =
         listItemss.fold(0, (s, e) => s + double.parse(e.subtitle));
-    showDialog(
-      context: context,
-      builder: (_) => PaymentArragement(
-        selectedJoinOption: listItems,
-        selectedJoinOptions: listItemss,
-        ekubAmount: widget.ekubAmount.toString(),
-        ekubId: widget.ekubId,
-        ekubName: widget.ekubName,
-        ekubRound: ekubRound,
-        round: ekubRound,
-        expectedAmount: expected,
-        type: 'payment',
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentArragement(
+          selectedJoinOption: listItems,
+          selectedJoinOptions: listItemss,
+          ekubAmount: widget.ekubAmount.toString(),
+          ekubId: widget.ekubId,
+          ekubName: widget.ekubName,
+          ekubRound: ekubRound,
+          round: ekubRound,
+          expectedAmount: expected,
+          type: 'payment',
+        ),
       ),
     );
   }
@@ -1262,7 +1368,9 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
       systemNavigationBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       extendBody: true,
       extendBodyBehindAppBar: true,
@@ -1285,6 +1393,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
             SizedBox(height: MediaQuery.of(context).padding.bottom),
           ],
         ),
+      ),
       ),
     );
   }
@@ -1309,7 +1418,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           Row(
             children: [
               GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
+                onTap: () => Navigator.of(context).maybePop(),
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -1365,7 +1474,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
             ekubersNumber: widget.ekubersNumber.toString(),
             cycle: widget.ekubCycle.toString(),
             total: _payments.fold<double>(
-                0, (s, p) => s + (p.equbAmount * p.paidRound)),
+                0, (s, p) => s + p.totalPaid.toDouble()),
             buttonShow: false,
           ),
         ],
@@ -1422,11 +1531,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           const SizedBox(height: 16),
           _buildMakePaymentButton(),
           const SizedBox(height: 20),
-          _buildSectionHeader(
-            left: AppKeys.viewPayments.tr(context),
-            right: '${AppKeys.round.tr(context)} $ekubRound',
-            onLeftTap: () => _showPaymentsBottomSheet(context, _payments),
-          ),
+          _buildCurrentRoundHeader(),
           const SizedBox(height: 12),
           if (_isLoading)
             const Padding(
@@ -1493,45 +1598,26 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     );
   }
 
-  Widget _buildSectionHeader({
-    required String left,
-    required String right,
-    VoidCallback? onLeftTap,
-  }) {
+  Widget _buildCurrentRoundHeader() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        GestureDetector(
-          onTap: onLeftTap,
-          child: Row(
-            children: [
-              Container(
-                  width: 4,
-                  height: 18,
-                  decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(2))),
-              const SizedBox(width: 8),
-              Text(
-                left,
-                style: AppTextStyles.poppins70014.copyWith(color: AppColors.primary),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.open_in_new_rounded,
-                  size: 14, color: AppColors.primary),
-            ],
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            right,
-            style: AppTextStyles.poppins60013.copyWith(color: AppColors.primary),
-          ),
+        const SizedBox(width: 8),
+        Text(
+          AppKeys.currentRound.tr(context),
+          style: AppTextStyles.poppins70014.copyWith(color: AppColors.primary),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          ekubRound ?? '-',
+          style: AppTextStyles.poppins70016.copyWith(color: AppColors.primary),
         ),
       ],
     );
@@ -1541,155 +1627,100 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     final bool isPaid = item.amountPaid == item.equbAmount &&
         item.paidRound >= int.parse(ekubRound ?? '0');
 
-    return GestureDetector(
-      onTap: () => LotteryDetailBottomSheet.show(
-        context,
-        lottery: item.lotteryNumber,
-        round: item.paidRound,
-      ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 3)),
-          ],
-          border: Border.all(
-            color: isPaid
-                ? AppColors.earthySuccessGreen.withOpacity(0.4)
-                : AppColors.crimsonRed.withOpacity(0.3),
-            width: 1.2,
-          ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3)),
+        ],
+        border: Border.all(
+          color: isPaid
+              ? AppColors.earthySuccessGreen.withOpacity(0.4)
+              : AppColors.crimsonRed.withOpacity(0.3),
+          width: 1.2,
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isPaid
-                      ? AppColors.earthySuccessGreen.withOpacity(0.12)
-                      : AppColors.crimsonRed.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      item.lotteryNumber,
-                      style: AppTextStyles.poppins70018.copyWith(
-                        color: const Color(0xFF2D2D2D),
-                        height: 1.1,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      AppKeys.lottery.tr(context),
-                      style: AppTextStyles.poppins40010.copyWith(
-                        color: Colors.grey[600],
-                        height: 1.1,
-                      ),
-                    ),
-                  ],
-                ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: isPaid
+                    ? AppColors.earthySuccessGreen.withOpacity(0.12)
+                    : AppColors.crimsonRed.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: AppTextStyles.poppins60014.copyWith(color: const Color(0xFF2D2D2D)),
-                    ),
-                    const SizedBox(height: 4),
-                    RichText(
-                      text: TextSpan(
-                        style: AppTextStyles.poppins40013.copyWith(color: Colors.grey[600]),
-                        children: [
-                          TextSpan(
-                              text: numberFormat.format(
-                                  item.amountPaid < 0 ? 0 : item.amountPaid),
-                              style: AppTextStyles.poppins60014.copyWith(color: Color(0xFF2D2D2D))),
-                          const TextSpan(text: ' / '),
-                          TextSpan(
-                              text:
-                                  '${numberFormat.format(item.equbAmount)} ETB'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isPaid
-                          ? AppColors.earthySuccessGreen.withOpacity(0.12)
-                          : AppColors.crimsonRed.withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isPaid
-                              ? Icons.check_circle_rounded
-                              : Icons.cancel_rounded,
-                          size: 12,
-                          color: isPaid
-                              ? AppColors.earthySuccessGreen
-                              : AppColors.crimsonRed,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isPaid
-                              ? AppKeys.paid.tr(context)
-                              : AppKeys.notPaid.tr(context),
-                          style: AppTextStyles.poppins60011,
-                        ),
-                      ],
+                  Text(
+                    item.lotteryNumber,
+                    style: AppTextStyles.poppins70018.copyWith(
+                      color: const Color(0xFF2D2D2D),
+                      height: 1.1,
                     ),
                   ),
-                  if (!widget.ekubRequest)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        AppKeys.viewLastPaid.tr(context).length > 14
-                            ? '${AppKeys.viewLastPaid.tr(context).substring(0, 14)}…'
-                            : AppKeys.viewLastPaid.tr(context),
-                        style: AppTextStyles.poppins40010.copyWith(color: AppColors.primary),
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    AppKeys.lottery.tr(context),
+                    style: AppTextStyles.poppins40010.copyWith(
+                      color: Colors.grey[600],
+                      height: 1.1,
                     ),
-                  if (widget.ekubRequest && !item.isGroup)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: GestureDetector(
-                        onTap: () => showBeautifulInputDialog(context, item.id,
-                            itemName: item.request?.itemName,
-                            amount: item.request?.amount,
-                            reason: item.request?.description,
-                            requestId: item.request?.id),
-                        child: Text(
-                          'Request',
-                          style: AppTextStyles.poppins40011.copyWith(color: AppColors.primary, decoration: TextDecoration.underline),
-                        ),
-                      ),
-                    ),
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+               
+                Text(
+                  '${item.paidRound}',
+                  style: AppTextStyles.poppins70024.copyWith(
+                    color: AppColors.primary,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                 Text(
+                  AppKeys.lastPaidRound.tr(context),
+                  style: AppTextStyles.poppins40011.copyWith(
+                    color: Colors.grey[600],
+                    height: 1.2,
+                  ),
+                ),
+                if (widget.ekubRequest && !item.isGroup)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: GestureDetector(
+                      onTap: () => showBeautifulInputDialog(context, item.id,
+                          itemName: item.request?.itemName,
+                          amount: item.request?.amount,
+                          reason: item.request?.description,
+                          requestId: item.request?.id),
+                      child: Text(
+                        'Request',
+                        style: AppTextStyles.poppins40011.copyWith(
+                            color: AppColors.primary,
+                            decoration: TextDecoration.underline),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const Spacer(),
+          ],
         ),
       ),
     );
@@ -1788,7 +1819,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
               children: [
                 LotteryWheel(
                   key: ValueKey(
-                      'spin_${_spinGeneration}_${showingAllRounds ? 'all' : 'joined'}'),
+                      'spin_${_spinGeneration}_${showingAllRounds ? 'all' : 'joined'}_${wheelNumbers.join(',')}'),
                   lotteryNumbers: wheelNumbers.isNotEmpty
                       ? wheelNumbers
                       : (_currentWinnerNumber != null
@@ -2172,7 +2203,7 @@ class _PaymentSummarySheet extends StatelessWidget {
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final p = payments[i];
-                    final sub = p.equbAmount * p.paidRound;
+                    final sub = p.totalPaid;
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Row(
