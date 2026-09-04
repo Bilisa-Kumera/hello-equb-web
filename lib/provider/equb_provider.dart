@@ -9,6 +9,7 @@ import '../utils/secure_storage.dart';
 class EqubProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
   List<EqubModel> _equbs = [];
+  List<EqubModel> _activeSortedEqubs = [];
   bool _isLoading = false;
   bool _isLoadingMore = false;
   String? _error;
@@ -20,6 +21,7 @@ class EqubProvider extends ChangeNotifier {
   String _currentEqubCategoryId = '';
 
   List<EqubModel> get equbs => _equbs;
+  List<EqubModel> get activeSortedEqubs => _activeSortedEqubs;
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
   String? get error => _error;
@@ -27,6 +29,11 @@ class EqubProvider extends ChangeNotifier {
   int get page => _page;
   int get limit => _limit;
   int? get total => _total;
+
+  void _recomputeActiveSorted() {
+    _activeSortedEqubs = _equbs.where((equb) => equb.isActive).toList()
+      ..sort((a, b) => (a.equbAmount ?? 0).compareTo(b.equbAmount ?? 0));
+  }
 
   Future<void> fetchEqubs(
       {required String equbTypeId,
@@ -36,6 +43,7 @@ class EqubProvider extends ChangeNotifier {
     _isLoadingMore = false;
     _error = null;
     _equbs = [];
+    _activeSortedEqubs = [];
     _page = 1;
     _limit = limit;
     _total = null;
@@ -73,6 +81,7 @@ class EqubProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
     }
+    _recomputeActiveSorted();
     _isLoading = false;
     notifyListeners();
   }
@@ -124,6 +133,7 @@ class EqubProvider extends ChangeNotifier {
     } catch (e) {
       _error = e.toString();
     } finally {
+      _recomputeActiveSorted();
       _isLoadingMore = false;
       notifyListeners();
     }

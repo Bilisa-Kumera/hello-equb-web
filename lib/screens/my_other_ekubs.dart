@@ -54,7 +54,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
   bool _hasFetchedInitial = false;
   bool _isBootstrapping = false;
   bool _isOpeningQuickPayment = false;
-  final Map<String, double> _totalPaidCache = {};
+  final ScrollController _joinedListScrollController = ScrollController();
 
   @override
   void initState() {
@@ -62,6 +62,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
     stopProgressAfterDelay();
     loadEkubCategories();
     _mainTabController = TabController(length: 2, vsync: this);
+    _joinedListScrollController.addListener(_onJoinedListScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _bootstrapScreen();
@@ -73,9 +74,24 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
 
   @override
   void dispose() {
+    _joinedListScrollController.removeListener(_onJoinedListScroll);
+    _joinedListScrollController.dispose();
     _mainTabController.dispose();
     _categoryTabController?.dispose();
     super.dispose();
+  }
+
+  void _onJoinedListScroll() {
+    final provider = context.read<GetMyEqubProvider>();
+    if (provider.isLoading || provider.isLoadingMore || !provider.hasMore) {
+      return;
+    }
+
+    final pos = _joinedListScrollController.position;
+    if (!pos.hasPixels) return;
+    if (pos.pixels >= pos.maxScrollExtent - 320) {
+      provider.loadMoreEqubs();
+    }
   }
 
   int totalEqubs = 0;
@@ -208,6 +224,14 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
     ];
   }
 
+  List<type_provider.EqubType> _typesWithAll(
+      List<type_provider.EqubType> types) {
+    return [
+      type_provider.EqubType(id: '', name: 'All'),
+      ...types.where((t) => (t.id ?? '').isNotEmpty),
+    ];
+  }
+
   Future<void> _bootstrapScreen() async {
     if (_isBootstrapping || !mounted) return;
     _isBootstrapping = true;
@@ -245,8 +269,10 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
     final typeProvider = context.read<type_provider.EqubTypeProvider>();
     final categoryProvider = context.read<EqubCategoryProvider>();
 
-    final types =
-        typeProvider.equbTypes?.where((t) => t.id != null).toList() ?? [];
+    final types = _typesWithAll(
+      typeProvider.equbTypes?.where((t) => (t.id ?? '').isNotEmpty).toList() ??
+          [],
+    );
     if (types.isEmpty) return;
 
     final categories = categoryProvider.equbCategories
@@ -272,7 +298,12 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
     final getMyEqubProvider =
         Provider.of<GetMyEqubProvider>(context, listen: false);
     final userId = await SecureStorageHelper.getUserId() ?? '';
-    final typeId = types[selectedEqubTypeIndex].id ?? '';
+    if (types.isEmpty || userId.isEmpty) return;
+
+    final safeTypeIndex = selectedEqubTypeIndex < types.length
+        ? selectedEqubTypeIndex
+        : 0;
+    final typeId = types[safeTypeIndex].id ?? '';
 
     // Ensure selectedCategoryIndex is valid
     final safeCategoryIndex = selectedCategoryIndex < filteredCategories.length
@@ -280,7 +311,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
         : 0;
     final catId = filteredCategories[safeCategoryIndex].id ?? '';
 
-    if (typeId.isNotEmpty && userId.isNotEmpty) {
+    if (userId.isNotEmpty) {
       await getMyEqubProvider.fetchEqubs(
         equbTypeId: typeId,
         equbCategoryId: catId,
@@ -571,23 +602,30 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
 
       final ekubRound = res.data['data']['equbRound']?.toString() ??
           equb.nextRound.toString();
+      final numberOfEqubers = int.tryParse(
+              res.data['data']['numberOfEqubers']?.toString() ?? '') ??
+          equb.numberOfEqubers;
       final payments = ((res.data['data']['payments'] as List?) ?? [])
           .map((e) => Payment.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
 
       final listItemss = <ListItems>[];
       final listItems = <ListItem>[];
-      final seen = <String>{};
       for (final p in payments) {
-        if (!seen.add(p.lotteryNumber)) continue;
+        final isFullyPaid = p.fullyPaid || p.isFullyPaidForEqub(numberOfEqubers);
+        final initialAmount = p.remainingPaymentAmount(numberOfEqubers);
+
         listItemss.add(ListItems(
           title: p.lotteryNumber,
-          subtitle: p.equbAmount.toString(),
+          subtitle: initialAmount.toString(),
           userIds: p.equbersId,
+          roundAmount: p.equbAmount,
+          isFullyPaid: isFullyPaid,
+          maxPayableAmount: p.maxRemainingPayable(numberOfEqubers),
         ));
         listItems.add(ListItem(
           title: p.lotteryNumber,
-          subtitle: p.equbAmount.toString(),
+          subtitle: initialAmount.toString(),
         ));
       }
 
@@ -606,18 +644,20 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
 
       if (!mounted) return;
       setState(() => _isOpeningQuickPayment = false);
-      showDialog(
-        context: context,
-        builder: (_) => PaymentArragement(
-          selectedJoinOption: listItems,
-          selectedJoinOptions: listItemss,
-          ekubAmount: equb.equbAmount.toString(),
-          ekubId: equb.id,
-          ekubName: equb.name,
-          ekubRound: ekubRound,
-          round: ekubRound,
-          expectedAmount: expected,
-          type: 'payment',
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentArragement(
+            selectedJoinOption: listItems,
+            selectedJoinOptions: listItemss,
+            ekubAmount: equb.equbAmount.toString(),
+            ekubId: equb.id,
+            ekubName: equb.name,
+            ekubRound: ekubRound,
+            round: ekubRound,
+            expectedAmount: expected,
+            type: 'payment',
+          ),
         ),
       );
     } catch (_) {
@@ -750,27 +790,14 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
       formatGregorian: _formatEqubDate,
     );
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 300 + idx * 50),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 16.h * (1 - value)),
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7F8FA),
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        padding: EdgeInsets.all(16.w),
-        child: Column(
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      padding: EdgeInsets.all(16.w),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -886,15 +913,17 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
             ),
           ],
         ),
-      ),
     );
   }
 
   Widget _buildTabContent(int index, {String? url}) {
     return Consumer2<type_provider.EqubTypeProvider, EqubCategoryProvider>(
       builder: (context, typeProvider, categoryProvider, _) {
-          final types =
-              typeProvider.equbTypes?.where((t) => t.id != null).toList() ?? [];
+          final types = _typesWithAll(
+              typeProvider.equbTypes
+                      ?.where((t) => (t.id ?? '').isNotEmpty)
+                      .toList() ??
+                  []);
           final categories = categoryProvider.equbCategories
                   ?.where((c) => c.id != null)
                   .toList() ??
@@ -1064,21 +1093,42 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
                           child: Text(AppKeys.errorTryAgain.tr(context)));
                     }
 
-                    var visibleEqubs = equbProvider.equbs
-                        .where((e) =>
-                            e.status.trim().toLowerCase() != AppKeys.completed)
-                        .toList();
-                    PendingEqub.sortByLatestJoined(visibleEqubs);
+                    var visibleEqubs = equbProvider.visibleEqubs;
 
                     if (visibleEqubs.isEmpty) {
                       return Center(child: Text(AppKeys.noEkubs.tr(context)));
                     }
 
+                    final showBottomItem =
+                        equbProvider.isLoadingMore || equbProvider.hasMore;
+
                     return ListView.separated(
-                      padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 16.h),
+                      controller: _joinedListScrollController,
+                      padding: EdgeInsets.fromLTRB(
+                        20.w,
+                        4.h,
+                        20.w,
+                        MediaQuery.of(context).padding.bottom + 160.h,
+                      ),
                       separatorBuilder: (_, __) => SizedBox(height: 12.h),
-                      itemCount: visibleEqubs.length,
+                      itemCount:
+                          visibleEqubs.length + (showBottomItem ? 1 : 0),
                       itemBuilder: (context, idx) {
+                        if (idx >= visibleEqubs.length) {
+                          if (equbProvider.isLoadingMore) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: Center(
+                                child: LoadingAnimationWidget
+                                    .threeRotatingDots(
+                                  color: AppColors.vibrantGreen,
+                                  size: 26,
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox(height: 60);
+                        }
                         return _buildJoinedEqubCard(visibleEqubs[idx], idx);
                       },
                     );

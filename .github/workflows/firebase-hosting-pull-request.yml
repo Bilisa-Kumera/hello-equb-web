@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare dart defines
-        run: cp dart_defines.example.json dart_defines.json
+        run: cp dart_defines.json dart_defines.json
       - run: flutter pub get && flutter build web --dart-define-from-file=dart_defines.json
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

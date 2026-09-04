@@ -300,6 +300,7 @@ class AppKeys {
   static const String pendingPayments = "lbl_pending_payments";
   static const String lotteries = "lbl_lotteries";
   static const String nextRound = "lbl_next_round";
+  static const String currentRound = "lbl_current_round";
   static const String totalPaid = "lbl_total_paid";
   static const String paid = "lbl_paid";
   static const String notPaid = "lbl_not_paid";
@@ -322,6 +323,7 @@ class AppKeys {
   static const String financial = "lbl_financial";
   static const String pleaseCompleteYourProfile = "lbl_please_complete_profile";
   static const String transactionHistory = "lbl_transaction_history";
+  static const String noTransactionHistory = "lbl_no_transaction_history";
   static const String equbHistory = "lbl_equb_history";
   static const String helpAndSupport = "lbl_help_and_support";
   static const String otpVerification = "lbl_otp_verification";

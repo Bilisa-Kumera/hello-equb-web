@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:helloequb/provider/joined_equbs_status_provider.dart';
+import 'package:helloequb/provider/app_promo_provider.dart';
+import 'package:helloequb/widgets/app_promo_overlay.dart';
 import 'package:helloequb/screens/home_screen.dart';
 import 'package:helloequb/screens/my_other_ekubs.dart';
 import 'package:helloequb/screens/profile_screen.dart';
@@ -25,6 +27,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
   bool _navBarVisible = true;
   bool? _lastShowMyEqub;
+  bool _appPromoChecked = false;
+  final AppPromoProvider _appPromoProvider = AppPromoProvider();
 
   @override
   void initState() {
@@ -41,6 +45,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       if (!kIsWeb) {
         provider.startApprovalWatch();
       }
+      _maybeShowAppPromo();
     });
   }
 
@@ -56,6 +61,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (_currentIndex != resolvedIndex) {
       setState(() => _currentIndex = resolvedIndex);
     }
+  Future<void> _maybeShowAppPromo() async {
+    if (_appPromoChecked || !mounted) return;
+    _appPromoChecked = true;
+    await showAppPromoIfNeeded(context, _appPromoProvider);
+  }
+
+  @override
+  void dispose() {
+    _appPromoProvider.dispose();
+    super.dispose();
   }
 
   void _setNavBarVisible(bool visible) {
@@ -182,10 +197,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           });
         }
 
+        // Only intercept Android back when this shell is the top route.
+        // If canPop is false while a pushed page (equb detail, payment) is on
+        // top, the system back can skip those pages and jump to Home.
+        final shellIsCurrent = ModalRoute.of(context)?.isCurrent ?? true;
         return PopScope(
-          canPop: stackIndex == 0,
+          canPop: !shellIsCurrent || stackIndex == 0,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop && stackIndex != 0) {
+            if (didPop) return;
+            if (!shellIsCurrent) return;
+            if (stackIndex != 0) {
               _onTabTapped(0);
             }
           },

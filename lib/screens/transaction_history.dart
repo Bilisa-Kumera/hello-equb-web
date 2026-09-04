@@ -37,13 +37,21 @@ class Equb {
 class EkubList {
   final String ekubName;
   final String ekubId;
+  final String status;
 
-  EkubList({required this.ekubName, required this.ekubId});
+  EkubList({
+    required this.ekubName,
+    required this.ekubId,
+    this.status = '',
+  });
+
+  bool get isCompleted => status.toLowerCase() == 'completed';
 
   factory EkubList.fromJson(Map<String, dynamic> json) {
     return EkubList(
       ekubName: json['name'] ?? 'N/A',
       ekubId: json['id'] ?? 'N/A',
+      status: json['status']?.toString() ?? '',
     );
   }
 }
@@ -66,7 +74,8 @@ class TransactionHistoryState extends State<TransactionHistory> {
       );
 
       if (response.statusCode == 200) {
-        paymentsResponse = PaymentsResponse.fromJson(response.data);
+        final raw = PaymentsResponse.fromJson(response.data);
+        paymentsResponse = raw.withoutCompletedEqubs();
         paymentsResponse?.paymentsMade.sort(
           (a, b) => (b.createdAt).compareTo(a.createdAt),
         );
@@ -94,23 +103,27 @@ class TransactionHistoryState extends State<TransactionHistory> {
   Future<List<EkubList>> getEkubList() async {
     final Dio dio = Dio();
     String accessToken = await SecureStorageHelper.getAccessToken() ?? '';
+    final userId = await SecureStorageHelper.getUserId() ?? '';
 
     try {
-      final response =
-          await dio.get('$ekubsUrl?/${await SecureStorageHelper.getUserId()}',
-              options: Options(headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer $accessToken",
-              }));
+      final response = await dio.get(
+        '$ekubsUrl?user=$userId&status=joined&_page=1&_limit=200',
+        options: Options(headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $accessToken",
+        }),
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         List<dynamic> equbs = response.data['data']['equbs'];
-        List<EkubList> ekubList = equbs.map((equb) {
-          return EkubList.fromJson(equb);
-        }).toList();
+        final allEqubs = equbs
+            .map((equb) => EkubList.fromJson(Map<String, dynamic>.from(equb)))
+            .toList();
+        final openEqubs =
+            allEqubs.where((equb) => !equb.isCompleted).toList();
 
-        ekubLists = ekubList;
-        return ekubList;
+        ekubLists = openEqubs;
+        return openEqubs;
       } else {
         return [];
       }
@@ -457,29 +470,38 @@ class TransactionHistoryState extends State<TransactionHistory> {
                         style: AppTextStyles.captionMuted,
                       ),
                     );
-                  } else if (!snapshot.hasData ||
-                      snapshot.data?.paymentsMade.isEmpty == true) {
+                  } else if (!snapshot.hasData) {
                     return Center(
                       child: Padding(
                         padding: EdgeInsets.all(58.w),
                         child: Text(
-                          'No transaction history found',
+                          AppKeys.noTransactionHistory.tr(context),
                           style: AppTextStyles.captionMuted,
                         ),
                       ),
                     );
                   } else {
+                    final items = isCredit
+                        ? snapshot.data!.paymentsReceived
+                        : snapshot.data!.paymentsMade;
+                    if (items.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(58.w),
+                          child: Text(
+                            AppKeys.noTransactionHistory.tr(context),
+                            style: AppTextStyles.captionMuted,
+                          ),
+                        ),
+                      );
+                    }
                     return ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: isCredit
-                          ? snapshot.data?.paymentsReceived.length ?? 0
-                          : snapshot.data?.paymentsMade.length ?? 0,
+                      itemCount: items.length,
                       separatorBuilder: (_, __) => SizedBox(height: 10.h),
                       itemBuilder: (context, index) {
-                        final equb = isCredit
-                            ? snapshot.data?.paymentsReceived[index]
-                            : snapshot.data?.paymentsMade[index];
+                        final equb = items[index];
                         return Container(
                           padding: EdgeInsets.all(12.w),
                           decoration: BoxDecoration(
@@ -491,23 +513,23 @@ class TransactionHistoryState extends State<TransactionHistory> {
                             children: [
                               _rowItem(
                                 AppKeys.ekubName.tr(context),
-                                equb?.equb.name ?? 'N/A',
+                                equb.equb.name,
                               ),
                               _rowItem(
                                 AppKeys.amount.tr(context),
                                 numberFormat.format(
                                   double.parse(
-                                      equb?.amount.toStringAsFixed(2) ?? '0'),
+                                      equb.amount.toStringAsFixed(2)),
                                 ),
                               ),
                               _rowItem(
                                 AppKeys.paymentMethod.tr(context),
-                                equb?.paymentMethod ?? 'N/A',
+                                equb.paymentMethod,
                               ),
                               _rowItem(
                                 AppKeys.date.tr(context),
-                                DateFormat('MMMM d, yyyy').format(
-                                    equb?.createdAt ?? DateTime.now()),
+                                DateFormat('MMMM d, yyyy')
+                                    .format(equb.createdAt),
                               ),
                             ],
                           ),

@@ -32,8 +32,8 @@ class EqubPaymentProvider extends ChangeNotifier {
       final response = await _dio.get(
         apiUrl,
         queryParameters: {
-          'page': page,
-          'limit': limit,
+          '_page': page,
+          '_limit': limit,
         },
         options: Options(
           headers: {
