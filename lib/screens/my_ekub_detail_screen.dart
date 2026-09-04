@@ -383,7 +383,9 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
   List<BankAccount> bankAccounts = [];
   BankAccount? selectedAccount;
 
-  bool _isLoading = true;
+  /// True only after payments API finishes (success or error).
+  /// Kept separate from lotteries so we never flash "No payments yet".
+  bool _paymentsLoaded = false;
   bool _hasNavigated = false;
   bool _isOpeningLotteryHistory = false;
   bool isRefreshed = false;
@@ -1130,15 +1132,13 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           final bR = b.users.isNotEmpty ? b.users.first.round : 0;
           return aR.compareTo(bR);
         });
+        if (!mounted) return;
         setState(() {
           _lotteries = lotteries;
-          _isLoading = false;
         });
-      } else {
-        setState(() => _isLoading = false);
       }
     } catch (_) {
-      setState(() => _isLoading = false);
+      // Lotteries are optional for the payment tab; ignore failures quietly.
     }
   }
 
@@ -1147,6 +1147,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     try {
       final res = await dio.get(ekubPaymentsUrl + widget.ekubId,
           options: Options(headers: {'Authorization': 'Bearer $token'}));
+      if (!mounted) return;
       if (res.statusCode == 200 || res.statusCode == 201) {
         ekubRound = res.data['data']['equbRound'].toString();
         totalPaid = res.data['data']['equbersPaid'].toString();
@@ -1173,13 +1174,13 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         }
         setState(() {
           _payments = payments;
-          _isLoading = false;
+          _paymentsLoaded = true;
         });
       } else {
-        setState(() => _isLoading = false);
+        setState(() => _paymentsLoaded = true);
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _paymentsLoaded = true);
     }
   }
 
@@ -1533,12 +1534,15 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           const SizedBox(height: 20),
           _buildCurrentRoundHeader(),
           const SizedBox(height: 12),
-          if (_isLoading)
+          if (!_paymentsLoaded)
             const Padding(
               padding: EdgeInsets.all(32),
               child: Center(
-                  child:
-                      SpinKitFadingCircle(color: AppColors.primary, size: 48)),
+                child: SpinKitFadingCircle(
+                  color: AppColors.primary,
+                  size: 48,
+                ),
+              ),
             )
           else if (_payments.isEmpty)
             _buildEmptyState()
