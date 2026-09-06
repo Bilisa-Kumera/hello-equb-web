@@ -40,27 +40,8 @@ class ListItems {
   final String title;
   String subtitle;
   final String userIds;
-<<<<<<< HEAD
-  ListItems(
-      {required this.title, required this.subtitle, required this.userIds});
-
-  Map<String, dynamic> toJson() => {
-        'title': title,
-        'subtitle': subtitle,
-        'userIds': userIds,
-      };
-
-  factory ListItems.fromJson(Map<String, dynamic> json) {
-    return ListItems(
-      title: json['title'] as String,
-      subtitle: json['subtitle'] as String,
-      userIds: json['userIds'] as String,
-    );
-  }
-=======
   final double roundAmount;
   final bool isFullyPaid;
-  /// Max ETB still owed for this lottery (e.g. until 105/105); caps + button.
   final double maxPayableAmount;
 
   ListItems({
@@ -71,7 +52,25 @@ class ListItems {
     this.isFullyPaid = false,
     this.maxPayableAmount = double.infinity,
   });
->>>>>>> f8b3d32 (promo everlay nd small fixes)
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'subtitle': subtitle,
+        'userIds': userIds,
+        'roundAmount': roundAmount,
+        'isFullyPaid': isFullyPaid,
+        'maxPayableAmount': maxPayableAmount,
+      };
+
+  factory ListItems.fromJson(Map<String, dynamic> json) => ListItems(
+        title: json['title'] as String,
+        subtitle: json['subtitle'] as String,
+        userIds: json['userIds'] as String,
+        roundAmount: (json['roundAmount'] as num?)?.toDouble() ?? 0,
+        isFullyPaid: json['isFullyPaid'] as bool? ?? false,
+        maxPayableAmount:
+            (json['maxPayableAmount'] as num?)?.toDouble() ?? double.infinity,
+      );
 }
 
 class ApiResp {

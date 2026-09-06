@@ -30,6 +30,7 @@ String _formatDioException(DioException error, {String? gatewayUrl}) {
     case DioExceptionType.connectionTimeout:
     case DioExceptionType.sendTimeout:
     case DioExceptionType.receiveTimeout:
+    case DioExceptionType.transformTimeout:
       return 'Telebirr gateway request timed out for $url.';
     case DioExceptionType.badResponse:
       final body = error.response?.data;

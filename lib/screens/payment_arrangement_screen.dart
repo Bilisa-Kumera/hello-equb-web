@@ -1,9 +1,5 @@
 // ignore_for_file: must_be_immutable, deprecated_member_use
 
-<<<<<<< HEAD
-=======
-import 'package:helloequb/utils/colors_constant.dart';
->>>>>>> f8b3d32 (promo everlay nd small fixes)
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/core/api_url.dart';

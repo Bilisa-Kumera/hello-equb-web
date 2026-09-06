@@ -55,6 +55,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
   bool _isBootstrapping = false;
   bool _isOpeningQuickPayment = false;
   final ScrollController _joinedListScrollController = ScrollController();
+  final Map<String, double> _totalPaidCache = {};
 
   @override
   void initState() {

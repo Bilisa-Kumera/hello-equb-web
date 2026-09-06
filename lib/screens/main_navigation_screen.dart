@@ -61,6 +61,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (_currentIndex != resolvedIndex) {
       setState(() => _currentIndex = resolvedIndex);
     }
+  }
+
   Future<void> _maybeShowAppPromo() async {
     if (_appPromoChecked || !mounted) return;
     _appPromoChecked = true;

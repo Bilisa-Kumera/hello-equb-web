@@ -1,12 +1,7 @@
 buildscript {
-    ext.agp_version = '8.5.2'
-    ext.kotlin_version = '2.4.10'
+    ext.agp_version = '8.9.1'
+    ext.kotlin_version = '2.1.0'
     repositories {
-        // Mirrors first
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
-        // Fallback
         google()
         mavenCentral()
     }
@@ -31,8 +26,6 @@ buildscript {
 
 allprojects {
     repositories {
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
         google()
         mavenCentral()
     }
@@ -81,8 +74,7 @@ subprojects {
         if (project.plugins.hasPlugin("com.android.application") ||
             project.plugins.hasPlugin("com.android.library")) {
             project.android {
-                compileSdkVersion 34
-                buildToolsVersion "34.0.0"
+                compileSdkVersion 36
                 lintOptions {
                     checkReleaseBuilds false
                     abortOnError false

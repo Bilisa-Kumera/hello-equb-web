@@ -70,6 +70,7 @@ class PendingEqub {
     this.equbCategory,
     this.equbers,
     this.branch,
+    this.totalPaid,
     this.lastPaidRound = 0,
   });
 
