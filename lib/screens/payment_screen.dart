@@ -1045,12 +1045,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               SizedBox(height: 24.h),
-              Text(AppKeys.pleaseChoosePaymentMethod.tr(context),
-                  style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade600)),
-              SizedBox(height: 12.h),
+              if (!_isFromTelebirrMiniApp) ...[
+                Text(AppKeys.pleaseChoosePaymentMethod.tr(context),
+                    style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade600)),
+                SizedBox(height: 12.h),
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -1158,6 +1159,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 },
               ),
               SizedBox(height: 32.h),
+              ],
               SizedBox(
                 width: double.infinity,
                 height: 56,

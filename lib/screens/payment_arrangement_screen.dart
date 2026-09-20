@@ -243,6 +243,8 @@ class _PaymentArragementState extends State<PaymentArragement> {
       _showZeroTotalError = false;
     }
 
+    // Removing the blocking check for hasExceededError based on user request.
+
     if (hasValidationError) {
       setState(() {});
       return;
@@ -654,6 +656,51 @@ class _PaymentArragementState extends State<PaymentArragement> {
                         ),
                       ],
                     ),
+                    if (widget.expectedAmount != null) ...[
+                      SizedBox(height: 8.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            AppKeys.totalAmount.tr(context),
+                            style: AppTextStyles.captionMuted,
+                          ),
+                          Text(
+                            '${numberFormat.format(widget.expectedAmount)} ETB',
+                            style: AppTextStyles.captionMuted,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 4.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Remaining Amount', // Assuming no AppKey exists, use literal or update if there's a key
+                            style: AppTextStyles.captionMuted,
+                          ),
+                          Text(
+                            '${numberFormat.format((widget.expectedAmount! - totalTobePaid).clamp(0, double.infinity))} ETB',
+                            style: AppTextStyles.captionMuted.copyWith(
+                              color: totalTobePaid > widget.expectedAmount! ? Colors.red : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (totalTobePaid > widget.expectedAmount!) ...[
+                        SizedBox(height: 6.h),
+                        Text(
+                          'Note: You are paying more than the expected amount.',
+                          style: AppTextStyles.captionMuted.copyWith(color: Colors.orange.shade800),
+                        ),
+                      ] else if (totalTobePaid > 0 && totalTobePaid < widget.expectedAmount!) ...[
+                        SizedBox(height: 6.h),
+                        Text(
+                          'Note: You are paying less than the expected amount.',
+                          style: AppTextStyles.captionMuted.copyWith(color: Colors.orange.shade800),
+                        ),
+                      ],
+                    ],
                     if (_showZeroTotalError) ...[
                       SizedBox(height: 6.h),
                       Text(

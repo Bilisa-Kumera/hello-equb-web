@@ -271,7 +271,7 @@ Future<void> main() async {
 
             if (kIsWeb) {
               return MaterialApp.router(
-                title: '',
+                title: 'Hello Equb',
                 routerConfig: _webRouter,
                 debugShowCheckedModeBanner: false,
                 theme: theme,
@@ -289,7 +289,7 @@ Future<void> main() async {
             }
 
             return MaterialApp(
-              title: '',
+              title: 'Hello Equb',
               navigatorKey: _navigatorKey,
               debugShowCheckedModeBanner: false,
               theme: theme,
@@ -389,7 +389,7 @@ class _MyAppState extends State<MyApp> {
           return Consumer2<ThemeProvider, LanguageProvider>(
               builder: (context, provider, languageProvider, child) {
             return MaterialApp(
-              title: '',
+              title: 'Hello Equb',
               navigatorKey: _navigatorKey,
               debugShowCheckedModeBanner: false,
               theme: ThemeData(

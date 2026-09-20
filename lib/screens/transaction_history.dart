@@ -527,6 +527,10 @@ class TransactionHistoryState extends State<TransactionHistory> {
                                 equb.paymentMethod,
                               ),
                               _rowItem(
+                                'Transaction Type',
+                                'Service Payment',
+                              ),
+                              _rowItem(
                                 AppKeys.date.tr(context),
                                 DateFormat('MMMM d, yyyy')
                                     .format(equb.createdAt),
