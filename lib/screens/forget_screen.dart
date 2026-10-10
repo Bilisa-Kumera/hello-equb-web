@@ -52,7 +52,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
     try {
       final response = await dio.post(
         forgetPasswordUrl,
-        data: {"phoneNumber": phoneOrEmail},
+        data: {"phoneNumber": phoneOrEmail, "otpLength": 6},
         options: Options(headers: {
           "Content-Type": "application/json",
         }),

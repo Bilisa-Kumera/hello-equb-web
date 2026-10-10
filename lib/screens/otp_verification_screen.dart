@@ -77,19 +77,27 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
 
     try {
-      final response = await dio.post(
-        forgetPasswordUrl,
-        data: {"phoneNumber": widget.phoneNumber},
-        options: Options(
-          headers: {
-            "Content-Type": "application/json",
-          },
-        ),
-      );
+      final response = widget.isForget
+          ? await dio.post(
+              forgetPasswordUrl,
+              data: {"phoneNumber": widget.phoneNumber, "otpLength": 6},
+              options: Options(
+                headers: {"Content-Type": "application/json"},
+              ),
+            )
+          : await dio.post(
+              sendOtpUrl,
+              data: {"to": widget.phoneNumber, "otpLength": 6},
+              options: Options(
+                headers: {"Content-Type": "application/json"},
+              ),
+            );
       Navigator.pop(context);
 
       if (response.statusCode == 200) {
-        widget.code = response.data['otp'];
+        widget.code = widget.isForget
+            ? (response.data['otp'] ?? '')
+            : (response.data['code'] ?? '');
         startCountdown();
       }
     } catch (error) {
@@ -98,7 +106,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   void _verifyOtp() {
-    if (_otpCode.length != 4 && _otpCode.length != 6) {
+    // New app uses 6-digit OTPs; still accept 4 for any leftover 4-digit codes.
+    if (_otpCode.length != 6 && _otpCode.length != 4) {
       setState(() {
         showError = true;
       });

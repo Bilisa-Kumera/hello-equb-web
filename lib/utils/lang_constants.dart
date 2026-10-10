@@ -376,4 +376,15 @@ class AppKeys {
   static const String viewPayments = 'view_payments';
 
   static const String uploadReceipt = 'upload_receipt';
+
+  static const String fullShare = 'lbl_full_share';
+  static const String halfShare = 'lbl_half_share';
+  static const String quarterShare = 'lbl_quarter_share';
+  static const String full = 'lbl_full';
+  static const String half = 'lbl_half';
+  static const String quarter = 'lbl_quarter';
+  static const String addAnotherShare = 'lbl_add_another_share';
+  static const String shareAmount = 'lbl_share_amount';
+  static const String cannotJoinAgainPartial = 'lbl_cannot_join_again_partial';
+  static const String fullOnlyRejoin = 'lbl_full_only_rejoin';
 }

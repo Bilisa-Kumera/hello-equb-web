@@ -623,6 +623,7 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
           roundAmount: p.equbAmount,
           isFullyPaid: isFullyPaid,
           maxPayableAmount: p.maxRemainingPayable(numberOfEqubers),
+          stake: p.stake,
         ));
         listItems.add(ListItem(
           title: p.lotteryNumber,

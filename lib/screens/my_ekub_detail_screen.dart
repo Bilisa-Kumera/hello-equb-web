@@ -44,6 +44,7 @@ class ListItems {
   final bool isFullyPaid;
   /// Max ETB still owed for this lottery (e.g. until 105/105); caps + button.
   final double maxPayableAmount;
+  final double stake;
 
   ListItems({
     required this.title,
@@ -52,6 +53,7 @@ class ListItems {
     this.roundAmount = 0,
     this.isFullyPaid = false,
     this.maxPayableAmount = double.infinity,
+    this.stake = 100,
   });
 }
 
@@ -88,6 +90,7 @@ class User {
   final bool hasGuarantee, hasTakenEqub, hasClaimed;
   final double totalLotteryAmount, netLotteryAmount;
   final int round;
+  final double stake;
   User({
     required this.lotteryNumber,
     required this.equberUserId,
@@ -99,6 +102,7 @@ class User {
     required this.hasClaimed,
     required this.userFullName,
     required this.round,
+    this.stake = 100,
   });
   factory User.fromJson(Map<String, dynamic> json) => User(
         lotteryNumber: json['lotteryNumber'],
@@ -111,6 +115,7 @@ class User {
         hasClaimed: json['hasClaimed'],
         userFullName: json['userFullName'],
         round: json['round'],
+        stake: double.tryParse(json['stake']?.toString() ?? '100') ?? 100,
       );
 }
 
@@ -194,10 +199,24 @@ class PaymentResponse {
   }
 }
 
+String shareLabelFromStake(num? stake, [BuildContext? context]) {
+  final s = (stake ?? 100).toDouble();
+  if (context != null) {
+    if (s >= 99.5) return AppKeys.full.tr(context);
+    if ((s - 50).abs() < 0.5) return AppKeys.half.tr(context);
+    if ((s - 25).abs() < 0.5) return AppKeys.quarter.tr(context);
+  }
+  if (s >= 99.5) return 'Full';
+  if ((s - 50).abs() < 0.5) return 'Half';
+  if ((s - 25).abs() < 0.5) return 'Quarter';
+  return '${s.toStringAsFixed(s.truncateToDouble() == s ? 0 : 1)}%';
+}
+
 class Payment {
   final String name, id, lotteryNumber, equbersId;
   final int totalPaid, paidRound;
   final double amountPaid, equbAmount;
+  final double stake;
   final bool paid, isGroup, fullyPaid;
   final Request? request;
   Payment({
@@ -211,6 +230,7 @@ class Payment {
     required this.equbAmount,
     required this.paid,
     required this.isGroup,
+    this.stake = 100,
     this.fullyPaid = false,
     this.request,
   });
@@ -235,6 +255,7 @@ class Payment {
             ? 0.0
             : double.parse(
                 double.parse(json['equbAmount'].toString()).toStringAsFixed(2)),
+        stake: double.tryParse(json['stake']?.toString() ?? '100') ?? 100,
         paid: json['paid'] == true,
         isGroup: json['isGroup'] == true,
         fullyPaid: json['fullyPaid'] == true,
@@ -1331,6 +1352,7 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         roundAmount: p.equbAmount,
         isFullyPaid: isFullyPaid,
         maxPayableAmount: p.maxRemainingPayable(numberOfEqubers),
+        stake: p.stake,
       ));
       listItems.add(ListItem(
         title: p.lotteryNumber,
@@ -1698,47 +1720,60 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
                 ],
               ),
             ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-               
-                Text(
-                  '${item.paidRound}',
-                  style: AppTextStyles.poppins70024.copyWith(
-                    color: AppColors.primary,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-
-                 Text(
-                  AppKeys.lastPaidRound.tr(context),
-                  style: AppTextStyles.poppins40011.copyWith(
-                    color: Colors.grey[600],
-                    height: 1.2,
-                  ),
-                ),
-                if (widget.ekubRequest && !item.isGroup)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: GestureDetector(
-                      onTap: () => showBeautifulInputDialog(context, item.id,
-                          itemName: item.request?.itemName,
-                          amount: item.request?.amount,
-                          reason: item.request?.description,
-                          requestId: item.request?.id),
-                      child: Text(
-                        'Request',
-                        style: AppTextStyles.poppins40011.copyWith(
-                            color: AppColors.primary,
-                            decoration: TextDecoration.underline),
-                      ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${item.paidRound}',
+                    style: AppTextStyles.poppins70024.copyWith(
+                      color: AppColors.primary,
+                      height: 1.1,
                     ),
                   ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    AppKeys.lastPaidRound.tr(context),
+                    style: AppTextStyles.poppins40011.copyWith(
+                      color: Colors.grey[600],
+                      height: 1.2,
+                    ),
+                  ),
+                  if (widget.ekubRequest && !item.isGroup)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: GestureDetector(
+                        onTap: () => showBeautifulInputDialog(context, item.id,
+                            itemName: item.request?.itemName,
+                            amount: item.request?.amount,
+                            reason: item.request?.description,
+                            requestId: item.request?.id),
+                        child: Text(
+                          'Request',
+                          style: AppTextStyles.poppins40011.copyWith(
+                              color: AppColors.primary,
+                              decoration: TextDecoration.underline),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            const Spacer(),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Text(
+                shareLabelFromStake(item.stake, context),
+                style: AppTextStyles.poppins60011
+                    .copyWith(color: AppColors.primary),
+              ),
+            ),
           ],
         ),
       ),

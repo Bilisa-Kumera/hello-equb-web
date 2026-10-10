@@ -40,7 +40,7 @@ class PendingEqub {
   final int lastPaidRound;
 
   /// Derived from approved equb payments on the joined-list payload.
-  final int lastPaidRound;
+  // final int lastPaidRound;
 
   PendingEqub({
     required this.id,

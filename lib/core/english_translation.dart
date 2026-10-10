@@ -258,7 +258,7 @@ final Map<String, String> enUS = {
   "lbl_equb_confirmation": "Equb Confirmation",
   "lbl_description": "Description",
   "lbl_total_number_of_shares": "Total Number of Equbs",
-  "lbl_expected_amount": "Expected Ammount",
+  "lbl_expected_amount": "Expected Amount",
   "lbl_list_of_shares": "List of Equbs",
   "lbl_numbers": "No.",
   "lbl_ammount": "Ammount",
@@ -471,4 +471,16 @@ By using the Hello Equb app, you confirm that you have read, understood, and agr
   'view_payments': 'View Payments',
   'upload_receipt': 'Upload Receipt',
   'registering': 'Registering',
+  'lbl_full_share': 'Full Equb',
+  'lbl_half_share': 'Half Equb',
+  'lbl_quarter_share': 'Quarter Equb',
+  'lbl_full': 'Full',
+  'lbl_half': 'Half',
+  'lbl_quarter': 'Quarter',
+  'lbl_add_another_share': 'Add another Equb',
+  'lbl_share_amount': 'Equb Amount',
+  'lbl_cannot_join_again_partial':
+      'You already joined a half or quarter Equb. You cannot join again. Please go to Payments.',
+  'lbl_full_only_rejoin':
+      'You can only add another full Equb after joining with a full Equb.',
 };

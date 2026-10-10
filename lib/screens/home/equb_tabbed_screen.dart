@@ -98,13 +98,15 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
           ),
         ),
         body: TabBarView(
-          children: equbTypesWithAll.map((equbType) {
-            return EqubListByCategory(
-              category: widget.category,
-              equbTypeId: equbType.id ?? '',
-              type: equbType.name ?? '',
-            );
-          }).toList(),
+          children: [
+            for (var i = 0; i < equbTypesWithAll.length; i++)
+              EqubListByCategory(
+                category: widget.category,
+                equbTypeId: equbTypesWithAll[i].id ?? '',
+                type: equbTypesWithAll[i].name ?? '',
+                tabIndex: i,
+              ),
+          ],
         ),
       ),
     );

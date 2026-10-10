@@ -170,8 +170,7 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
  
 
   try {
-    final data = {'to': to};
-   
+    final data = <String, dynamic>{'to': to, 'otpLength': 6};
 
     final response = await _dio.post(sendOtpUrl, data: data);
     if (kDebugMode) {
@@ -187,9 +186,9 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
         context,
         MaterialPageRoute(
           builder: (context) => OtpVerificationScreen(
-            code: response.data['code'] ?? '',
+            code: response.data['code']?.toString() ?? '',
             isForget: false,
-            phoneNumber: data['to']!,
+            phoneNumber: to,
           ),
         ),
       );

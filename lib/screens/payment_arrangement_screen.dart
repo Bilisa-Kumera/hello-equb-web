@@ -275,16 +275,25 @@ class _PaymentArragementState extends State<PaymentArragement> {
   }
 
   String _sharePercentageLabel(ListItem item) {
-    if (item.title == '1' || widget.type == 'payment') {
-      return '100%';
-    }
+    if (item.title == '1') return AppKeys.full.tr(context);
+    if (item.title == '1/2') return AppKeys.half.tr(context);
+    if (item.title == '1/4') return AppKeys.quarter.tr(context);
     final parts = item.title.split('/');
-    if (parts.length != 2) return '100%';
+    if (parts.length != 2) return AppKeys.full.tr(context);
     final numerator = double.tryParse(parts[0]) ?? 0;
     final denominator = double.tryParse(parts[1]) ?? 1;
-    if (denominator == 0) return '100%';
+    if (denominator == 0) return AppKeys.full.tr(context);
     final percentage = (numerator / denominator) * 100;
-    return '${percentage.toStringAsFixed(1)}%';
+    return shareLabelFromStake(percentage, context);
+  }
+
+  String _paymentShareLabel(int index) {
+    if (widget.selectedJoinOptions != null &&
+        index < widget.selectedJoinOptions!.length) {
+      return shareLabelFromStake(
+          widget.selectedJoinOptions![index].stake, context);
+    }
+    return AppKeys.full.tr(context);
   }
 
   Widget _amountStepButton({
@@ -409,7 +418,25 @@ class _PaymentArragementState extends State<PaymentArragement> {
                   ],
                 ),
               ),
-              if (isPayment && isLockedAtZero)
+              Container(
+                padding:
+                    EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Text(
+                  isPayment
+                      ? _paymentShareLabel(index)
+                      : _sharePercentageLabel(item),
+                  style: AppTextStyles.poppins60011.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              if (isPayment && isLockedAtZero) ...[
+                SizedBox(width: 8.w),
                 Container(
                   padding:
                       EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -424,8 +451,9 @@ class _PaymentArragementState extends State<PaymentArragement> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                )
-              else if (isPayment && isSkipped)
+                ),
+              ] else if (isPayment && isSkipped) ...[
+                SizedBox(width: 8.w),
                 Container(
                   padding:
                       EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -439,22 +467,8 @@ class _PaymentArragementState extends State<PaymentArragement> {
                       color: Colors.grey.shade600,
                     ),
                   ),
-                )
-              else if (!isPayment)
-                Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Text(
-                    _sharePercentageLabel(item),
-                    style: AppTextStyles.badge.copyWith(
-                      color: AppColors.primary,
-                    ),
-                  ),
                 ),
+              ],
             ],
           ),
           SizedBox(height: 12.h),

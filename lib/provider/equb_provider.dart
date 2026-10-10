@@ -19,6 +19,7 @@ class EqubProvider extends ChangeNotifier {
   int? _total;
   String _currentEqubTypeId = '';
   String _currentEqubCategoryId = '';
+  int _fetchGeneration = 0;
 
   List<EqubModel> get equbs => _equbs;
   List<EqubModel> get activeSortedEqubs => _activeSortedEqubs;
@@ -29,6 +30,16 @@ class EqubProvider extends ChangeNotifier {
   int get page => _page;
   int get limit => _limit;
   int? get total => _total;
+  String get currentEqubTypeId => _currentEqubTypeId;
+  String get currentEqubCategoryId => _currentEqubCategoryId;
+
+  bool matchesFilter({
+    required String equbTypeId,
+    required String equbCategoryId,
+  }) {
+    return _currentEqubTypeId == equbTypeId &&
+        _currentEqubCategoryId == equbCategoryId;
+  }
 
   void _recomputeActiveSorted() {
     _activeSortedEqubs = _equbs.where((equb) => equb.isActive).toList()
@@ -39,6 +50,7 @@ class EqubProvider extends ChangeNotifier {
       {required String equbTypeId,
       required String equbCategoryId,
       int limit = 50}) async {
+    final generation = ++_fetchGeneration;
     _isLoading = true;
     _isLoadingMore = false;
     _error = null;
@@ -52,17 +64,33 @@ class EqubProvider extends ChangeNotifier {
     _currentEqubCategoryId = equbCategoryId;
     notifyListeners();
     try {
-      final url =
-          '$baseUrl/user/equb/?equbTypeId=$equbTypeId&equbCategoryId=$equbCategoryId&_page=$_page&_limit=$_limit';
+      // Load first page, then quietly pull remaining pages so low-amount equbs
+      // are not missing until the user scrolls (pagination + client sort).
+      while (true) {
+        final url =
+            '$baseUrl/user/equb/?equbTypeId=$equbTypeId&equbCategoryId=$equbCategoryId&_page=$_page&_limit=$_limit';
 
-      final DataController dataController = DataController();
-      await dataController.initialize();
-      String accessToken =
-          await SecureStorageHelper.getAccessToken() ?? '';
-      final response = await _apiService.readAll(url, bearerToken: accessToken);
-      if (response != null && response['status'] == 'success') {
+        final DataController dataController = DataController();
+        await dataController.initialize();
+        String accessToken =
+            await SecureStorageHelper.getAccessToken() ?? '';
+        final response =
+            await _apiService.readAll(url, bearerToken: accessToken);
+        // Ignore stale responses from older tab fetches.
+        if (generation != _fetchGeneration) return;
+        if (response == null || response['status'] != 'success') {
+          _error = 'Failed to load equbs';
+          break;
+        }
+
         final List data = (response['data']?['equbs'] as List?) ?? const [];
-        _equbs = data.map((e) => EqubModel.fromJson(e)).toList();
+        final pageEqubs = data.map((e) => EqubModel.fromJson(e)).toList();
+        if (_page == 1) {
+          _equbs = pageEqubs;
+        } else {
+          final existingIds = _equbs.map((e) => e.id).toSet();
+          _equbs.addAll(pageEqubs.where((e) => !existingIds.contains(e.id)));
+        }
 
         final meta = response['data']?['meta'];
         if (meta is Map && meta['total'] != null) {
@@ -74,13 +102,24 @@ class EqubProvider extends ChangeNotifier {
           }
         }
 
-        _hasMore = _total != null ? (_equbs.length < (_total ?? 0)) : (data.length == _limit);
-      } else {
-        _error = 'Failed to load equbs';
+        _hasMore = _total != null
+            ? (_equbs.length < (_total ?? 0))
+            : (data.length == _limit);
+        if (!_hasMore || data.isEmpty) {
+          _hasMore = false;
+          break;
+        }
+        _page += 1;
+        // Safety cap: avoid unbounded loops on bad meta.
+        if (_page > 40) {
+          break;
+        }
       }
     } catch (e) {
+      if (generation != _fetchGeneration) return;
       _error = e.toString();
     }
+    if (generation != _fetchGeneration) return;
     _recomputeActiveSorted();
     _isLoading = false;
     notifyListeners();

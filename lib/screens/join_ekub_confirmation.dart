@@ -3,14 +3,12 @@
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:helloequb/core/amharic_translations.dart';
-import 'package:helloequb/core/api_url.dart';
-import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/screens/join_ekub_detail.dart';
 import 'package:helloequb/screens/terms_conditions_screen.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_button.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:intl/intl.dart';
 
 import '../utils/custom_appbar.dart';
 import 'package:helloequb/utils/style_constants.dart';
@@ -69,13 +67,51 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
 
   TextEditingController equivalentController = TextEditingController();
   int numbers = 0;
+  final NumberFormat numberFormat = NumberFormat.decimalPattern('en_us');
 
   List<ListItem> items = [];
 
+  String _translatedEqubPeriod(BuildContext context, String type) {
+    final candidates = <String?>[
+      type,
+      widget.equbType,
+      widget.type,
+    ];
+    String raw = '';
+    for (final c in candidates) {
+      if (c == null || c.trim().isEmpty) continue;
+      final lower = c.trim().toLowerCase();
+      if (lower == 'weekly' || lower == 'daily' || lower == 'monthly') {
+        raw = lower;
+        break;
+      }
+    }
+    if (raw.isEmpty) {
+      for (final c in candidates) {
+        if (c == null || c.trim().isEmpty) continue;
+        if (RegExp(
+                r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            .hasMatch(c.trim())) {
+          continue;
+        }
+        raw = c.trim();
+        break;
+      }
+    }
+    switch (raw.toLowerCase()) {
+      case 'weekly':
+        return AppKeys.weekly.tr(context);
+      case 'daily':
+        return AppKeys.daily.tr(context);
+      case 'monthly':
+        return AppKeys.monthly.tr(context);
+      default:
+        return raw;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    String key = amET[widget.type.toLowerCase()] ?? '';
-
     return Scaffold(
       appBar: CurvedAppBar(
         child: Padding(
@@ -236,7 +272,7 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
                                   ),
                                   Text(
                                     textScaleFactor: 1.0,
-                                    '${AppKeys.expectedAmount.tr(context)} ${widget.type.toUpperCase() == 'weekly' ? AppKeys.weekly.tr(context) : widget.type.toUpperCase() == 'daily' ? AppKeys.daily.tr(context) : widget.type.toUpperCase() == 'monthly' ? AppKeys.monthly.tr(context) : widget.type}',
+                                    '${AppKeys.expectedAmount.tr(context)} ${_translatedEqubPeriod(context, widget.type)}',
                                     style: AppTextStyles.poppins60012.copyWith(color: AppColors.neutralGray),
                                   ),
                                 ],

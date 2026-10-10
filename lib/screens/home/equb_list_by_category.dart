@@ -13,12 +13,14 @@ class EqubListByCategory extends StatefulWidget {
   final EqubCategory category;
   final String equbTypeId;
   final String type;
+  final int tabIndex;
 
   const EqubListByCategory({
     super.key,
     required this.category,
     required this.equbTypeId,
     required this.type,
+    this.tabIndex = 0,
   });
 
   @override
@@ -27,22 +29,64 @@ class EqubListByCategory extends StatefulWidget {
 
 class _EqubListByCategoryState extends State<EqubListByCategory> {
   final ScrollController _scrollController = ScrollController();
+  TabController? _tabController;
+  bool _listeningToTab = false;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final controller = DefaultTabController.maybeOf(context);
+    if (controller == null || _listeningToTab) return;
+    _listeningToTab = true;
+    _tabController = controller;
+    _tabController!.addListener(_onTabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<EqubProvider>().fetchEqubs(
-            equbCategoryId: widget.category.id ?? '',
-            equbTypeId: widget.equbTypeId,
-          );
+      if (_isSelectedTab()) _fetchForThisTab();
     });
-    _scrollController.addListener(_onScroll);
+  }
+
+  bool _isSelectedTab() {
+    final controller = _tabController;
+    if (controller == null) return widget.tabIndex == 0;
+    return !controller.indexIsChanging && controller.index == widget.tabIndex;
+  }
+
+  void _onTabChanged() {
+    if (!mounted || !_isSelectedTab()) return;
+    _fetchForThisTab();
+  }
+
+  void _fetchForThisTab() {
+    final provider = context.read<EqubProvider>();
+    final categoryId = widget.category.id ?? '';
+    if (provider.matchesFilter(
+          equbTypeId: widget.equbTypeId,
+          equbCategoryId: categoryId,
+        ) &&
+        (provider.isLoading || provider.equbs.isNotEmpty)) {
+      return;
+    }
+    provider.fetchEqubs(
+      equbCategoryId: categoryId,
+      equbTypeId: widget.equbTypeId,
+    );
   }
 
   void _onScroll() {
     final provider = context.read<EqubProvider>();
+    if (!provider.matchesFilter(
+      equbTypeId: widget.equbTypeId,
+      equbCategoryId: widget.category.id ?? '',
+    )) {
+      return;
+    }
     if (provider.isLoading || provider.isLoadingMore || !provider.hasMore) {
       return;
     }
@@ -59,6 +103,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
 
   @override
   void dispose() {
+    _tabController?.removeListener(_onTabChanged);
     _scrollController.dispose();
     super.dispose();
   }
@@ -67,7 +112,12 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
   Widget build(BuildContext context) {
     return Consumer<EqubProvider>(
       builder: (context, provider, _) {
-        if (provider.isLoading) {
+        final matches = provider.matchesFilter(
+          equbTypeId: widget.equbTypeId,
+          equbCategoryId: widget.category.id ?? '',
+        );
+
+        if (!matches || provider.isLoading) {
           return Center(
             child: LoadingAnimationWidget.threeRotatingDots(
               color: AppColors.vibrantGreen,
@@ -90,10 +140,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
                   ),
                   const SizedBox(height: 10),
                   OutlinedButton(
-                    onPressed: () => context.read<EqubProvider>().fetchEqubs(
-                          equbCategoryId: widget.category.id ?? '',
-                          equbTypeId: widget.equbTypeId,
-                        ),
+                    onPressed: _fetchForThisTab,
                     child: Text(AppKeys.retry.tr(context)),
                   ),
                 ],
@@ -102,7 +149,9 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
           );
         }
 
-        if (provider.equbs.isEmpty) {
+        final sortedEqubs = provider.activeSortedEqubs;
+
+        if (sortedEqubs.isEmpty) {
           return Center(
             child: Text(
               AppKeys.noEkubs.tr(context),
@@ -116,10 +165,10 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
         return ListView.separated(
           controller: _scrollController,
           padding: const EdgeInsets.all(16),
-          itemCount: provider.equbs.length + (showBottomItem ? 1 : 0),
+          itemCount: sortedEqubs.length + (showBottomItem ? 1 : 0),
           separatorBuilder: (_, __) => const SizedBox(height: 14),
           itemBuilder: (context, index) {
-            if (index >= provider.equbs.length) {
+            if (index >= sortedEqubs.length) {
               if (provider.error != null) {
                 return Center(
                   child: TextButton(
@@ -144,7 +193,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
                 ),
               );
             }
-            final equb = provider.equbs[index];
+            final equb = sortedEqubs[index];
             return EqubDetailCard(
               key: ValueKey(equb.id),
               equb: equb,

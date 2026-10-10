@@ -7,6 +7,7 @@ import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/utils/getx_storage_custom.dart';
 import 'package:helloequb/utils/lang_constants.dart';
+import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:helloequb/utils/style_constants.dart';
 import 'package:helloequb/widgets/upload_receipt_sheet.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
@@ -152,12 +153,18 @@ class _WaitingEkubsState extends State<WaitingEkubsPayment> {
     stopProgressAfterDelay();
   }
 
+  Future<void> _leaveIfNoPending() async {
+    if (!mounted || pendingEqubs.isNotEmpty) return;
+    await navigateToMainShell(context, initialIndex: 0);
+  }
+
   Future<void> _onRefresh() async {
     setState(() {
       progress = true;
     });
     await fetchWaitingEkubs();
     stopProgressAfterDelay();
+    await _leaveIfNoPending();
   }
 
   Future<void> _openUploadSheet(Payment item) async {
@@ -167,7 +174,9 @@ class _WaitingEkubsState extends State<WaitingEkubsPayment> {
       ekubId: item.id,
       joinOption: '100',
     );
-    if (mounted) fetchWaitingEkubs();
+    if (!mounted) return;
+    await fetchWaitingEkubs();
+    await _leaveIfNoPending();
   }
 
   void _showSubmittedInfo() {
@@ -223,6 +232,7 @@ class _WaitingEkubsState extends State<WaitingEkubsPayment> {
               )
             : progress
                 ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     children: [
                       SizedBox(height: 120.h),
                       Center(
@@ -234,6 +244,7 @@ class _WaitingEkubsState extends State<WaitingEkubsPayment> {
                     ],
                   )
                 : ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     children: [
                       SizedBox(height: 120.h),
                       Icon(Icons.inbox_outlined,

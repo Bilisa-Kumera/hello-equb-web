@@ -466,5 +466,17 @@ final Map<String, String> amET = {
   'upload_receipt': 'ደረሰኝ ያስገቡ',
   'registering': 'በመመዝገብ ላይ',
   'lbl_confirm': 'አረጋግጥ',
-  'enter_beneficiary_phonenumber': 'የተቀባዩን ተጠቃሚ መለያ ያስገቡ'
+  'enter_beneficiary_phonenumber': 'የተቀባዩን ተጠቃሚ መለያ ያስገቡ',
+  'lbl_full_share': 'ሙሉ ዕጣ',
+  'lbl_half_share': 'ግማሽ ዕጣ',
+  'lbl_quarter_share': 'ሩብ ዕጣ',
+  'lbl_full': 'ሙሉ',
+  'lbl_half': 'ግማሽ',
+  'lbl_quarter': 'ሩብ',
+  'lbl_add_another_share': 'ሌላ ዕጣ ጨምር',
+  'lbl_share_amount': 'የዕጣ መጠን',
+  'lbl_cannot_join_again_partial':
+      'ግማሽ ወይም ሩብ ዕጣ ተቀላቅለዋል። እንደገና መቀላቀል አይቻልም። እባክዎ ወደ ክፍያ ይሂዱ።',
+  'lbl_full_only_rejoin':
+      'ሙሉ ዕጣ ከተቀላቀሉ በኋላ እንደገና ሊጨምሩ የሚችሉት ሙሉ ዕጣ ብቻ ነው።',
 };

@@ -244,5 +244,17 @@ final Map<String, String> tgET = {
   "lbl_amount_cant_be_empty": "ዓቐን ባዶ ክኸውን ኣይክእልን እዩ",
   "lbl_please_enter_valid_number": "በይዝኦም ትኽክለኛ  ቁፅሪ የእትዉ",
   "lbl_request_reason": "ምኽንያት ምሕታት",
-  "lbl_reason_cant_be_empty": "ምኽንያት ባዶ ክኸውን ኣይክእልን"
+  "lbl_reason_cant_be_empty": "ምኽንያት ባዶ ክኸውን ኣይክእልን",
+  'lbl_full_share': 'ምሉእ ዕጣ',
+  'lbl_half_share': 'ፍርቂ ዕጣ',
+  'lbl_quarter_share': 'ርብዒ ዕጣ',
+  'lbl_full': 'ምሉእ',
+  'lbl_half': 'ፍርቂ',
+  'lbl_quarter': 'ርብዒ',
+  'lbl_add_another_share': 'ካልእ ዕጣ ወስኽ',
+  'lbl_share_amount': 'መጠን ዕጣ',
+  'lbl_cannot_join_again_partial':
+      'ፍርቂ ወይ ርብዒ ዕጣ ተጸንቢርኩም። መሊስኩም ክትጸንበሩ ኣይትኽእሉን። በጃኹም ናብ ክፍሊት ኪዱ።',
+  'lbl_full_only_rejoin':
+      'ድሕሪ ምሉእ ዕጣ፣ መሊስኩም ክትወስኹ ትኽእሉ ዘለኹም ምሉእ ዕጣ ጥራይ እዩ።',
 };

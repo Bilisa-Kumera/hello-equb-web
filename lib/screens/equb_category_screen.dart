@@ -616,7 +616,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                               context,
                                                                               MaterialPageRoute(
                                                                                 builder: (context) => EqubJoinDetail(
-                                                                                  equb: EqubModel(isActive: false),
+                                                                                  equb: EqubModel.fromRegisteredEqub(ekubs[index]),
                                                                                   equbType: widget.type,
                                                                                 ),
                                                                               ),
@@ -1156,7 +1156,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                       context,
                                                                                       MaterialPageRoute(
                                                                                         builder: (context) => EqubJoinDetail(
-                                                                                          equb: EqubModel(isActive: false),
+                                                                                          equb: EqubModel.fromRegisteredEqub(ekubs[index]),
                                                                                           equbType: widget.type,
                                                                                         ),
                                                                                       ),
@@ -1522,7 +1522,7 @@ class _EqubCategoryScreenState extends State<EqubCategoryScreen>
                                                                                       context,
                                                                                       MaterialPageRoute(
                                                                                         builder: (context) => EqubJoinDetail(
-                                                                                          equb: EqubModel(isActive: false),
+                                                                                          equb: EqubModel.fromRegisteredEqub(ekubs[index]),
                                                                                           equbType: widget.type,
                                                                                         ),
                                                                                       ),

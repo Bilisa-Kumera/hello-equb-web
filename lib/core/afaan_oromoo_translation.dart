@@ -259,5 +259,17 @@ final Map<String, String> omET = {
   "lbl_enter_valid_number": "Maaloo lakkofsa hojjetu galchaa",
   "lbl_reason_required": "Sababa gaaffii",
   "lbl_reason_cannot_be_empty": "Sababni Duwwaa ta’uu hindandeenye",
-  "lbl_language": "Qooqa filadhu"
+  "lbl_language": "Qooqa filadhu",
+  'lbl_full_share': 'Hir’ina Guutuu',
+  'lbl_half_share': 'Hir’ina Walakkaa',
+  'lbl_quarter_share': 'Hir’ina Rubaa',
+  'lbl_full': 'Guutuu',
+  'lbl_half': 'Walakkaa',
+  'lbl_quarter': 'Rubaa',
+  'lbl_add_another_share': 'Hir’ina biraa dabali',
+  'lbl_share_amount': 'Hanga Hir’inaa',
+  'lbl_cannot_join_again_partial':
+      'Hir’ina walakkaa ykn rubaa makamtaniittu. Debi’anii makamuun hin danda’amu. Maaloo gara Kaffaltii deema.',
+  'lbl_full_only_rejoin':
+      'Erga hir’ina guutuu makamtanii booda, hir’ina guutuu qofa dabaluu dandeessu.',
 };
