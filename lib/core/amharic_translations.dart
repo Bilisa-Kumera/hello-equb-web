@@ -466,5 +466,27 @@ final Map<String, String> amET = {
   'upload_receipt': 'ደረሰኝ ያስገቡ',
   'registering': 'በመመዝገብ ላይ',
   'lbl_confirm': 'አረጋግጥ',
-  'enter_beneficiary_phonenumber': 'የተቀባዩን ተጠቃሚ መለያ ያስገቡ'
+  'enter_beneficiary_phonenumber': 'የተቀባዩን ተጠቃሚ መለያ ያስገቡ',
+
+  // Issue 2 — Mini-app payment
+  'lbl_pay_with_telebirr': 'በቴሌብር ይክፈሉ',
+
+  // Issue 3 — Payment clarity
+  'lbl_remaining_amount': 'ቀሪ መጠን',
+  'lbl_already_paid': 'ቀደም ሲል የተከፈለ',
+  'lbl_paying_now': 'አሁን የሚከፈል',
+  'lbl_expected_total': 'የሚጠበቅ ጠቅላላ',
+  'lbl_paid_for_this_round': 'በዚህ ዙር የተከፈለ',
+  'lbl_remaining_for_this_round': 'በዚህ ዙር ቀሪ',
+
+  // Issue 5 — Exceeded amount dialog
+  'lbl_amount_exceeds_expected': 'መጠኑ ከሚጠበቀው ይበልጣል',
+  'lbl_excess_amount': 'ትርፍ መጠን',
+  'lbl_paying_more_than_expected': 'ለዚህ ዕቁብ ከሚጠበቀው በላይ እየከፈሉ ነው። የሚጠበቀው ጠቅላላ {expected} ብር ነው፣ ግን {paying} ብር እየከፈሉ ነው።',
+  'lbl_paying_less_than_expected': 'ከሚጠበቀው ያነሰ እየከፈሉ ነው። ቀሪ ቀሪ ሒሳብ ይተላለፋል።',
+  'lbl_do_you_want_to_continue': 'መቀጠል ይፈልጋሉ?',
+
+  // Issue 6 — Transaction type
+  'lbl_transaction_type': 'የግብይት ዓይነት',
+  'lbl_service_payment': 'የአገልግሎት ክፍያ',
 };

@@ -5,6 +5,7 @@ class Payment {
   final String paymentMethod;
   final String type;
   final DateTime createdAt;
+  final double totalServiceFee;
 
   Payment({
     required this.id,
@@ -13,6 +14,7 @@ class Payment {
     required this.paymentMethod,
     required this.type,
     required this.createdAt,
+    this.totalServiceFee = 0.0,
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,9 @@ class Payment {
       paymentMethod: json['paymentMethod'],
       type: json['type'],
       createdAt: DateTime.parse(json['createdAt']),
+      totalServiceFee: json['totalServiceFee'] != null 
+          ? double.tryParse(json['totalServiceFee'].toString()) ?? 0.0 
+          : 0.0,
     );
   }
 
@@ -34,6 +39,7 @@ class Payment {
       'type': type,
       'paymentMethod': paymentMethod,
       'createdAt': createdAt.toIso8601String(),
+      'totalServiceFee': totalServiceFee,
     };
   }
 }
@@ -42,11 +48,13 @@ class Equb {
   final String id;
   final String name;
   final String status;
+  final double serviceCharge;
 
   Equb({
     required this.id,
     required this.name,
     this.status = '',
+    this.serviceCharge = 0.0,
   });
 
   bool get isCompleted => status.toLowerCase() == 'completed';
@@ -56,6 +64,9 @@ class Equb {
       id: json['id'],
       name: json['name'],
       status: json['status']?.toString() ?? '',
+      serviceCharge: json['serviceCharge'] != null
+          ? double.tryParse(json['serviceCharge'].toString()) ?? 0.0
+          : 0.0,
     );
   }
 
@@ -64,6 +75,7 @@ class Equb {
       'id': id,
       'name': name,
       'status': status,
+      'serviceCharge': serviceCharge,
     };
   }
 }
@@ -72,6 +84,7 @@ class PaymentsResponse {
   final String status;
   final double totalPaid;
   final double totalReceived;
+  final double totalServiceFee;
   final List<Payment> paymentsMade;
   final List<Payment> paymentsReceived;
 
@@ -79,6 +92,7 @@ class PaymentsResponse {
     required this.status,
     required this.totalPaid,
     required this.totalReceived,
+    required this.totalServiceFee,
     required this.paymentsMade,
     required this.paymentsReceived,
   });
@@ -88,6 +102,7 @@ class PaymentsResponse {
       status: json['status'],
       totalPaid: json['data']['totalPaid'].toDouble(),
       totalReceived: json['data']['totalReceived'].toDouble(),
+      totalServiceFee: json['data']['totalServiceFee']?.toDouble() ?? 0.0,
       paymentsMade: List<Payment>.from(
           json['data']['paymentsMade'].map((x) => Payment.fromJson(x))),
       paymentsReceived: List<Payment>.from(
@@ -101,6 +116,7 @@ class PaymentsResponse {
       'data': {
         'totalPaid': totalPaid,
         'totalReceived': totalReceived,
+        'totalServiceFee': totalServiceFee,
         'paymentsMade': List<dynamic>.from(paymentsMade.map((x) => x.toJson())),
         'paymentsReceived':
             List<dynamic>.from(paymentsReceived.map((x) => x.toJson())),
@@ -117,6 +133,7 @@ class PaymentsResponse {
       status: status,
       totalPaid: made.fold(0.0, (sum, p) => sum + p.amount),
       totalReceived: received.fold(0.0, (sum, p) => sum + p.amount),
+      totalServiceFee: totalServiceFee,
       paymentsMade: made,
       paymentsReceived: received,
     );

@@ -471,4 +471,26 @@ By using the Hello Equb app, you confirm that you have read, understood, and agr
   'view_payments': 'View Payments',
   'upload_receipt': 'Upload Receipt',
   'registering': 'Registering',
+
+  // Issue 2 — Mini-app payment
+  'lbl_pay_with_telebirr': 'Pay with Telebirr',
+
+  // Issue 3 — Payment clarity
+  'lbl_remaining_amount': 'Remaining Amount',
+  'lbl_already_paid': 'Already Paid',
+  'lbl_paying_now': 'Paying Now',
+  'lbl_expected_total': 'Expected Total',
+  'lbl_paid_for_this_round': 'Paid This Round',
+  'lbl_remaining_for_this_round': 'Remaining This Round',
+
+  // Issue 5 — Exceeded amount dialog
+  'lbl_amount_exceeds_expected': 'Amount Exceeds Expected',
+  'lbl_excess_amount': 'Excess Amount',
+  'lbl_paying_more_than_expected': 'You are paying more than the expected amount for this Equb. The expected total is {expected} ETB, but you are paying {paying} ETB.',
+  'lbl_paying_less_than_expected': 'You are paying less than the expected amount. The remaining balance will carry over.',
+  'lbl_do_you_want_to_continue': 'Do you want to continue?',
+
+  // Issue 6 — Transaction type
+  'lbl_transaction_type': 'Transaction Type',
+  'lbl_service_payment': 'Service Payment',
 };

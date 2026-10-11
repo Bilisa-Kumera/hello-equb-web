@@ -502,41 +502,81 @@ class TransactionHistoryState extends State<TransactionHistory> {
                       separatorBuilder: (_, __) => SizedBox(height: 10.h),
                       itemBuilder: (context, index) {
                         final equb = items[index];
-                        return Container(
-                          padding: EdgeInsets.all(12.w),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF7F8FA),
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Column(
-                            children: [
-                              _rowItem(
-                                AppKeys.ekubName.tr(context),
-                                equb.equb.name,
+                        return Column(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(12.w),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF7F8FA),
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(color: Colors.grey.shade200),
                               ),
-                              _rowItem(
-                                AppKeys.amount.tr(context),
-                                numberFormat.format(
-                                  double.parse(
-                                      equb.amount.toStringAsFixed(2)),
+                              child: Column(
+                                children: [
+                                  _rowItem(
+                                    AppKeys.ekubName.tr(context),
+                                    equb.equb.name,
+                                  ),
+                                  _rowItem(
+                                    AppKeys.amount.tr(context),
+                                    numberFormat.format(
+                                      double.parse(
+                                          equb.amount.toStringAsFixed(2)),
+                                    ),
+                                  ),
+                                  _rowItem(
+                                    AppKeys.paymentMethod.tr(context),
+                                    equb.paymentMethod,
+                                  ),
+                                  
+                                  _rowItem(
+                                    AppKeys.date.tr(context),
+                                    DateFormat('MMMM d, yyyy')
+                                        .format(equb.createdAt),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (equb.totalServiceFee > 0) ...[
+                              SizedBox(height: 10.h),
+                              Container(
+                                padding: EdgeInsets.all(12.w),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF7F8FA),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  border: Border.all(color: Colors.grey.shade200),
+                                ),
+                                child: Column(
+                                  children: [
+                                    _rowItem(
+                                      AppKeys.ekubName.tr(context),
+                                      equb.equb.name,
+                                    ),
+                                    _rowItem(
+                                      AppKeys.amount.tr(context),
+                                      numberFormat.format(
+                                        double.parse(equb.totalServiceFee
+                                            .toStringAsFixed(2)),
+                                      ),
+                                    ),
+                                    _rowItem(
+                                      AppKeys.paymentMethod.tr(context),
+                                      equb.paymentMethod,
+                                    ),
+                                    _rowItem(
+                                      AppKeys.transactionType.tr(context),
+                                      AppKeys.serviceCharge.tr(context),
+                                    ),
+                                    _rowItem(
+                                      AppKeys.date.tr(context),
+                                      DateFormat('MMMM d, yyyy')
+                                          .format(equb.createdAt),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              _rowItem(
-                                AppKeys.paymentMethod.tr(context),
-                                equb.paymentMethod,
-                              ),
-                              _rowItem(
-                                'Transaction Type',
-                                'Service Payment',
-                              ),
-                              _rowItem(
-                                AppKeys.date.tr(context),
-                                DateFormat('MMMM d, yyyy')
-                                    .format(equb.createdAt),
-                              ),
-                            ],
-                          ),
+                            ]
+                          ],
                         );
                       },
                     );

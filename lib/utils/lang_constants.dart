@@ -376,4 +376,26 @@ class AppKeys {
   static const String viewPayments = 'view_payments';
 
   static const String uploadReceipt = 'upload_receipt';
+
+  // Issue 2 — Mini-app payment
+  static const String payWithTelebirr = 'lbl_pay_with_telebirr';
+
+  // Issue 3 — Payment clarity
+  static const String remainingAmount = 'lbl_remaining_amount';
+  static const String alreadyPaid = 'lbl_already_paid';
+  static const String payingNow = 'lbl_paying_now';
+  static const String expectedTotal = 'lbl_expected_total';
+  static const String paidForThisRound = 'lbl_paid_for_this_round';
+  static const String remainingForThisRound = 'lbl_remaining_for_this_round';
+
+  // Issue 5 — Exceeded amount dialog
+  static const String amountExceedsExpected = 'lbl_amount_exceeds_expected';
+  static const String excessAmount = 'lbl_excess_amount';
+  static const String payingMoreThanExpected = 'lbl_paying_more_than_expected';
+  static const String payingLessThanExpected = 'lbl_paying_less_than_expected';
+  static const String doYouWantToContinue = 'lbl_do_you_want_to_continue';
+
+  // Issue 6 — Transaction type
+  static const String transactionType = 'lbl_transaction_type';
+  static const String servicePayment = 'lbl_service_payment';
 }

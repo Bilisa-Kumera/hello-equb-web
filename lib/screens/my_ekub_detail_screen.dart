@@ -1660,9 +1660,11 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
     final bool isPaid = item.amountPaid == item.equbAmount &&
         item.paidRound >= int.parse(ekubRound ?? '0');
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
+    return GestureDetector(
+      onTap: () => _showLotteryDetailBottomSheet(context, item),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
@@ -1756,6 +1758,115 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           ],
         ),
       ),
+    ),
+    );
+  }
+
+  void _showLotteryDetailBottomSheet(BuildContext context, Payment item) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Payment Details',
+                          style: AppTextStyles.poppins70018.copyWith(color: AppColors.primary),
+                        ),
+                        Text(
+                          '${AppKeys.lottery.tr(context)} ${item.lotteryNumber}',
+                          style: AppTextStyles.poppins40014.copyWith(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F8FA),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildDetailRow('Total Paid Overall', '${numberFormat.format(item.paidRound * item.equbAmount)} ETB', isHighlight: true, valueColor: AppColors.earthySuccessGreen),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Close', style: AppTextStyles.poppins60016.copyWith(color: Colors.white)),
+                ),
+              ),
+              SizedBox(height: MediaQuery.of(context).padding.bottom),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {bool isHighlight = false, Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.poppins40014.copyWith(color: Colors.grey[600]),
+        ),
+        Text(
+          value,
+          style: isHighlight 
+              ? AppTextStyles.poppins70016.copyWith(color: valueColor ?? AppColors.primary)
+              : AppTextStyles.poppins60014.copyWith(color: valueColor ?? Colors.black87),
+        ),
+      ],
     );
   }
 

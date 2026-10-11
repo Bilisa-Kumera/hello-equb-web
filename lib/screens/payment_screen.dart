@@ -336,6 +336,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           double.tryParse((widget.ekubAmount ?? '0.0').replaceAll(',', '')) ??
               0,
       "paymentMethod": paymentMethod,
+        "isProduction": false, 
       if (submittedPhoneNumber != null && submittedPhoneNumber.isNotEmpty)
         "phoneNumber": submittedPhoneNumber,
       if (useMiniAppEndpoint &&
@@ -533,6 +534,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final data = {
       "paidAmount": double.tryParse(widget.ekubAmount ?? '0.0') ?? 0,
       "paymentMethod": paymentMethod,
+        "isProduction": false,
       "lottery": lottery,
       if (phoneNumber != null) "phoneNumber": phoneNumber,
     };
@@ -1044,7 +1046,122 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: 16.h),
+              // --- Issue 4: Per-equb payment breakdown ---
+              if ((widget.selectedJoinOptions ?? []).length > 1) ...[
+                Card(
+                  elevation: 1,
+                  shadowColor: Colors.black12,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6)),
+                              child: const Icon(Icons.receipt_long,
+                                  color: AppColors.primary, size: 18),
+                            ),
+                            SizedBox(width: 10.w),
+                            Text(AppKeys.paymentInfo.tr(context),
+                                style: TextStyle(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        SizedBox(height: 12.h),
+                        ...List.generate(
+                          widget.selectedJoinOptions!.length,
+                          (i) {
+                            final item = widget.selectedJoinOptions![i];
+                            final amount = double.tryParse(
+                                    item.subtitle.replaceAll(',', '')) ??
+                                0;
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: 8.h),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 28,
+                                        height: 28,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withOpacity(0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            item.title,
+                                            style: TextStyle(
+                                              fontSize: 11.sp,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Text(
+                                        '${AppKeys.lotteryNumber.tr(context)} ${item.title}',
+                                        style: TextStyle(
+                                            fontSize: 13.sp,
+                                            color: Colors.grey.shade600),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    '${numberFormat.format(amount)} ${AppKeys.currencyEtb.tr(context)}',
+                                    style: TextStyle(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: amount > 0
+                                            ? AppColors.primary
+                                            : Colors.grey.shade400),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        const Divider(height: 1),
+                        SizedBox(height: 8.h),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              AppKeys.totalTobePaid.tr(context),
+                              style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              '${widget.ekubAmount ?? '0'} ${AppKeys.currencyEtb.tr(context)}',
+                              style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16.h),
+              ],
+              SizedBox(height: 8.h),
               if (!_isFromTelebirrMiniApp) ...[
                 Text(AppKeys.pleaseChoosePaymentMethod.tr(context),
                     style: TextStyle(
@@ -1194,7 +1311,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               color: Colors.white, strokeWidth: 2),
                         )
                       : Text(
-                          AppKeys.lblContinue.tr(context),
+                          _isFromTelebirrMiniApp
+                              ? AppKeys.payWithTelebirr.tr(context)
+                              : AppKeys.lblContinue.tr(context),
                           style: TextStyle(
                               fontSize: 16.sp,
                               fontWeight: FontWeight.w700,
@@ -1479,6 +1598,7 @@ class _InfoPopupState extends State<InfoPopup> {
     Map<String, dynamic> data = {
       "paidAmount": paidAmount,
       "paymentMethod": paymentMethod,
+        "isProduction": false,
       "equbers": equbers,
     };
 
@@ -1582,6 +1702,7 @@ class _InfoPopupState extends State<InfoPopup> {
     Map<String, dynamic> data = {
       "paidAmount": paidAmount,
       "paymentMethod": paymentMethod,
+      "isProduction": false,
       "lottery": lottery,
     };
 

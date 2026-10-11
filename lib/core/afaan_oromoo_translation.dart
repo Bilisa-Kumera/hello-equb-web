@@ -258,6 +258,28 @@ final Map<String, String> omET = {
   "lbl_quantity_cannot_be_empty": "Hangi duwwaa ta’uu hindanda’u",
   "lbl_enter_valid_number": "Maaloo lakkofsa hojjetu galchaa",
   "lbl_reason_required": "Sababa gaaffii",
-  "lbl_reason_cannot_be_empty": "Sababni Duwwaa ta’uu hindandeenye",
-  "lbl_language": "Qooqa filadhu"
+  "lbl_reason_cannot_be_empty": "Sababni Duwwaa ta'uu hindandeenye",
+  "lbl_language": "Qooqa filadhu",
+
+  // Issue 2 — Mini-app payment
+  "lbl_pay_with_telebirr": "Telebirr'n Kaffali",
+
+  // Issue 3 — Payment clarity
+  "lbl_remaining_amount": "Hanga Hafe",
+  "lbl_already_paid": "Duraan Kan Kaffalame",
+  "lbl_paying_now": "Ammaan Kan Kaffalamu",
+  "lbl_expected_total": "Ida'ama Eegamu",
+  "lbl_paid_for_this_round": "Marsaa Kanatti Kan Kaffalame",
+  "lbl_remaining_for_this_round": "Marsaa Kanatti Hafe",
+
+  // Issue 5 — Exceeded amount dialog
+  "lbl_amount_exceeds_expected": "Hangi Eegamu Ol Darbe",
+  "lbl_excess_amount": "Hanga Dabalataa",
+  "lbl_paying_more_than_expected": "Uqubii kanaaf hanga eegamu ol kaffalaa jirtu. Ida'amni eegamu {expected} ETB yoo ta'u, {paying} ETB kaffalaa jirtu.",
+  "lbl_paying_less_than_expected": "Hanga eegamu gadi kaffalaa jirtu. Haftee hafee itti fufa.",
+  "lbl_do_you_want_to_continue": "Itti fufuu barbaaddaa?",
+
+  // Issue 6 — Transaction type
+  "lbl_transaction_type": "Gosa Sochii Maallaqaa",
+  "lbl_service_payment": "Kaffaltii Tajaajilaa"
 };

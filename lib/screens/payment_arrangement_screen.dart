@@ -11,6 +11,7 @@ import 'package:helloequb/utils/colors_constant.dart';
 import 'package:helloequb/utils/lang_constants.dart';
 import 'package:helloequb/utils/main_nav_helper.dart';
 import 'package:helloequb/utils/style_constants.dart';
+import 'package:helloequb/core/telebirr/telebirr_mini_app_detector.dart';
 
 class PaymentArragement extends StatefulWidget {
   final String? ekubId;
@@ -89,6 +90,13 @@ class _PaymentArragementState extends State<PaymentArragement> {
     hasError = List.generate(options.length, (_) => false);
 
     totalTobePaid = _calculateTotal();
+
+    final detector = createTelebirrMiniAppDetector();
+    if (detector.isTelebirrMiniApp()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        validateAndContinue();
+      });
+    }
   }
 
   double _parseAmount(String value) =>
@@ -248,6 +256,120 @@ class _PaymentArragementState extends State<PaymentArragement> {
     if (hasValidationError) {
       setState(() {});
       return;
+    }
+
+    // --- Issue 5: Show descriptive dialog when amount exceeds expected ---
+    if (widget.expectedAmount != null && total > widget.expectedAmount!) {
+      final detector = createTelebirrMiniAppDetector();
+      if (!detector.isTelebirrMiniApp()) {
+        final excess = total - widget.expectedAmount!;
+        final shouldContinue = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+              Icon(Icons.info_outline,
+                  color: Colors.blue.shade700, size: 28),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  AppKeys.amountExceedsExpected.tr(context),
+                  style: AppTextStyles.poppins60014.copyWith(
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppKeys.payingMoreThanExpected
+                    .tr(context)
+                    .replaceAll('{expected}',
+                        numberFormat.format(widget.expectedAmount))
+                    .replaceAll('{paying}',
+                        numberFormat.format(total)),
+                style: AppTextStyles.captionMuted.copyWith(
+                  color: Colors.grey.shade700,
+                  height: 1.5,
+                ),
+              ),
+              SizedBox(height: 16.h),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(
+                      color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      AppKeys.excessAmount.tr(context),
+                      style: AppTextStyles.poppins60013.copyWith(
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                    Text(
+                      '${numberFormat.format(excess)} ETB',
+                      style: AppTextStyles.poppins70014.copyWith(
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 12.h),
+              Text(
+                AppKeys.doYouWantToContinue.tr(context),
+                style: AppTextStyles.poppins60013,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                AppKeys.cancel.tr(context),
+                style: AppTextStyles.poppins60013.copyWith(
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                AppKeys.lblContinue.tr(context),
+                style: AppTextStyles.poppins60013.copyWith(
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldContinue != true) {
+        return;
+      }
+      }
     }
 
     _isContinuing = true;
@@ -662,7 +784,7 @@ class _PaymentArragementState extends State<PaymentArragement> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            AppKeys.totalAmount.tr(context),
+                            AppKeys.expectedTotal.tr(context),
                             style: AppTextStyles.captionMuted,
                           ),
                           Text(
@@ -676,7 +798,7 @@ class _PaymentArragementState extends State<PaymentArragement> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Remaining Amount', // Assuming no AppKey exists, use literal or update if there's a key
+                            AppKeys.remainingAmount.tr(context),
                             style: AppTextStyles.captionMuted,
                           ),
                           Text(
@@ -689,15 +811,55 @@ class _PaymentArragementState extends State<PaymentArragement> {
                       ),
                       if (totalTobePaid > widget.expectedAmount!) ...[
                         SizedBox(height: 6.h),
-                        Text(
-                          'Note: You are paying more than the expected amount.',
-                          style: AppTextStyles.captionMuted.copyWith(color: Colors.orange.shade800),
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 16, color: Colors.blue.shade800),
+                              SizedBox(width: 6.w),
+                              Expanded(
+                                child: Text(
+                                  '${AppKeys.excessAmount.tr(context)}: ${numberFormat.format(totalTobePaid - widget.expectedAmount!)} ETB',
+                                  style: AppTextStyles.captionMuted.copyWith(
+                                    color: Colors.blue.shade800,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ] else if (totalTobePaid > 0 && totalTobePaid < widget.expectedAmount!) ...[
                         SizedBox(height: 6.h),
-                        Text(
-                          'Note: You are paying less than the expected amount.',
-                          style: AppTextStyles.captionMuted.copyWith(color: Colors.orange.shade800),
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                              SizedBox(width: 6.w),
+                              Expanded(
+                                child: Text(
+                                  AppKeys.payingLessThanExpected.tr(context),
+                                  style: AppTextStyles.captionMuted.copyWith(
+                                    color: Colors.blue.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ],

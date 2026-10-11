@@ -244,5 +244,27 @@ final Map<String, String> tgET = {
   "lbl_amount_cant_be_empty": "ዓቐን ባዶ ክኸውን ኣይክእልን እዩ",
   "lbl_please_enter_valid_number": "በይዝኦም ትኽክለኛ  ቁፅሪ የእትዉ",
   "lbl_request_reason": "ምኽንያት ምሕታት",
-  "lbl_reason_cant_be_empty": "ምኽንያት ባዶ ክኸውን ኣይክእልን"
+  "lbl_reason_cant_be_empty": "ምኽንያት ባዶ ክኸውን ኣይክእልን",
+
+  // Issue 2 — Mini-app payment
+  "lbl_pay_with_telebirr": "ብቴሌብር ክፈል",
+
+  // Issue 3 — Payment clarity
+  "lbl_remaining_amount": "ዝተረፈ መጠን",
+  "lbl_already_paid": "ቅድሚ ሕጂ ዝተኸፍለ",
+  "lbl_paying_now": "ሕጂ ዝኽፈል",
+  "lbl_expected_total": "ዝጽበ ጠቕላላ",
+  "lbl_paid_for_this_round": "ኣብዚ ዙር ዝተኸፍለ",
+  "lbl_remaining_for_this_round": "ኣብዚ ዙር ዝተረፈ",
+
+  // Issue 5 — Exceeded amount dialog
+  "lbl_amount_exceeds_expected": "መጠን ካብ ዝጽበ ንላዕሊ",
+  "lbl_excess_amount": "ተወሳኺ መጠን",
+  "lbl_paying_more_than_expected": "ነዚ ዕቁብ ካብ ዝጽበ ንላዕሊ ትኸፍል ኣለኻ። ዝጽበ ጠቕላላ {expected} ብር ክኸውን ከሎ {paying} ብር ትኸፍል ኣለኻ።",
+  "lbl_paying_less_than_expected": "ካብ ዝጽበ መጠን ትሕቲ ትኸፍል ኣለኻ። ዝተረፈ ተርፊ ክቕጽል እዩ።",
+  "lbl_do_you_want_to_continue": "ክትቅጽል ትደሊ?",
+
+  // Issue 6 — Transaction type
+  "lbl_transaction_type": "ዓይነት ስርሒት",
+  "lbl_service_payment": "ክፍሊት ኣገልግሎት"
 };

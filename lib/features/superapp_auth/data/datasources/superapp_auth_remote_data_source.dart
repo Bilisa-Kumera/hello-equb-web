@@ -41,7 +41,7 @@ class SuperAppAuthRemoteDataSource {
   }) async {
     final response = await _dio.post(
       url,
-      data: {'token': token},
+      data: {'token': token, 'isProduction': false},
       options: Options(contentType: Headers.jsonContentType),
     );
     return _normalizePayload(response.data);
@@ -58,6 +58,7 @@ class SuperAppAuthRemoteDataSource {
         // Send both for maximum compatibility.
         'authToken': appToken,
         'token': appToken,
+        'isProduction': false,
         if (phoneNumber.trim().isNotEmpty) 'phoneNumber': phoneNumber.trim(),
       },
       options: Options(contentType: Headers.jsonContentType),
