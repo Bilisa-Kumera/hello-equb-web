@@ -1,3 +1,12 @@
+import 'package:helloequb/models/registered_ekubs.dart';
+
+int? _asInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
 class EqubModel {
   final String? id;
   final String? name;
@@ -105,7 +114,7 @@ class EqubModel {
       previousRound: json['previousRound'] as int?,
       currentRound: json['currentRound'] as int?,
       nextRound: json['nextRound'] as int?,
-      groupLimit: json['groupLimit'] as int?,
+      groupLimit: _asInt(json['groupLimit']),
       serviceCharge: (json['serviceCharge'] is int)
           ? (json['serviceCharge'] as int).toDouble()
           : json['serviceCharge'] as double?,
@@ -127,6 +136,44 @@ class EqubModel {
       equbCategory: json['equbCategory'] as Map<String, dynamic>?,
       equbers: json['equbers'] as List<dynamic>?,
       branch: json['branch'] as Map<String, dynamic>?,
+    );
+  }
+
+  /// Convert list-card [Equbs] into join-screen [EqubModel] (keeps groupLimit).
+  factory EqubModel.fromRegisteredEqub(Equbs equb) {
+    return EqubModel(
+      id: equb.id,
+      name: equb.name,
+      description: equb.description,
+      equbTypeId: equb.equbTypeId,
+      equbCategoryId: equb.equbCategoryId,
+      numberOfEqubers: _asInt(equb.numberOfEqubers),
+      equbAmount: _asInt(equb.ekubAmount),
+      isActive: true,
+      status: equb.status,
+      userId: equb.userId,
+      staffId: equb.staffId,
+      currentRound: equb.currentRound,
+      nextRound: equb.nextRound,
+      groupLimit: equb.groupLimit,
+      serviceCharge: double.tryParse(equb.serviceCharge),
+      nextRoundDate: equb.nextRoundDate?.toIso8601String(),
+      currentRoundWinners: equb.currentRoundWinners,
+      nextRoundTime: equb.nextRoundTime,
+      startDate: equb.startDate.toIso8601String(),
+      endDate: equb.endDate?.toIso8601String(),
+      state: equb.state,
+      branchId: equb.branchId,
+      createdAt: equb.createdAt.toIso8601String(),
+      updatedAt: equb.updatedAt.toIso8601String(),
+      equbType: {'id': equb.equbType.id, 'name': equb.equbType.name},
+      equbCategory: {
+        'id': equb.equbCategory.id,
+        'name': equb.equbCategory.name,
+        'isSaving': equb.equbCategory.isSaving,
+      },
+      equbers: equb.equbers.map((e) => {'id': e.id}).toList(),
+      branch: {'id': equb.branch.id, 'name': equb.branch.name},
     );
   }
 }

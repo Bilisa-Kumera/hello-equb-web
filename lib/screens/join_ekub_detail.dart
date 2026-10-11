@@ -16,6 +16,7 @@ import 'package:helloequb/utils/lang_constants.dart';
 import 'package:intl/intl.dart';
 
 import '../utils/custom_appbar.dart';
+import '../utils/equb_date_utils.dart';
 import '../utils/getx_storage_custom.dart';
 import '../utils/secure_storage.dart';
 import 'my_ekub_detail_screen.dart';
@@ -54,54 +55,21 @@ class EqubDetail extends StatelessWidget {
   final dynamic equb;
   const EqubDetail({super.key, required this.equb});
 
-  String _formatDate(String? dateStr, bool isEthiopianDate) {
-    if (dateStr == null || dateStr.isEmpty) return 'TBD';
-
-    try {
-      final dateOnly = dateStr.split(' ').first;
-      final parts = dateOnly.split(RegExp(r'[-/]'));
-
-      if (parts.length < 3) return dateStr;
-
-      final year = int.tryParse(parts[0]) ?? 0;
-      final month = int.tryParse(parts[1]) ?? 1;
-      final day = int.tryParse(parts[2]) ?? 1;
-
-      if (isEthiopianDate) {
-        const months = [
-          "መስከረም",
-          "ጥቅምት",
-          "ኅዳር",
-          "ታኅሣሥ",
-          "ጥር",
-          "የካቲት",
-          "መጋቢት",
-          "ሚያዝያ",
-          "ግንቦት",
-          "ሰኔ",
-          "ሐምሌ",
-          "ነሐሴ",
-          "ጳጉሜን"
-        ];
-
-        final monthName =
-            (month >= 1 && month <= 13) ? months[month - 1] : parts[1];
-
-        return "$monthName $day, $year";
-      } else {
-        final dt = DateTime.parse(dateStr);
-        return DateFormat('MMM dd, yyyy').format(dt);
-      }
-    } catch (e) {
-      return dateStr;
-    }
+  /// Calendar-day Gregorian label (avoids UTC→local off-by-one).
+  String _formatGregorianCalendarDay(DateTime? date) {
+    if (date == null) return 'TBD';
+    final local = date.toLocal();
+    return DateFormat('MMM dd, yyyy')
+        .format(DateTime(local.year, local.month, local.day));
   }
 
   @override
   Widget build(BuildContext context) {
-    final startDate = _formatDate(equb?.startDate ?? '', false);
-    final ethiopianStartDate =
-        _formatDate(equb?.ethiopianStartDate ?? '', true);
+    final display = combineEthiopianGregorianDisplay(
+      ethiopianDate: equb?.ethiopianStartDate?.toString(),
+      gregorianDateStr: equb?.startDate?.toString(),
+      formatGregorian: _formatGregorianCalendarDay,
+    );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -137,7 +105,7 @@ class EqubDetail extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "$ethiopianStartDate ($startDate)",
+                  display == '-' ? 'TBD' : display,
                   style: AppTextStyles.poppins60013
                       .copyWith(color: Colors.black87),
                 ),
@@ -158,10 +126,15 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
 
   bool hasJoinedBefore = false;
   bool isCheckingJoinStatus = true;
+  /// True when user already holds a half/quarter in this equb → no rejoin.
+  bool hasPartialShare = false;
 
   final DataController dataController = DataController();
 
   int joinedAmount = 0;
+
+  bool get _blockedFromJoinAgain => hasJoinedBefore && hasPartialShare;
+  bool get _fullOnlyRejoin => hasJoinedBefore && !hasPartialShare;
 
   Future<void> fetchCheckUserEqub(ekubId) async {
     String? userId = await SecureStorageHelper.getUserId();
@@ -173,17 +146,28 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
                 "Bearer ${await SecureStorageHelper.getAccessToken()}"
           }));
       if (response.statusCode == 200) {
-        final responseData = response.data;
+        final raw = response.data['data'];
+        final list = raw is List ? raw : <dynamic>[];
+        final stakes = list
+            .map((e) =>
+                double.tryParse((e is Map ? e['stake'] : null)?.toString() ??
+                        '100') ??
+                100.0)
+            .toList();
         setState(() {
-          joinedAmount = response.data['data'].length;
+          joinedAmount = list.length;
+          hasPartialShare = stakes.any((s) => s < 99.5);
+          if (list.isNotEmpty) {
+            hasJoinedBefore = true;
+          }
+          if (hasPartialShare) {
+            items = [];
+            _showStakeList = false;
+          } else if (list.isNotEmpty) {
+            // Rejoin after full only — keep a single Full row.
+            _seedDefaultStake();
+          }
         });
-        if (responseData['data'] == null) {
-        } else {
-          // Navigator.push(
-          //     context,
-          //     MaterialPageRoute(
-          //         builder: (context) => const MyEkubScreen()));
-        }
       } else {
         throw Exception('Failed to load data');
       }
@@ -243,42 +227,206 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
   bool _showStakeList = false;
 
   void _seedDefaultStake() {
-    final amount = numberFormat.format(
-      double.parse(widget.equb.equbAmount.toString()),
-    );
-    items = [ListItem(title: selectedValue, subtitle: amount)];
+    selectedValue = '1';
+    final amount = _amountForShare('1');
+    equivalentEtb = amount;
+    equivalentController.text = numberFormat.format(amount);
+    items = [
+      ListItem(title: '1', subtitle: numberFormat.format(amount)),
+    ];
+    _showStakeList = true;
+  }
+
+  double _amountForShare(String share) {
+    final base = double.parse(widget.equb.equbAmount.toString());
+    if (share == '1') return base;
+    final parts = share.split('/');
+    if (parts.length == 2) {
+      final denom = int.tryParse(parts[1]) ?? 1;
+      return base / denom;
+    }
+    return base;
+  }
+
+  void _updateItemShare(int index, String share) {
+    setState(() {
+      final amount = _amountForShare(share);
+      // Half/quarter: only one share row allowed in this join.
+      if (share != '1' && items.length > 1) {
+        items = [
+          ListItem(title: share, subtitle: numberFormat.format(amount)),
+        ];
+      } else {
+        items[index] = ListItem(
+          title: share,
+          subtitle: numberFormat.format(amount),
+        );
+      }
+      selectedValue = share;
+      equivalentEtb = amount;
+      equivalentController.text = numberFormat.format(amount);
+    });
+  }
+
+  /// Weekly equbs use groupLimit 4 → Full / Half / Quarter.
+  /// Other equbs use groupLimit 1 → Full only.
+  /// Rejoin after full → Full only. Partial rejoin blocked elsewhere.
+  List<String> get _shareOptions {
+    if (_fullOnlyRejoin) return ['1'];
+    final limit = widget.equb.groupLimit ?? 1;
+    final options = <String>['1'];
+    if (limit >= 2) options.add('1/2');
+    if (limit >= 4) options.add('1/4');
+    return options;
+  }
+
+  bool get _canAddAnotherShare {
+    if (_blockedFromJoinAgain) return false;
+    if (items.any((i) => i.title != '1')) return false;
+    return true;
+  }
+
+  String _shareLabel(String value) {
+    switch (value) {
+      case '1':
+        return '1 ${AppKeys.fullShare.tr(context)}';
+      case '1/2':
+        return '1/2 ${AppKeys.halfShare.tr(context)}';
+      case '1/4':
+        return '1/4 ${AppKeys.quarterShare.tr(context)}';
+      default:
+        return AppKeys.yourShare.tr(context);
+    }
+  }
+
+  String _shareShortLabel(String value) {
+    switch (value) {
+      case '1':
+        return AppKeys.full.tr(context);
+      case '1/2':
+        return AppKeys.half.tr(context);
+      case '1/4':
+        return AppKeys.quarter.tr(context);
+      default:
+        return value;
+    }
+  }
+
+  bool _looksLikeUuid(String value) {
+    return RegExp(
+            r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+        .hasMatch(value.trim());
+  }
+
+  String _resolveEqubPeriodRaw() {
+    final candidates = <String?>[
+      widget.equb.equbType?['name']?.toString(),
+      widget.equb.equbType?['Name']?.toString(),
+      widget.equbType,
+    ];
+    for (final c in candidates) {
+      if (c == null || c.trim().isEmpty) continue;
+      final lower = c.trim().toLowerCase();
+      if (lower == 'weekly' || lower == 'daily' || lower == 'monthly') {
+        return lower;
+      }
+    }
+    for (final c in candidates) {
+      if (c == null || c.trim().isEmpty) continue;
+      if (_looksLikeUuid(c)) continue;
+      return c.trim();
+    }
+    return '';
+  }
+
+  String _translatedEqubPeriod([String? type]) {
+    final raw = (type ?? _resolveEqubPeriodRaw()).toLowerCase();
+    switch (raw) {
+      case 'weekly':
+        return AppKeys.weekly.tr(context);
+      case 'daily':
+        return AppKeys.daily.tr(context);
+      case 'monthly':
+        return AppKeys.monthly.tr(context);
+      default:
+        return type ?? _resolveEqubPeriodRaw();
+    }
+  }
+
+  String _shareGlyph(String value) {
+    switch (value) {
+      case '1/2':
+        return '½';
+      case '1/4':
+        return '¼';
+      default:
+        return '1';
+    }
   }
 
   void _addItem(String selected, String equivalent) {
+    if (!_canAddAnotherShare && items.isNotEmpty) return;
     setState(() {
-      if (!_showStakeList) {
-        _showStakeList = true;
-      }
+      _showStakeList = true;
       items.add(ListItem(title: selected, subtitle: equivalent));
     });
   }
 
+  void _addShareRow() {
+    if (!_canAddAnotherShare) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _blockedFromJoinAgain
+                ? AppKeys.cannotJoinAgainPartial.tr(context)
+                : AppKeys.fullOnlyRejoin.tr(context),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final share = '1';
+    final amount = _amountForShare(share);
+    _addItem(share, numberFormat.format(amount));
+  }
+
+  void _showPartialJoinBlocked() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppKeys.cannotJoinAgainPartial.tr(context)),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _removeItem(int index) {
     setState(() {
+      if (items.length <= 1) return;
       items.removeAt(index);
-      if (items.isEmpty || items.length == 1) {
-        if (items.isEmpty) {
-          _seedDefaultStake();
-        }
-        _showStakeList = false;
-      }
     });
   }
 
   void _proceedToJoinConfirmation() {
-    final stakes = _showStakeList
+    if (_blockedFromJoinAgain) {
+      _showPartialJoinBlocked();
+      return;
+    }
+    if (_fullOnlyRejoin && items.any((i) => i.title != '1')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppKeys.fullOnlyRejoin.tr(context)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final stakes = items.isNotEmpty
         ? items
         : [
             ListItem(
-              title: items.isNotEmpty ? items.first.title : selectedValue,
-              subtitle: items.isNotEmpty
-                  ? items.first.subtitle
-                  : equivalentController.text,
+              title: '1',
+              subtitle: numberFormat.format(_amountForShare('1')),
             ),
           ];
     expectedAmount = 0;
@@ -294,7 +442,7 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
           termAndCondition: widget.equb.termAndCondition ?? '',
           termAndConditionInAmharic:
               widget.equb.termAndConditionInAmharic ?? '',
-          equbType: widget.equb.equbType?['name'] ?? '',
+          equbType: _resolveEqubPeriodRaw(),
           ekubDescription: widget.equb.description ?? '',
           ekubId: widget.equb.id ?? '',
           ekubAmount: widget.equb.equbAmount.toString(),
@@ -302,7 +450,7 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
           ekubRound: widget.equb.nextRound.toString(),
           groupLimit: widget.equb.groupLimit.toString(),
           joinedAmount: widget.equb.equbers?.length.toString() ?? '',
-          type: widget.equb.equbType?['name'] ?? '',
+          type: _resolveEqubPeriodRaw(),
           items: stakes,
           expectedAmount: expectedAmount,
           startDate: widget.equb.startDate ?? '',
@@ -408,14 +556,21 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
                 equivalentEtb = (1 / int.parse(newValue.split('/')[1])) *
                     double.parse(widget.equb.equbAmount.toString());
               }
-              equivalentController.text = equivalentEtb.toStringAsFixed(2);
+              equivalentController.text =
+                  numberFormat.format(equivalentEtb);
+              // Keep the default stake line in sync when not multi-adding.
+              if (!_showStakeList) {
+                items = [
+                  ListItem(
+                    title: selectedValue,
+                    subtitle: equivalentController.text,
+                  ),
+                ];
+              }
             });
           },
           itemBuilder: (BuildContext context) {
-            return <String>[
-              for (int i = 0; i < (widget.equb.groupLimit ?? 0); i++)
-                i == 0 ? '1' : '1/${i + 1}'
-            ].map<PopupMenuItem<String>>((String value) {
+            return _shareOptions.map<PopupMenuItem<String>>((String value) {
               return PopupMenuItem<String>(
                 value: value,
                 height: 48,
@@ -434,16 +589,14 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
                         ),
                         child: Center(
                           child: Text(
-                            value.contains('/') ? '½' : '1',
+                            _shareGlyph(value),
                             style: AppTextStyles.poppins60014,
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        value == '1'
-                            ? 'Full Share (1x)'
-                            : 'Partial Share ($value)',
+                        _shareLabel(value),
                         style: AppTextStyles.poppins60014,
                       ),
                       if (value == selectedValue) ...[
@@ -476,7 +629,7 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
                       ),
                       child: Center(
                         child: Text(
-                          selectedValue.contains('/') ? '½' : '1',
+                          _shareGlyph(selectedValue),
                           style: AppTextStyles.poppins70014
                               .copyWith(color: AppColors.primary),
                         ),
@@ -488,13 +641,13 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Share Amount',
+                          AppKeys.shareAmount.tr(context),
                           style: AppTextStyles.poppins50011
                               .copyWith(color: Colors.grey.shade500),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          selectedValue == '1' ? 'Full Share' : selectedValue,
+                          _shareLabel(selectedValue),
                           style: AppTextStyles.poppins60014
                               .copyWith(color: Colors.black87),
                         ),
@@ -587,48 +740,98 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
     );
   }
 
-  Widget _buildCompactDefaultStake() {
-    final amount = double.tryParse(
-            equivalentController.text.replaceAll(',', '')) ??
-        equivalentEtb;
+  /// Compact share picker inside each lottery row.
+  Widget _buildRowShareDropdown(int index, String currentShare) {
+    final canChoose = _shareOptions.length > 1;
+    if (!canChoose) {
+      return Container(
+        padding: const EdgeInsets.symmetric( vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.primary.withOpacity(0.35)),
+        ),
+        child: Text(
+          _shareLabel(currentShare),
+          style: AppTextStyles.poppins60012.copyWith(color: AppColors.primary),
+        ),
+      );
+    }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                '1',
-                style: AppTextStyles.poppins70014
-                    .copyWith(color: AppColors.primary),
+    return PopupMenuButton<String>(
+      padding: EdgeInsets.zero,
+      offset: const Offset(0, 36),
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) => _updateItemShare(index, value),
+      itemBuilder: (context) {
+        final options = _shareOptions;
+        return [
+          for (var i = 0; i < options.length; i++)
+            PopupMenuItem<String>(
+              value: options[i],
+              padding: EdgeInsets.fromLTRB(
+                  10, i == 0 ? 10 : 4, 10, i == options.length - 1 ? 10 : 4),
+              height: 48,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: options[i] == currentShare
+                      ? AppColors.primary.withOpacity(0.1)
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: options[i] == currentShare
+                        ? AppColors.primary.withOpacity(0.55)
+                        : Colors.grey.shade300,
+                    width: options[i] == currentShare ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _shareLabel(options[i]),
+                        style: AppTextStyles.poppins60012.copyWith(
+                          color: options[i] == currentShare
+                              ? AppColors.primary
+                              : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    if (options[i] == currentShare)
+                      const Icon(Icons.check_circle,
+                          size: 18, color: AppColors.primary)
+                    else
+                      Icon(Icons.chevron_right_rounded,
+                          size: 18, color: Colors.grey.shade400),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              AppKeys.yourShare.tr(context),
-              style: AppTextStyles.poppins60013.copyWith(color: Colors.black87),
+        ];
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.primary.withOpacity(0.45)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _shareLabel(currentShare),
+              style:
+                  AppTextStyles.poppins60012.copyWith(color: AppColors.primary),
             ),
-          ),
-          Text(
-            'ETB ${numberFormat.format(amount)}',
-            style: AppTextStyles.poppins70014.copyWith(color: AppColors.primary),
-          ),
-        ],
+            Icon(Icons.keyboard_arrow_down_rounded,
+                size: 18, color: AppColors.primary),
+          ],
+        ),
       ),
     );
   }
@@ -636,6 +839,7 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
   Widget _buildModernListItem(int index) {
     final item = items[index];
     final amount = double.tryParse(item.subtitle.replaceAll(',', '')) ?? 0.0;
+    final share = item.title;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -648,8 +852,8 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               color: AppColors.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
@@ -662,35 +866,33 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              AppKeys.yourShare.tr(context),
-              style: AppTextStyles.poppins60013.copyWith(color: Colors.black87),
-            ),
-          ),
+          SizedBox(width: 20.w),
+          _buildRowShareDropdown(index, share),
+          const Spacer(),
           Text(
             'ETB ${numberFormat.format(amount)}',
             style: AppTextStyles.poppins70014.copyWith(color: AppColors.primary),
           ),
-          const SizedBox(width: 8),
-          InkWell(
-            onTap: () => _removeItem(index),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.delete_outline_rounded,
-                color: Colors.red.shade400,
-                size: 18,
+          if (items.length > 1) ...[
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () => _removeItem(index),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.red.shade400,
+                  size: 18,
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -740,21 +942,22 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
                           ),
                           SizedBox(height: 10.h),
                         ],
-                        CustomTextButton(
-                          text: _isEqubFilled
-                              ? AppKeys.alreadyFilled.tr(context)
-                              : hasJoinedBefore
-                                  ? AppKeys.joinAgain.tr(context)
-                                  : AppKeys.join.tr(context),
-                          buttonColor: _isEqubFilled
-                              ? Colors.grey.shade500
-                              : AppColors.darkMutedGreen,
-                          onPressed: _isEqubFilled
-                              ? _showFilledMessage
-                              : _proceedToJoinConfirmation,
-                        ),
+                        if (!_blockedFromJoinAgain)
+                          CustomTextButton(
+                            text: _isEqubFilled
+                                ? AppKeys.alreadyFilled.tr(context)
+                                : hasJoinedBefore
+                                    ? AppKeys.joinAgain.tr(context)
+                                    : AppKeys.join.tr(context),
+                            buttonColor: _isEqubFilled
+                                ? Colors.grey.shade500
+                                : AppColors.darkMutedGreen,
+                            onPressed: _isEqubFilled
+                                ? _showFilledMessage
+                                : _proceedToJoinConfirmation,
+                          ),
                         if (hasJoinedBefore) ...[
-                          SizedBox(height: 8.h),
+                          if (!_blockedFromJoinAgain) SizedBox(height: 8.h),
                           OutlinedButton(
                             onPressed: () {
                               Navigator.push(
@@ -920,24 +1123,38 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
               SizedBox(height: 12.h),
 
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     AppKeys.yourShare.tr(context),
                     style: AppTextStyles.poppins60014
                         .copyWith(color: Colors.black87),
                   ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${AppKeys.expectedAmount.tr(context)} ${widget.equbType.toLowerCase() == 'weekly' ? AppKeys.weekly.tr(context) : widget.equbType.toLowerCase() == 'daily' ? AppKeys.daily.tr(context) : widget.equbType.toLowerCase() == 'monthly' ? AppKeys.monthly.tr(context) : widget.equb.equbType?['name']}',
-                      style: AppTextStyles.poppins60011
-                          .copyWith(color: Colors.grey.shade600),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          () {
+                            final period = _translatedEqubPeriod();
+                            final label = AppKeys.expectedAmount.tr(context);
+                            return period.isEmpty
+                                ? label
+                                : '$label $period';
+                          }(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: AppTextStyles.poppins60011
+                              .copyWith(color: Colors.grey.shade600),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -945,35 +1162,53 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
 
               const SizedBox(height: 10),
 
-              if (!_showStakeList) _buildCompactDefaultStake(),
-
-              if (_showStakeList)
+              if (_blockedFromJoinAgain)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                  ),
+                  child: Text(
+                    AppKeys.cannotJoinAgainPartial.tr(context),
+                    style: AppTextStyles.poppins50013.copyWith(
+                      color: Colors.black87,
+                      height: 1.35,
+                    ),
+                  ),
+                )
+              else ...[
                 ...items.asMap().entries.map((entry) {
                   return _buildModernListItem(entry.key);
                 }),
-
-              Container(
-                margin: const EdgeInsets.only(top: 8, bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.grey.shade200,
-                    width: 1,
+                if (_canAddAnotherShare)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 12),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _addShareRow,
+                        icon: const Icon(Icons.add_rounded, size: 20),
+                        label: Text(AppKeys.addAnotherShare.tr(context)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          backgroundColor: AppColors.primary.withOpacity(0.08),
+                          side: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(child: _buildModernAmountField()),
-                    const SizedBox(width: 10),
-                    _buildModernAddButton(),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 8),
+              ],
             ],
           ),
         ),

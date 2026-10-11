@@ -77,19 +77,27 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
 
     try {
-      final response = await dio.post(
-        forgetPasswordUrl,
-        data: {"phoneNumber": widget.phoneNumber},
-        options: Options(
-          headers: {
-            "Content-Type": "application/json",
-          },
-        ),
-      );
+      final response = widget.isForget
+          ? await dio.post(
+              forgetPasswordUrl,
+              data: {"phoneNumber": widget.phoneNumber, "otpLength": 6},
+              options: Options(
+                headers: {"Content-Type": "application/json"},
+              ),
+            )
+          : await dio.post(
+              sendOtpUrl,
+              data: {"to": widget.phoneNumber, "otpLength": 6},
+              options: Options(
+                headers: {"Content-Type": "application/json"},
+              ),
+            );
       Navigator.pop(context);
 
       if (response.statusCode == 200) {
-        widget.code = response.data['otp'];
+        widget.code = widget.isForget
+            ? (response.data['otp'] ?? '')
+            : (response.data['code'] ?? '');
         startCountdown();
       }
     } catch (error) {
@@ -98,6 +106,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   }
 
   void _verifyOtp() {
+    // New app uses 6-digit OTPs; still accept 4 for any leftover 4-digit codes.
+    if (_otpCode.length != 6 && _otpCode.length != 4) {
+      setState(() {
+        showError = true;
+      });
+      return;
+    }
+
     if (_otpCode == widget.code && !widget.isForget) {
       Navigator.push(
         context,
@@ -140,7 +156,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   child: const Center(
                     child: Padding(
                       padding: EdgeInsets.only(left: 8.0),
-                      child: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.black),
+                      child: Icon(Icons.arrow_back_ios_new_rounded,
+                          color: AppColors.black),
                     ),
                   ),
                 ),
@@ -151,7 +168,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               child: Text(
                 textScaleFactor: 1.0,
                 AppKeys.otpVerification.tr(context),
-                style: AppTextStyles.poppins70024.copyWith(color: AppColors.darkBlueGray),
+                style: AppTextStyles.poppins70024
+                    .copyWith(color: AppColors.darkBlueGray),
               ),
             ),
             Padding(
@@ -159,7 +177,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               child: Text(
                 textScaleFactor: 1.0,
                 AppKeys.enterVerificationCode.tr(context),
-                style: AppTextStyles.poppins50014.copyWith(color: AppColors.coolGray),
+                style: AppTextStyles.poppins50014
+                    .copyWith(color: AppColors.coolGray),
               ),
             ),
             Padding(
@@ -168,9 +187,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               child: TextField(
                 controller: _otpController,
                 keyboardType: TextInputType.number,
-                maxLength: 4,
+                maxLength: 6,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.poppins40020.copyWith(color: AppColors.black),
+                style:
+                    AppTextStyles.poppins40020.copyWith(color: AppColors.black),
                 decoration: const InputDecoration(
                   counterText: "", // Hide counter
                   border: UnderlineInputBorder(),
@@ -189,8 +209,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 child: Text(
                   textScaleFactor: 1.0,
                   'Incorrect OTP, please try again.',
-                  style: AppTextStyles.poppins40014
-                      .copyWith(color: AppColors.red),
+                  style:
+                      AppTextStyles.poppins40014.copyWith(color: AppColors.red),
                 ),
               ),
             Padding(
@@ -212,7 +232,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     child: Text(
                       textScaleFactor: 1.0,
                       AppKeys.didntReceiveCode.tr(context),
-                      style: AppTextStyles.poppins50014.copyWith(color: AppColors.darkBlueGray),
+                      style: AppTextStyles.poppins50014
+                          .copyWith(color: AppColors.darkBlueGray),
                     ),
                   ),
                   Padding(
@@ -224,7 +245,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ? '$countdown seconds'
                             : AppKeys.resend.tr(context),
                         textScaleFactor: 1.0,
-                        style: AppTextStyles.poppins70015.copyWith(color: AppColors.darkBlueGray),
+                        style: AppTextStyles.poppins70015
+                            .copyWith(color: AppColors.darkBlueGray),
                       ),
                     ),
                   ),

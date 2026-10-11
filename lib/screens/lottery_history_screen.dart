@@ -781,14 +781,13 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                           color: statusColor.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(
-                          user.hasTakenEqub
-                              ? Icons.check_circle_rounded
-                              : user.hasClaimed
-                                  ? Icons.verified_rounded
-                                  : Icons.emoji_events_rounded,
-                          color: statusColor,
-                          size: 24,
+                        child: Center(
+                          child: Text(
+                            user.lotteryNumber,
+                            textScaleFactor: 1.0,
+                            style: AppTextStyles.poppins70016
+                                .copyWith(color: statusColor),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 13),
@@ -796,12 +795,6 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              user.lotteryNumber,
-                              textScaleFactor: 1.0,
-                              style: AppTextStyles.poppins40015.copyWith(color: AppColors.neutralGray),
-                            ),
-                            const SizedBox(height: 5),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 9,
@@ -815,6 +808,26 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                                 statusText,
                                 textScaleFactor: 1.0,
                                 style: AppTextStyles.poppins60011,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: AppColors.primary.withOpacity(0.35),
+                                ),
+                              ),
+                              child: Text(
+                                shareLabelFromStake(user.stake, context),
+                                textScaleFactor: 1.0,
+                                style: AppTextStyles.poppins60011
+                                    .copyWith(color: AppColors.primary),
                               ),
                             ),
                           ],

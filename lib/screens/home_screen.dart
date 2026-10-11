@@ -134,15 +134,17 @@ class _EqubTabbedScreenState extends State<EqubTabbedScreen> {
           ),
         ),
         body: TabBarView(
-          children: equbTypesWithAll.map((equbType) {
-            return EqubListByCategory(
-              category: widget.category,
-              equbTypeId: equbType.id ?? '',
-              type: equbType.name ?? '',
-              imageUrl: widget.imageUrl,
-              description: widget.description,
-            );
-          }).toList(),
+          children: [
+            for (var i = 0; i < equbTypesWithAll.length; i++)
+              EqubListByCategory(
+                category: widget.category,
+                equbTypeId: equbTypesWithAll[i].id ?? '',
+                type: equbTypesWithAll[i].name ?? '',
+                imageUrl: widget.imageUrl,
+                description: widget.description,
+                tabIndex: i,
+              ),
+          ],
         ),
       ),
     );
@@ -155,6 +157,7 @@ class EqubListByCategory extends StatefulWidget {
   final String type;
   final String? imageUrl;
   final String? description;
+  final int tabIndex;
 
   const EqubListByCategory(
       {super.key,
@@ -162,7 +165,8 @@ class EqubListByCategory extends StatefulWidget {
       required this.equbTypeId,
       required this.type,
       this.imageUrl,
-      this.description});
+      this.description,
+      this.tabIndex = 0});
 
   @override
   State<EqubListByCategory> createState() => _EqubListByCategoryState();
@@ -170,22 +174,65 @@ class EqubListByCategory extends StatefulWidget {
 
 class _EqubListByCategoryState extends State<EqubListByCategory> {
   final ScrollController _scrollController = ScrollController();
+  TabController? _tabController;
+  bool _listeningToTab = false;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final controller = DefaultTabController.maybeOf(context);
+    if (controller == null || _listeningToTab) return;
+    _listeningToTab = true;
+    _tabController = controller;
+    _tabController!.addListener(_onTabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<EqubProvider>().fetchEqubs(
-            equbCategoryId: widget.category.id ?? '',
-            equbTypeId: widget.equbTypeId,
-          );
+      if (_isSelectedTab()) _fetchForThisTab();
     });
-    _scrollController.addListener(_onScroll);
+  }
+
+  bool _isSelectedTab() {
+    final controller = _tabController;
+    if (controller == null) return widget.tabIndex == 0;
+    return !controller.indexIsChanging && controller.index == widget.tabIndex;
+  }
+
+  void _onTabChanged() {
+    if (!mounted || !_isSelectedTab()) return;
+    _fetchForThisTab();
+  }
+
+  void _fetchForThisTab() {
+    final provider = context.read<EqubProvider>();
+    final categoryId = widget.category.id ?? '';
+    // Skip if this filter is already loaded / loading.
+    if (provider.matchesFilter(
+          equbTypeId: widget.equbTypeId,
+          equbCategoryId: categoryId,
+        ) &&
+        (provider.isLoading || provider.equbs.isNotEmpty)) {
+      return;
+    }
+    provider.fetchEqubs(
+      equbCategoryId: categoryId,
+      equbTypeId: widget.equbTypeId,
+    );
   }
 
   void _onScroll() {
     final provider = context.read<EqubProvider>();
+    if (!provider.matchesFilter(
+      equbTypeId: widget.equbTypeId,
+      equbCategoryId: widget.category.id ?? '',
+    )) {
+      return;
+    }
     if (provider.isLoading || provider.isLoadingMore || !provider.hasMore) {
       return;
     }
@@ -202,6 +249,7 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
 
   @override
   void dispose() {
+    _tabController?.removeListener(_onTabChanged);
     _scrollController.dispose();
     super.dispose();
   }
@@ -210,7 +258,12 @@ class _EqubListByCategoryState extends State<EqubListByCategory> {
   Widget build(BuildContext context) {
     return Consumer2<EqubProvider, JoinedEqubsStatusProvider>(
       builder: (context, provider, joinedStatus, _) {
-        if (provider.isLoading) {
+        final matches = provider.matchesFilter(
+          equbTypeId: widget.equbTypeId,
+          equbCategoryId: widget.category.id ?? '',
+        );
+
+        if (!matches || provider.isLoading) {
           return Center(
             child: LoadingAnimationWidget.threeRotatingDots(
               color: AppColors.vibrantGreen,

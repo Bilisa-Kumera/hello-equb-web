@@ -1,7 +1,7 @@
 import 'package:helloequb/core/env_config.dart';
 import 'package:intl/intl.dart';
 
-const String _defaultBaseUrl = 'http://localhost:8000/';
+const String _defaultBaseUrl = 'http://192.168.1.19:8000/';
 
 String _normalizeBaseUrl(String raw) {
   final trimmed = raw.trim();

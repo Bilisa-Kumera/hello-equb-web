@@ -258,7 +258,7 @@ final Map<String, String> enUS = {
   "lbl_equb_confirmation": "Equb Confirmation",
   "lbl_description": "Description",
   "lbl_total_number_of_shares": "Total Number of Equbs",
-  "lbl_expected_amount": "Expected Ammount",
+  "lbl_expected_amount": "Expected Amount",
   "lbl_list_of_shares": "List of Equbs",
   "lbl_numbers": "No.",
   "lbl_ammount": "Ammount",
