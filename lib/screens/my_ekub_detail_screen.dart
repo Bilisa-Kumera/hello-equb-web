@@ -1568,6 +1568,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
           _buildNextRoundRow(),
           const SizedBox(height: 16),
           _buildMakePaymentButton(),
+          const SizedBox(height: 12),
+          _buildRemainingToFillCard(),
           const SizedBox(height: 20),
           _buildCurrentRoundHeader(),
           const SizedBox(height: 12),
@@ -1635,6 +1637,65 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Total still owed across all lottery spots: Σ (equbAmount × rounds − paid).
+  double get _remainingToFillEqub {
+    final rounds =
+        _totalEqubRounds > 0 ? _totalEqubRounds : widget.ekubCycle;
+    if (rounds <= 0 || _payments.isEmpty) return 0;
+    return _payments.fold<double>(
+      0,
+      (sum, p) => sum + p.maxRemainingPayable(rounds),
+    );
+  }
+
+  Widget _buildRemainingToFillCard() {
+    final remaining = _remainingToFillEqub;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: AppColors.vibrantGreen.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_outlined,
+              color: AppColors.vibrantGreen,
+              size: 16,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              AppKeys.remainingAmount.tr(context),
+              style: AppTextStyles.poppins50012
+                  .copyWith(color: const Color(0xFF888888)),
+            ),
+          ),
+          Text(
+            '${numberFormat.format(remaining)} ETB',
+            style: AppTextStyles.poppins70014
+                .copyWith(color: const Color(0xFF1DB954)),
+          ),
+        ],
       ),
     );
   }

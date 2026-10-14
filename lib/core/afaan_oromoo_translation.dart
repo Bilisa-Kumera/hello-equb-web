@@ -281,5 +281,17 @@ final Map<String, String> omET = {
 
   // Issue 6 — Transaction type
   "lbl_transaction_type": "Gosa Sochii Maallaqaa",
-  "lbl_service_payment": "Kaffaltii Tajaajilaa"
+  "lbl_service_payment": "Kaffaltii Tajaajilaa",
+  'lbl_full_share': 'Hir’ina Guutuu',
+  'lbl_half_share': 'Hir’ina Walakkaa',
+  'lbl_quarter_share': 'Hir’ina Rubaa',
+  'lbl_full': 'Guutuu',
+  'lbl_half': 'Walakkaa',
+  'lbl_quarter': 'Rubaa',
+  'lbl_add_another_share': 'Hir’ina biraa dabali',
+  'lbl_share_amount': 'Hanga Hir’inaa',
+  'lbl_cannot_join_again_partial':
+  'Hir’ina walakkaa ykn rubaa makamtaniittu. Debi’anii makamuun hin danda’amu. Maaloo gara Kaffaltii deema.',
+  'lbl_full_only_rejoin':
+  'Erga hir’ina guutuu makamtanii booda, hir’ina guutuu qofa dabaluu dandeessu.',
 };

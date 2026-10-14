@@ -66,3 +66,12 @@ ios/Pods/
 # Misc
 *.log
 *.tmp
+
+# Android upload signing (never commit)
+*.jks
+*.keystore
+upload_certificate.pem
+**/upload_certificate.pem
+my-upload-key.jks
+key.properties
+**/key.properties
