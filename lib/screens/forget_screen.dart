@@ -65,7 +65,6 @@ class _ForgetScreenState extends State<ForgetScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => OtpVerificationScreen(
-              code: response.data['otp'],
               phoneNumber: phoneOrEmail,
               isForget: true,
             ),

@@ -1,7 +1,7 @@
 import 'package:helloequb/core/env_config.dart';
 import 'package:intl/intl.dart';
 
-const String _defaultBaseUrl = 'http://192.168.1.19:8000/';
+const String _defaultBaseUrl = 'https://api.hello-equb.com/';
 
 String _normalizeBaseUrl(String raw) {
   final trimmed = raw.trim();
@@ -24,6 +24,7 @@ String get baseUrl {
 }
 
 String get sendOtpUrl => "$baseUrl/user/auth/otp";
+String get verifyOtpUrl => "$baseUrl/user/auth/verify-otp";
 String get registerUserUrls => "$baseUrl/user/auth/signup";
 String get loginUrl => "$baseUrl/user/auth/login";
 String get profileUrl => "$baseUrl/user/auth/";

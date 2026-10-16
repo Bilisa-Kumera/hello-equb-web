@@ -15,13 +15,11 @@ import 'package:helloequb/utils/lang_constants.dart';
 import 'package:helloequb/utils/style_constants.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
-  String code;
   final String phoneNumber;
   final bool isForget;
 
   OtpVerificationScreen({
     super.key,
-    required this.code,
     required this.phoneNumber,
     required this.isForget,
   });
@@ -33,6 +31,7 @@ class OtpVerificationScreen extends StatefulWidget {
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   String _otpCode = '';
   bool showError = false;
+  String _errorMessage = 'Incorrect OTP, please try again.';
   bool isCountingDown = false;
   int countdown = 20;
   Timer? timer;
@@ -95,9 +94,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       Navigator.pop(context);
 
       if (response.statusCode == 200) {
-        widget.code = widget.isForget
-            ? (response.data['otp'] ?? '')
-            : (response.data['code'] ?? '');
         startCountdown();
       }
     } catch (error) {
@@ -105,7 +101,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     }
   }
 
-  void _verifyOtp() {
+  Future<void> _verifyOtp() async {
     // New app uses 6-digit OTPs; still accept 4 for any leftover 4-digit codes.
     if (_otpCode.length != 6 && _otpCode.length != 4) {
       setState(() {
@@ -114,21 +110,79 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       return;
     }
 
-    if (_otpCode == widget.code && !widget.isForget) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const WaitingProgressPage(),
+    );
+
+    try {
+      final response = await dio.post(
+        verifyOtpUrl,
+        data: {
+          "to": widget.phoneNumber,
+          "phoneNumber": widget.phoneNumber,
+          "otp": _otpCode,
+          "purpose": widget.isForget ? "reset" : "register",
+        },
+        options: Options(
+          headers: {"Content-Type": "application/json"},
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      final verified = response.statusCode == 200 &&
+          (response.data['verified'] == true ||
+              response.data['status'] == 'success');
+
+      if (!verified) {
+        final serverMsg = response.data is Map
+            ? response.data['message']?.toString()
+            : null;
+        setState(() {
+          showError = true;
+          _errorMessage = (serverMsg != null && serverMsg.isNotEmpty)
+              ? serverMsg
+              : 'Incorrect OTP, please try again.';
+        });
+        return;
+      }
+
+      if (!widget.isForget) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
             builder: (context) =>
-                SignUpScreen(phoneNumber: widget.phoneNumber)),
-      );
-    } else if (widget.isForget && _otpCode == widget.code) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => ResetPassword(otp: _otpCode)),
-      );
-    } else {
+                SignUpScreen(phoneNumber: widget.phoneNumber),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ResetPassword(otp: _otpCode)),
+        );
+      }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      final serverMsg = e.response?.data is Map
+          ? e.response?.data['message']?.toString()
+          : null;
       setState(() {
         showError = true;
+        _errorMessage = (serverMsg != null && serverMsg.isNotEmpty)
+            ? serverMsg
+            : 'Incorrect OTP, please try again.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      setState(() {
+        showError = true;
+        _errorMessage = 'Incorrect OTP, please try again.';
       });
     }
   }
@@ -206,11 +260,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ),
             if (showError)
               Center(
-                child: Text(
-                  textScaleFactor: 1.0,
-                  'Incorrect OTP, please try again.',
-                  style:
-                      AppTextStyles.poppins40014.copyWith(color: AppColors.red),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 26.0),
+                  child: Text(
+                    textScaleFactor: 1.0,
+                    _errorMessage,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.poppins40014
+                        .copyWith(color: AppColors.red),
+                  ),
                 ),
               ),
             Padding(

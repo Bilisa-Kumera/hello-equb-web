@@ -186,7 +186,6 @@ Future<void> _sendOtpRequest(BuildContext context, String to) async {
         context,
         MaterialPageRoute(
           builder: (context) => OtpVerificationScreen(
-            code: response.data['code']?.toString() ?? '',
             isForget: false,
             phoneNumber: to,
           ),
