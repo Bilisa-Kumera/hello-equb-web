@@ -1,0 +1,1240 @@
+{
+  "info": {
+    "_postman_id": "b3e09874-5692-411a-a5f1-8319f37c35f9",
+    "name": "Hello Equb API Collection",
+    "description": "Complete Postman collection of all REST APIs used in hello-equb-web (Mobile & Web Flutter client).\n\nIncludes:\n- Authentication & Device Registration\n- Profile & Financial Information\n- Equbs (Types, Categories, Lists, Search, Detail, Status)\n- My Equbs, Equb History & Reports\n- Joining Equb & Payments (Bank Transfer, Telebirr, CBEBirr)\n- Lottery, Eligible Members & Claiming Prizes\n- Guarantors & Equb Requests\n- Corporate Equbs\n- Banners, App Promo, Notifications & Server Time\n- Telebirr SuperApp & CBEBirr Plus Mini-App Gateway Endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.hello-equb.com/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "mediaUrl",
+      "value": "https://api.hello-equb.com/",
+      "type": "string"
+    },
+    {
+      "key": "superappGatewayBaseUrl",
+      "value": "https://196.188.120.5:38443/apiaccess/payment/gateway",
+      "type": "string"
+    },
+    {
+      "key": "cbeGatewayBaseUrl",
+      "value": "https://api.hello-equb.com",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ekubId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "equberUserId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication & Authorization",
+      "item": [
+        {
+          "name": "Send OTP (Phone Verification)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"+251911223344\",\n  \"otpLength\": 6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", "otp"]
+            },
+            "description": "Sends an OTP code via SMS to the specified phone number."
+          }
+        },
+        {
+          "name": "Sign Up (Register User)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "firstName", "value": "Abebe", "type": "text" },
+                { "key": "middleName", "value": "Kebede", "type": "text" },
+                { "key": "lastName", "value": "Tesfaye", "type": "text" },
+                { "key": "phoneNumber", "value": "+251911223344", "type": "text" },
+                { "key": "email", "value": "abebe@example.com", "type": "text" },
+                { "key": "password", "value": "1234", "type": "text" },
+                { "key": "ref", "value": "", "type": "text", "description": "Optional referral code" },
+                { "key": "picture", "type": "file", "src": "", "description": "Optional profile picture" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", "signup"]
+            },
+            "description": "Registers a new user with name, phone, email, password/PIN, and optional photo/referral."
+          }
+        },
+        {
+          "name": "Login (PIN / Password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.accessToken || (jsonData.data && jsonData.data.accessToken)) {",
+                  "    var token = jsonData.accessToken || jsonData.data.accessToken;",
+                  "    pm.collectionVariables.set('accessToken', token);",
+                  "}",
+                  "if (jsonData.refreshToken || (jsonData.data && jsonData.data.refreshToken)) {",
+                  "    var rToken = jsonData.refreshToken || jsonData.data.refreshToken;",
+                  "    pm.collectionVariables.set('refreshToken', rToken);",
+                  "}",
+                  "if (jsonData.user && jsonData.user.id) {",
+                  "    pm.collectionVariables.set('userId', jsonData.user.id);",
+                  "} else if (jsonData.data && jsonData.data.user && jsonData.data.user.id) {",
+                  "    pm.collectionVariables.set('userId', jsonData.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+251911223344\",\n  \"password\": \"1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", "login"]
+            },
+            "description": "Logs in user with phone number and PIN/password. Automatically sets accessToken, refreshToken, and userId collection variables."
+          }
+        },
+        {
+          "name": "Forgot Password (Request OTP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"+251911223344\",\n  \"otpLength\": 6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", "forgot-password"]
+            },
+            "description": "Initiates password reset by sending an OTP to the user's phone number or email."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"1234\",\n  \"password\": \"5678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", "reset-password"]
+            },
+            "description": "Resets the user's password using the OTP received."
+          }
+        },
+        {
+          "name": "Refresh Access Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{refreshToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/refresh-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", "refresh-token"]
+            },
+            "description": "Refreshes an expired JWT access token using the stored refresh token."
+          }
+        },
+        {
+          "name": "Get Auth Profile / Avatar",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", ""]
+            },
+            "description": "Retrieves the authenticated user's session profile and avatar URL."
+          }
+        },
+        {
+          "name": "Update Device Token (Push Notifications)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"fcm_device_registration_token_here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/device-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "device-token"]
+            },
+            "description": "Registers Firebase Cloud Messaging (FCM) device token for push notifications."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. User Profile & Financial Information",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/profile/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "profile", "me"]
+            },
+            "description": "Fetches current user profile including completion rate, names, gender, phone, email, and avatar."
+          }
+        },
+        {
+          "name": "Update Personal Info",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "firstName", "value": "Abebe", "type": "text" },
+                { "key": "middleName", "value": "Kebede", "type": "text" },
+                { "key": "lastName", "value": "Tesfaye", "type": "text" },
+                { "key": "gender", "value": "male", "type": "text" },
+                { "key": "picture", "type": "file", "src": "", "description": "Optional profile avatar picture" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/profile/personal-info/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "profile", "personal-info", "{{userId}}"]
+            },
+            "description": "Updates personal details and avatar image for the user."
+          }
+        },
+        {
+          "name": "Get Banks List",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/profile/banks",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "profile", "banks"]
+            },
+            "description": "Fetches list of supported commercial banks in Ethiopia."
+          }
+        },
+        {
+          "name": "Get User Bank Accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/profile/financial-info/",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "profile", "financial-info", ""]
+            },
+            "description": "Fetches bank accounts saved by the authenticated user."
+          }
+        },
+        {
+          "name": "Add Financial Info (Bank Account)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankId\": \"bank_uuid_here\",\n  \"accountName\": \"Abebe Kebede\",\n  \"accountNumber\": \"100012345678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/profile/financial-info/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "profile", "financial-info", "{{userId}}"]
+            },
+            "description": "Adds a new payout bank account under user's profile."
+          }
+        },
+        {
+          "name": "Update Bank Account",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bankId\": \"bank_uuid_here\",\n  \"accountName\": \"Abebe Kebede Tesfaye\",\n  \"accountNumber\": \"100012345678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/profile/bank-account/:bankAccountId",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "profile", "bank-account", ":bankAccountId"],
+              "variable": [
+                {
+                  "key": "bankAccountId",
+                  "value": "bank_account_id_here"
+                }
+              ]
+            },
+            "description": "Updates an existing bank account of the user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Equbs (Types, Categories & Details)",
+      "item": [
+        {
+          "name": "Get Equb Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb-type",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb-type"]
+            },
+            "description": "Fetches all equb types (e.g. Regular, Finance, Other)."
+          }
+        },
+        {
+          "name": "Get Equb Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb-category",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb-category"]
+            },
+            "description": "Fetches equb categories (e.g. Daily, Weekly, Monthly)."
+          }
+        },
+        {
+          "name": "Get Equbs (Filtered by Type & Category)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/?equbTypeId={{equbTypeId}}&equbCategoryId={{equbCategoryId}}&_page=1&_limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", ""],
+              "query": [
+                { "key": "equbTypeId", "value": "{{equbTypeId}}" },
+                { "key": "equbCategoryId", "value": "{{equbCategoryId}}" },
+                { "key": "_page", "value": "1" },
+                { "key": "_limit", "value": "50" }
+              ]
+            },
+            "description": "Lists available equbs filtered by type and category with pagination."
+          }
+        },
+        {
+          "name": "Search Equbs in Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb?_page=1&_limit=50&equbCategory=:categoryId&_search=1000",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb"],
+              "query": [
+                { "key": "_page", "value": "1" },
+                { "key": "_limit", "value": "50" },
+                { "key": "equbCategory", "value": ":categoryId" },
+                { "key": "_search", "value": "1000" }
+              ],
+              "variable": [
+                { "key": "categoryId", "value": "category_id_here" }
+              ]
+            },
+            "description": "Searches running equbs within a category."
+          }
+        },
+        {
+          "name": "Get Equb Detail by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "{{ekubId}}"]
+            },
+            "description": "Fetches comprehensive details of a single equb."
+          }
+        },
+        {
+          "name": "Get Finance and Other Equbs",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/equbs/getFinanceAndOtherMobile/{{userId}}?equbTypeId={{equbTypeId}}&equbCategoryId={{equbCategoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["equbs", "getFinanceAndOtherMobile", "{{userId}}"],
+              "query": [
+                { "key": "equbTypeId", "value": "{{equbTypeId}}" },
+                { "key": "equbCategoryId", "value": "{{equbCategoryId}}" }
+              ]
+            },
+            "description": "Returns special Finance & Other equbs for mobile/web."
+          }
+        },
+        {
+          "name": "Get Saving Equb Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/savingMember/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "savingMember", "{{ekubId}}"]
+            },
+            "description": "Gets details of saving-type equb member participation."
+          }
+        },
+        {
+          "name": "Check If User Has Joined Equb",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equbId\": \"{{ekubId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/check-join",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "check-join"]
+            },
+            "description": "Checks if the logged-in user is already a member of this equb."
+          }
+        },
+        {
+          "name": "Get User Equb Stakes Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/userEqub/{{ekubId}}/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "userEqub", "{{ekubId}}", "{{userId}}"]
+            },
+            "description": "Checks joined shares/stakes count for a specific user in an equb."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. My Equbs & History",
+      "item": [
+        {
+          "name": "Get All Joined Equbs (Paged)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/getAllJoinedEqubs?_page=1&_limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "getAllJoinedEqubs"],
+              "query": [
+                { "key": "_page", "value": "1" },
+                { "key": "_limit", "value": "10" }
+              ]
+            },
+            "description": "Fetches all equbs the current user has joined across all categories."
+          }
+        },
+        {
+          "name": "Get My Joined Equbs (By Status)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb?user={{userId}}&status=joined&_page=1&_limit=200&equbType=&equbCategory=",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb"],
+              "query": [
+                { "key": "user", "value": "{{userId}}" },
+                { "key": "status", "value": "joined" },
+                { "key": "_page", "value": "1" },
+                { "key": "_limit", "value": "200" },
+                { "key": "equbType", "value": "" },
+                { "key": "equbCategory", "value": "" }
+              ]
+            },
+            "description": "Filters joined equbs for the active user, with optional type/category filters."
+          }
+        },
+        {
+          "name": "Get Equb History (All Joined Equbs)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/get-history-equbs?user={{userId}}&_page=1&_limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "get-history-equbs"],
+              "query": [
+                { "key": "user", "value": "{{userId}}" },
+                { "key": "_page", "value": "1" },
+                { "key": "_limit", "value": "20" }
+              ]
+            },
+            "description": "Retrieves user's equb participation history (registering, active, completed)."
+          }
+        },
+        {
+          "name": "Get Equb Statement / Report (PDF data)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/report/:type",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "report", ":type"],
+              "variable": [
+                { "key": "type", "value": "all", "description": "e.g. all, monthly, weekly" }
+              ]
+            },
+            "description": "Fetches report data used to generate downloadable PDF receipts/statements."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Joining, Payments & Transactions",
+      "item": [
+        {
+          "name": "Join Equb (Standard)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paidAmount\": 1000,\n  \"paymentMethod\": \"cbe\",\n  \"equbers\": [\n    {\n      \"stake\": 1,\n      \"paidAmount\": 1000\n    }\n  ],\n  \"phoneNumber\": \"+251911223344\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/join/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "join", "{{ekubId}}"]
+            },
+            "description": "Standard endpoint to join an equb with specified shares and payment method (cbe, telebirr, or bankTransfer)."
+          }
+        },
+        {
+          "name": "Join Equb (Mini-App Direct Pay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paidAmount\": 1000,\n  \"paymentMethod\": \"telebirr\",\n  \"phoneNumber\": \"+251911223344\",\n  \"equbers\": [\n    {\n      \"stake\": 1,\n      \"paidAmount\": 1000\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/joinMiniApp/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "joinMiniApp", "{{ekubId}}"]
+            },
+            "description": "Direct in-app payment request for Telebirr SuperApp and CBEBirr Plus Mini-App."
+          }
+        },
+        {
+          "name": "Make Round Payment (Standard)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paidAmount\": 1000,\n  \"paymentMethod\": \"cbe\",\n  \"lottery\": [\n    {\n      \"id\": \"user_lottery_id\",\n      \"paidAmount\": 1000\n    }\n  ],\n  \"phoneNumber\": \"+251911223344\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/payment/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "payment", "{{ekubId}}"]
+            },
+            "description": "Submits regular round/lottery payment for an active equb."
+          }
+        },
+        {
+          "name": "Make Round Payment (Mini-App Direct Pay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paidAmount\": 1000,\n  \"paymentMethod\": \"telebirr\",\n  \"phoneNumber\": \"+251911223344\",\n  \"lottery\": [\n    {\n      \"id\": \"user_lottery_id\",\n      \"paidAmount\": 1000\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/paymentMiniApp/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "paymentMiniApp", "{{ekubId}}"]
+            },
+            "description": "Mini-app version for Telebirr / CBEBirr Plus direct payment processing."
+          }
+        },
+        {
+          "name": "Confirm Payment / Upload Bank Slip",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "reference", "value": "FT240101ABCD", "type": "text" },
+                { "key": "paidAmount", "value": "1000", "type": "text" },
+                { "key": "paymentMethod", "value": "bankTransfer", "type": "text" },
+                { "key": "companyBankAccountId", "value": "company_bank_account_uuid", "type": "text" },
+                { "key": "stake", "value": "100", "type": "text" },
+                { "key": "picture", "type": "file", "src": "", "description": "Bank receipt image (png/jpg/jpeg)" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/payment/confirm/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "payment", "confirm", "{{ekubId}}"]
+            },
+            "description": "Uploads bank transfer deposit slip and transaction reference for manual admin verification."
+          }
+        },
+        {
+          "name": "Get Company Bank Accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/company-bank?_page=1&_limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["company-bank"],
+              "query": [
+                { "key": "_page", "value": "1" },
+                { "key": "_limit", "value": "20" }
+              ]
+            },
+            "description": "Lists official Hello Equb company bank accounts where users deposit funds."
+          }
+        },
+        {
+          "name": "Get Pending Payments for Equb",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/payment/{{ekubId}}?approved=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "payment", "{{ekubId}}"],
+              "query": [
+                { "key": "approved", "value": "false" }
+              ]
+            },
+            "description": "Gets unapproved / pending payment submissions for an equb."
+          }
+        },
+        {
+          "name": "Get My Pending Equbs",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/pending?_page=1&_limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "pending"],
+              "query": [
+                { "key": "_page", "value": "1" },
+                { "key": "_limit", "value": "50" }
+              ]
+            },
+            "description": "Lists equbs where user's join or payment is pending approval."
+          }
+        },
+        {
+          "name": "Get Transaction History",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/payment/transaction?equb={{ekubId}}&paymentMethod=all",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "payment", "transaction"],
+              "query": [
+                { "key": "equb", "value": "{{ekubId}}" },
+                { "key": "paymentMethod", "value": "all", "description": "e.g. all, telebirr, cbe, bankTransfer" }
+              ]
+            },
+            "description": "Returns payments made and payments received transactions for an equb."
+          }
+        },
+        {
+          "name": "Get Equb Payments List",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/payments/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "payments", "{{ekubId}}"]
+            },
+            "description": "Lists payments made by all members in an equb."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Lottery, Draws & Claim Winning",
+      "item": [
+        {
+          "name": "Get Eligible Users for Lottery",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/lottery/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "lottery", "{{ekubId}}"]
+            },
+            "description": "Fetches eligible lottery members and current round winners for drawing."
+          }
+        },
+        {
+          "name": "Get Lotteries List (All Time)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/getLotteriesAllTime/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "getLotteriesAllTime", "{{ekubId}}"]
+            },
+            "description": "Fetches lottery numbers, eligible members, and winners for wheel spinning."
+          }
+        },
+        {
+          "name": "Get Equb Lotteries Rounds",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/lotteries/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "lotteries", "{{ekubId}}"]
+            },
+            "description": "Gets past and current lottery round results and winner history."
+          }
+        },
+        {
+          "name": "Claim Equb Prize (Submit Bank Account)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selectedBankAccount\": \"user_bank_account_uuid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/claim/{{equberUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "claim", "{{equberUserId}}"]
+            },
+            "description": "Allows a winning equber to claim their prize by choosing a registered payout bank account."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Guarantor & Equb Requests",
+      "item": [
+        {
+          "name": "Get Potential Guarantors (Unwon Users)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/unwon-users",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "unwon-users"]
+            },
+            "description": "Returns users who haven't won yet and are eligible to be chosen as guarantors."
+          }
+        },
+        {
+          "name": "Send Guarantor Request Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Abebe Kebede\",\n  \"userId\": \"target_guarantor_user_id\",\n  \"firstUserId\": \"{{userId}}\",\n  \"equbName\": \"Weekly 1000 Equb\",\n  \"equbAmount\": \"50000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/sendGuarantorNotificaton/{{equberUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "sendGuarantorNotificaton", "{{equberUserId}}"]
+            },
+            "description": "Sends in-app guarantee invitation to a fellow unwon user."
+          }
+        },
+        {
+          "name": "Add External Guarantor Info",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "firstName", "value": "Almaz", "type": "text" },
+                { "key": "lastName", "value": "Ayana", "type": "text" },
+                { "key": "phoneNumber", "value": "+251922334455", "type": "text" },
+                { "key": "picture", "type": "file", "src": "", "description": "Guarantor ID card photo" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/guarantee/{{equberUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "guarantee", "{{equberUserId}}"]
+            },
+            "description": "Manually adds external guarantor details with physical ID photo."
+          }
+        },
+        {
+          "name": "Accept Guarantee Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"guarantee_needy_user_id\",\n  \"guaranteToBe\": \"guarantee_to_be_id\",\n  \"fullName\": \"My Full Name\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/save-guarantee/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "save-guarantee", "{{ekubId}}"]
+            },
+            "description": "Accepts being a guarantor for a winning equber."
+          }
+        },
+        {
+          "name": "Decline Guarantee Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"guarantee_needy_user_id\",\n  \"fullName\": \"My Full Name\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/sendDeleteNotification/:guaranteeNeedyId",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "sendDeleteNotification", ":guaranteeNeedyId"],
+              "variable": [
+                { "key": "guaranteeNeedyId", "value": "guarantee_needy_user_id" }
+              ]
+            },
+            "description": "Declines a guarantee request."
+          }
+        },
+        {
+          "name": "Get Equb Requests Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/request/",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "request", ""]
+            },
+            "description": "Fetches categories / items eligible for equb requests."
+          }
+        },
+        {
+          "name": "Create Equb Request (Item / Advance)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemName\": \"Refrigerator\",\n  \"amount\": \"45000\",\n  \"description\": \"Need advance item payout for wedding.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/request/{{ekubId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "request", "{{ekubId}}"]
+            },
+            "description": "Creates an advance or item request on an equb."
+          }
+        },
+        {
+          "name": "Update Equb Request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemName\": \"Refrigerator\",\n  \"amount\": \"50000\",\n  \"description\": \"Updated budget for appliance.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/equb/request/:requestId",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "equb", "request", ":requestId"],
+              "variable": [
+                { "key": "requestId", "value": "request_id_here" }
+              ]
+            },
+            "description": "Updates an existing equb request."
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Corporate Equbs",
+      "item": [
+        {
+          "name": "Get Corporate Equbs List",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/cooperate",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "cooperate"]
+            },
+            "description": "Lists corporate / institutional equb programs."
+          }
+        },
+        {
+          "name": "Validate Corporate Access Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"corporate_program_uuid\",\n  \"code\": \"CORP2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/cooperate/checkValidCoopreateCode",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "cooperate", "checkValidCoopreateCode"]
+            },
+            "description": "Validates invite code for joining an exclusive corporate equb."
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. App Content, Banners, Notifications & System",
+      "item": [
+        {
+          "name": "Get Active Banners",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/banner?state=active",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "banner"],
+              "query": [
+                { "key": "state", "value": "active" }
+              ]
+            },
+            "description": "Fetches carousel promo banners displayed on the home page."
+          }
+        },
+        {
+          "name": "Get Active App Promo Popup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/app-promo/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "app-promo", "active"]
+            },
+            "description": "Fetches active modal promotional popups."
+          }
+        },
+        {
+          "name": "Get User Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/notification/getNotification/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "notification", "getNotification", "{{userId}}"]
+            },
+            "description": "Fetches user notifications list."
+          }
+        },
+        {
+          "name": "Get Server Time",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/server-time",
+              "host": ["{{baseUrl}}"],
+              "path": ["server-time"]
+            },
+            "description": "Gets synchronized server timestamp for live lottery countdown timers."
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Telebirr SuperApp & CBEBirr Plus Mini-App",
+      "item": [
+        {
+          "name": "Telebirr H5 Gateway Token Exchange",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authToken\": \"mini_app_auth_token_from_xm_native\"\n}"
+            },
+            "url": {
+              "raw": "{{superappGatewayBaseUrl}}/auth/token",
+              "host": ["{{superappGatewayBaseUrl}}"],
+              "path": ["auth", "token"]
+            },
+            "description": "Exchanges temporary mini-app token directly with Telebirr H5 payment gateway."
+          }
+        },
+        {
+          "name": "Telebirr Mini-App Auto Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"telebirr_user_token\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/auto-login-telebirr-miniapp",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", "auto-login-telebirr-miniapp"]
+            },
+            "description": "Authenticates user seamlessly when launched inside Telebirr SuperApp."
+          }
+        },
+        {
+          "name": "CBEBirr Plus Mini-App Auto Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"cbe_user_token\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/auto-login-cbebirr-miniapp",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", "auto-login-cbebirr-miniapp"]
+            },
+            "description": "Authenticates user seamlessly when launched inside CBEBirr Plus SuperApp."
+          }
+        },
+        {
+          "name": "SuperApp Mini-App Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"app_token_here\",\n  \"authToken\": \"app_token_here\",\n  \"phoneNumber\": \"+251911223344\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/auth/login-for-miniapp",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "auth", "login-for-miniapp"]
+            },
+            "description": "Exchanges mini-app token and phone number for Hello Equb JWT session."
+          }
+        },
+        {
+          "name": "CBE Gateway Pay",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000,\n  \"transactionId\": \"TX123456789\",\n  \"token\": \"cbe_session_token\",\n  \"tillCode\": \"\",\n  \"callBackURL\": \"\",\n  \"transactionTime\": \"2026-10-16T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{cbeGatewayBaseUrl}}/api/pay",
+              "host": ["{{cbeGatewayBaseUrl}}"],
+              "path": ["api", "pay"]
+            },
+            "description": "Initiates payment transaction against CBEBirr Plus Gateway."
+          }
+        }
+      ]
+    }
+  ]
+}

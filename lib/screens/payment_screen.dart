@@ -336,7 +336,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           double.tryParse((widget.ekubAmount ?? '0.0').replaceAll(',', '')) ??
               0,
       "paymentMethod": paymentMethod,
-        "isProduction": false, 
+        "isProduction": true, 
       if (submittedPhoneNumber != null && submittedPhoneNumber.isNotEmpty)
         "phoneNumber": submittedPhoneNumber,
       if (useMiniAppEndpoint &&
@@ -534,7 +534,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final data = {
       "paidAmount": double.tryParse(widget.ekubAmount ?? '0.0') ?? 0,
       "paymentMethod": paymentMethod,
-        "isProduction": false,
+        "isProduction": true,
       "lottery": lottery,
       if (phoneNumber != null) "phoneNumber": phoneNumber,
     };
@@ -1598,7 +1598,7 @@ class _InfoPopupState extends State<InfoPopup> {
     Map<String, dynamic> data = {
       "paidAmount": paidAmount,
       "paymentMethod": paymentMethod,
-        "isProduction": false,
+        "isProduction": true,
       "equbers": equbers,
     };
 
@@ -1702,7 +1702,7 @@ class _InfoPopupState extends State<InfoPopup> {
     Map<String, dynamic> data = {
       "paidAmount": paidAmount,
       "paymentMethod": paymentMethod,
-      "isProduction": false,
+      "isProduction": true,
       "lottery": lottery,
     };
 
