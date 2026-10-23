@@ -1038,17 +1038,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           widget.ekubName ?? AppKeys.notAvailable.tr(context),
                           Icons.group),
                       SizedBox(height: 12.h),
-                      _buildDetailRow(AppKeys.ekubRound.tr(context),
+                      _buildDetailRow(AppKeys.currentRound.tr(context),
                           widget.ekubRound ?? '1', Icons.repeat),
-                      SizedBox(height: 12.h),
-                      _buildAmountRow(),
                     ],
                   ),
                 ),
               ),
               SizedBox(height: 16.h),
-              // --- Issue 4: Per-equb payment breakdown ---
-              if ((widget.selectedJoinOptions ?? []).length > 1) ...[
+              // Per-lottery payment breakdown (also for a single payment)
+              if ((widget.selectedJoinOptions ?? []).isNotEmpty) ...[
                 Card(
                   elevation: 1,
                   shadowColor: Colors.black12,
@@ -1084,6 +1082,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             final amount = double.tryParse(
                                     item.subtitle.replaceAll(',', '')) ??
                                 0;
+                            final roundAmount = item.roundAmount > 0
+                                ? item.roundAmount
+                                : (double.tryParse(
+                                        widget.ekubAmount
+                                                ?.replaceAll(',', '') ??
+                                            '') ??
+                                    0);
+                            final roundsThisPayment = roundAmount > 0 && amount > 0
+                                ? (amount / roundAmount).floor().clamp(1, 9999)
+                                : 0;
+                            final upToRound = item.paidRound + roundsThisPayment;
                             return Padding(
                               padding: EdgeInsets.only(bottom: 8.h),
                               child: Row(
@@ -1114,7 +1123,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                       ),
                                       SizedBox(width: 8.w),
                                       Text(
-                                        '${AppKeys.lotteryNumber.tr(context)} ${item.title}',
+                                        AppKeys.payingUpToRound
+                                            .tr(context)
+                                            .replaceAll(
+                                                '{round}', '$upToRound'),
                                         style: TextStyle(
                                             fontSize: 13.sp,
                                             color: Colors.grey.shade600),

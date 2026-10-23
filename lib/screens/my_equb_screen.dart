@@ -154,36 +154,40 @@ class PendingEqub {
     String? currentUserId,
   }) {
     return PendingEqub(
-      id: json['id'],
-      name: json['name'],
-      nextRoundLotteryType: json['nextRoundLotteryType'] ?? '',
-      description: json['description'] ?? '',
-      equbTypeId: json['equbTypeId'],
-      equbCategoryId: json['equbCategoryId'],
-      numberOfEqubers: json['numberOfEqubers'],
-      equbAmount: json['equbAmount'],
-      status: json['status'],
-      userId: json['userId'],
-      staffId: json['staffId'],
-      currentRound: json['currentRound'],
-      nextRound: json['nextRound'],
-      groupLimit: json['groupLimit'],
-      serviceCharge: (json['serviceCharge'] as num).toDouble(),
-      startDate: DateTime.parse(json['startDate']),
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
-      ethiopianStartDate: json['ethiopianStartDate'] as String?,
-      ethiopianEndDate: json['ethiopianEndDate'] as String?,
-      nextRoundDate: json['nextRoundDate'],
-      nextRoundTime: json['nextRoundTime'],
-      state: json['state'],
-      branchId: json['branchId'],
-      createdAt: DateTime.parse(json['createdAt']),
-      updatedAt: DateTime.parse(json['updatedAt']),
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      nextRoundLotteryType: json['nextRoundLotteryType']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      equbTypeId: json['equbTypeId']?.toString() ?? '',
+      equbCategoryId: json['equbCategoryId']?.toString() ?? '',
+      numberOfEqubers: (json['numberOfEqubers'] as num?)?.toInt() ?? 0,
+      equbAmount: (json['equbAmount'] as num?)?.toInt() ?? 0,
+      status: json['status']?.toString() ?? '',
+      userId: json['userId']?.toString(),
+      staffId: json['staffId']?.toString() ?? '',
+      currentRound: (json['currentRound'] as num?)?.toInt() ?? 0,
+      nextRound: (json['nextRound'] as num?)?.toInt() ?? 0,
+      groupLimit: (json['groupLimit'] as num?)?.toInt() ?? 0,
+      serviceCharge: (json['serviceCharge'] as num?)?.toDouble() ?? 0,
+      startDate: DateTime.parse(json['startDate'].toString()),
+      endDate: json['endDate'] != null
+          ? DateTime.tryParse(json['endDate'].toString())
+          : null,
+      ethiopianStartDate: json['ethiopianStartDate']?.toString(),
+      ethiopianEndDate: json['ethiopianEndDate']?.toString(),
+      nextRoundDate: json['nextRoundDate']?.toString(),
+      nextRoundTime: json['nextRoundTime']?.toString(),
+      state: json['state']?.toString() ?? '',
+      branchId: json['branchId']?.toString() ?? '',
+      createdAt: DateTime.parse(json['createdAt'].toString()),
+      updatedAt: DateTime.parse(json['updatedAt'].toString()),
       userJoinedAt: joinedAtFromJson(json, currentUserId),
       equbType:
           json['equbType'] != null ? EqubType.fromJson(json['equbType']) : null,
       equbCategory: json['equbCategory'] != null
-          ? EqubCategoryss.fromJson(json['equbCategory'])
+          ? EqubCategoryss.fromJson(
+              Map<String, dynamic>.from(json['equbCategory'] as Map),
+            )
           : null,
       equbers: json['equbers'] != null
           ? List<Equber>.from(json['equbers'].map((x) => Equber.fromJson(x)))
@@ -228,10 +232,10 @@ class EqubCategoryss {
 
   factory EqubCategoryss.fromJson(Map<String, dynamic> json) {
     return EqubCategoryss(
-        id: json['id'],
-        name: json['name'],
-        needsRequest: json['needsRequest'],
-        isSaving: json['isSaving'] ?? false);
+        id: json['id']?.toString() ?? '',
+        name: json['name']?.toString() ?? '',
+        needsRequest: json['needsRequest'] == true,
+        isSaving: json['isSaving'] == true);
   }
 }
 

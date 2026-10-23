@@ -26,6 +26,8 @@ class PaymentArragement extends StatefulWidget {
   String? joinOption, joinAmount;
   final double? expectedAmount;
   final String? round, type;
+  /// Total equb cycles (members); used on join to allow multi-round payments.
+  final String? numberOfEqubers;
 
   PaymentArragement(
       {super.key,
@@ -42,7 +44,8 @@ class PaymentArragement extends StatefulWidget {
       this.joinOption,
       this.expectedAmount,
       this.round,
-      this.type});
+      this.type,
+      this.numberOfEqubers});
 
   @override
   State<PaymentArragement> createState() => _PaymentArragementState();
@@ -76,19 +79,40 @@ class _PaymentArragementState extends State<PaymentArragement> {
         .entries
         .map((entry) => _stepAmountForItem(entry.key, entry.value))
         .toList();
+
+    // Join flow: build ListItems so + can go multi-round and Payment Info shows.
+    if ((widget.selectedJoinOptions == null ||
+            widget.selectedJoinOptions!.isEmpty) &&
+        options.isNotEmpty &&
+        widget.type != 'payment') {
+      final totalRounds = int.tryParse(widget.numberOfEqubers ?? '') ?? 0;
+      widget.selectedJoinOptions = options.asMap().entries.map((entry) {
+        final i = entry.key;
+        final item = entry.value;
+        final step = i < stepAmounts.length ? stepAmounts[i] : 0.0;
+        final maxPay =
+            totalRounds > 0 && step > 0 ? step * totalRounds : double.infinity;
+        return ListItems(
+          title: '${i + 1}',
+          subtitle: _formatAmount(step),
+          userIds: '',
+          roundAmount: step,
+          maxPayableAmount: maxPay,
+          stake: _stakeFromShareTitle(item.title),
+          paidRound: 0,
+          defaultAmount: step,
+        );
+      }).toList();
+    }
+
     controllers = options.asMap().entries.map((entry) {
-      final item = entry.value;
-      final initialAmount = _initialAmountForItem(entry.key, item);
-      final controller =
-          TextEditingController(text: _formatAmount(initialAmount));
+      final controller = TextEditingController();
       controller.addListener(_updateTotal);
-      _syncItemAmount(entry.key, initialAmount);
       return controller;
     }).toList();
 
     hasError = List.generate(options.length, (_) => false);
-
-    totalTobePaid = _calculateTotal();
+    _resetAmountsToDefault(notify: false);
 
     final detector = createTelebirrMiniAppDetector();
     if (detector.isTelebirrMiniApp()) {
@@ -102,11 +126,18 @@ class _PaymentArragementState extends State<PaymentArragement> {
       double.tryParse(value.replaceAll(',', '')) ?? 0;
 
   double _stepAmountForItem(int index, ListItem item) {
-    if (widget.type == 'payment' &&
-        widget.selectedJoinOptions != null &&
+    if (widget.selectedJoinOptions != null &&
         index < widget.selectedJoinOptions!.length) {
       final roundAmount = widget.selectedJoinOptions![index].roundAmount;
       if (roundAmount > 0) return roundAmount;
+    }
+
+    // Join: derive step from equb × share — never from mutated subtitle.
+    if (widget.type != 'payment') {
+      final ekub = _parseAmount(widget.ekubAmount ?? '');
+      if (ekub > 0) {
+        return ekub * (_stakeFromShareTitle(item.title) / 100.0);
+      }
     }
 
     final fromSubtitle = _parseAmount(item.subtitle);
@@ -115,13 +146,43 @@ class _PaymentArragementState extends State<PaymentArragement> {
     return _parseAmount(widget.ekubAmount ?? '');
   }
 
-  double _initialAmountForItem(int index, ListItem item) {
+  double _defaultAmountForItem(int index) {
     if (_isFullyPaid(index)) return 0;
 
-    final fromSubtitle = _parseAmount(item.subtitle);
-    if (fromSubtitle > 0) return fromSubtitle;
+    if (widget.selectedJoinOptions != null &&
+        index < widget.selectedJoinOptions!.length) {
+      final d = widget.selectedJoinOptions![index].defaultAmount;
+      if (d > 0) return d;
+      final round = widget.selectedJoinOptions![index].roundAmount;
+      if (round > 0) return round;
+    }
 
+    if (index < stepAmounts.length && stepAmounts[index] > 0) {
+      return stepAmounts[index];
+    }
+
+    final options = widget.selectedJoinOption;
+    if (options != null && index < options.length) {
+      final fromSubtitle = _parseAmount(options[index].subtitle);
+      if (fromSubtitle > 0) return fromSubtitle;
+    }
     return _parseAmount(widget.ekubAmount ?? '');
+  }
+
+  void _resetAmountsToDefault({bool notify = true}) {
+    final options = widget.selectedJoinOption ?? [];
+    for (int i = 0; i < options.length && i < controllers.length; i++) {
+      final amount = _defaultAmountForItem(i);
+      final text = _formatAmount(amount);
+      if (controllers[i].text != text) {
+        controllers[i].text = text;
+      }
+      _syncItemAmount(i, amount);
+      if (i < hasError.length) hasError[i] = false;
+    }
+    _showZeroTotalError = false;
+    totalTobePaid = _calculateTotal();
+    if (notify && mounted) setState(() {});
   }
 
   bool _isFullyPaid(int index) {
@@ -131,13 +192,47 @@ class _PaymentArragementState extends State<PaymentArragement> {
         widget.selectedJoinOptions![index].isFullyPaid;
   }
 
-  double _maxPayableForItem(int index) {
-    if (widget.type == 'payment' &&
-        widget.selectedJoinOptions != null &&
-        index < widget.selectedJoinOptions!.length) {
-      return widget.selectedJoinOptions![index].maxPayableAmount;
+  double _stakeFromShareTitle(String title) {
+    if (title == '1') return 100;
+    if (title == '1/2') return 50;
+    if (title == '1/4') return 25;
+    if (title.contains('/')) {
+      final parts = title.split('/');
+      if (parts.length == 2) {
+        final n = double.tryParse(parts[0]) ?? 0;
+        final d = double.tryParse(parts[1]) ?? 1;
+        if (d != 0) return 100 * (n / d);
+      }
     }
-    return double.infinity;
+    return 100;
+  }
+
+  double _maxPayableForItem(int index) {
+    // Joined payments + join multi-round: use ListItems cap when present.
+    if (widget.selectedJoinOptions != null &&
+        index < widget.selectedJoinOptions!.length) {
+      final max = widget.selectedJoinOptions![index].maxPayableAmount;
+      if (max.isFinite && max > 0) return max;
+      if (!max.isFinite) return max;
+    }
+
+    // Join fallback: one share step × total equb rounds.
+    if (index < stepAmounts.length && stepAmounts[index] > 0) {
+      final totalRounds = int.tryParse(widget.numberOfEqubers ?? '') ?? 0;
+      if (totalRounds > 0) return stepAmounts[index] * totalRounds;
+      return double.infinity;
+    }
+    final options = widget.selectedJoinOption;
+    if (options != null && index < options.length) {
+      final fromSubtitle = _parseAmount(options[index].subtitle);
+      if (fromSubtitle > 0) {
+        final totalRounds = int.tryParse(widget.numberOfEqubers ?? '') ?? 0;
+        if (totalRounds > 0) return fromSubtitle * totalRounds;
+        return double.infinity;
+      }
+    }
+    final fromEkub = _parseAmount(widget.ekubAmount ?? '');
+    return fromEkub > 0 ? fromEkub : 0;
   }
 
   bool _canIncrement(int index) {
@@ -159,18 +254,19 @@ class _PaymentArragementState extends State<PaymentArragement> {
   void _syncItemAmount(int index, double amount) {
     final text = _formatAmount(amount);
     widget.selectedJoinOption![index].subtitle = text;
-    if (widget.type == 'payment' &&
-        widget.selectedJoinOptions != null &&
+    if (widget.selectedJoinOptions != null &&
         index < widget.selectedJoinOptions!.length) {
       widget.selectedJoinOptions![index].subtitle = text;
     }
   }
 
   void _setAmount(int index, double amount) {
-    controllers[index].text = _formatAmount(amount);
+    final maxPayable = _maxPayableForItem(index);
+    final clamped = amount.clamp(0.0, maxPayable.isFinite ? maxPayable : amount);
+    controllers[index].text = _formatAmount(clamped);
     hasError[index] = false;
     _showZeroTotalError = false;
-    _syncItemAmount(index, amount);
+    _syncItemAmount(index, clamped);
     setState(() {
       totalTobePaid = _calculateTotal();
     });
@@ -394,7 +490,9 @@ class _PaymentArragementState extends State<PaymentArragement> {
     );
 
     if (mounted) {
-      setState(() => _isContinuing = false);
+      _isContinuing = false;
+      // Returning from payment method page: restore one-round defaults.
+      _resetAmountsToDefault();
     }
   }
 
@@ -838,7 +936,7 @@ class _PaymentArragementState extends State<PaymentArragement> {
                               SizedBox(width: 6.w),
                               Expanded(
                                 child: Text(
-                                  '${AppKeys.excessAmount.tr(context)}: ${numberFormat.format(totalTobePaid - widget.expectedAmount!)} ETB',
+                                  '${AppKeys.extraRoundsPayment.tr(context)}: ${numberFormat.format(totalTobePaid - widget.expectedAmount!)} ETB',
                                   style: AppTextStyles.captionMuted.copyWith(
                                     color: Colors.blue.shade800,
                                     fontWeight: FontWeight.w500,

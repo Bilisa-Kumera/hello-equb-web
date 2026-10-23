@@ -45,6 +45,10 @@ class ListItems {
   /// Max ETB still owed for this lottery (e.g. until 105/105); caps + button.
   final double maxPayableAmount;
   final double stake;
+  /// Last fully paid round for this lottery (used for "paying up to round").
+  final int paidRound;
+  /// One-round (or due-now) amount; never mutated by +/- so re-entry can reset.
+  final double defaultAmount;
 
   ListItems({
     required this.title,
@@ -54,7 +58,10 @@ class ListItems {
     this.isFullyPaid = false,
     this.maxPayableAmount = double.infinity,
     this.stake = 100,
-  });
+    this.paidRound = 0,
+    double? defaultAmount,
+  }) : defaultAmount = defaultAmount ??
+            (double.tryParse(subtitle.replaceAll(',', '')) ?? 0);
 }
 
 class ApiResp {
@@ -1353,6 +1360,8 @@ class _MyEkubDetailScreenState extends State<MyEkubDetailScreen>
         isFullyPaid: isFullyPaid,
         maxPayableAmount: p.maxRemainingPayable(numberOfEqubers),
         stake: p.stake,
+        paidRound: p.paidRound,
+        defaultAmount: initialAmount,
       ));
       listItems.add(ListItem(
         title: p.lotteryNumber,
