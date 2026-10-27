@@ -1,10 +1,9 @@
+import 'dart:convert';
 import 'package:helloequb/core/api_url.dart';
-import 'package:helloequb/main.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 
 import '../screens/my_equb_screen.dart';
-import '../utils/getx_storage_custom.dart';
 import '../utils/lang_constants.dart';
 import '../utils/secure_storage.dart';
 
@@ -35,7 +34,9 @@ class GetMyEqubProvider extends ChangeNotifier {
     // Keep active joined equbs visible even when payment math marks them
     // "fully paid" (common on small test equbs / multi-round payments).
     _visibleEqubs = _equbs
-        .where((e) => e.status.trim().toLowerCase() != AppKeys.completed)
+        .where((e) =>
+            e.status.trim().toLowerCase() != AppKeys.completed &&
+            e.status.trim().toLowerCase() != 'completed')
         .toList();
     PendingEqub.sortByLatestJoined(_visibleEqubs);
   }
@@ -105,13 +106,40 @@ class GetMyEqubProvider extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is Map &&
-            data['data'] != null &&
-            data['data']['equbs'] is List) {
-          final nextEqubs = (data['data']['equbs'] as List)
+        dynamic data = response.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+
+        List<dynamic>? rawEqubsList;
+        Map<dynamic, dynamic>? metaMap;
+
+        if (data is Map) {
+          final dataMap = data['data'];
+          if (dataMap is Map && dataMap['equbs'] is List) {
+            rawEqubsList = dataMap['equbs'] as List<dynamic>;
+          } else if (data['equbs'] is List) {
+            rawEqubsList = data['equbs'] as List<dynamic>;
+          } else if (dataMap is List) {
+            rawEqubsList = dataMap;
+          }
+
+          if (data['meta'] is Map) {
+            metaMap = data['meta'] as Map;
+          } else if (dataMap is Map && dataMap['meta'] is Map) {
+            metaMap = dataMap['meta'] as Map;
+          }
+        } else if (data is List) {
+          rawEqubsList = data;
+        }
+
+        if (rawEqubsList != null) {
+          final nextEqubs = rawEqubsList
+              .whereType<Map>()
               .map((json) => PendingEqub.fromJson(
-                    json as Map<String, dynamic>,
+                    Map<String, dynamic>.from(json),
                     currentUserId: _currentUserId,
                   ))
               .toList();
@@ -126,9 +154,8 @@ class GetMyEqubProvider extends ChangeNotifier {
           }
           _page = nextPage;
 
-          final meta = data['data']['meta'];
-          if (meta is Map && meta['total'] != null) {
-            final parsedTotal = meta['total'];
+          if (metaMap != null && metaMap['total'] != null) {
+            final parsedTotal = metaMap['total'];
             if (parsedTotal is int) {
               _total = parsedTotal;
             } else if (parsedTotal is String) {
