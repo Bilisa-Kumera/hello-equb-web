@@ -32,10 +32,10 @@ class GetMyEqubProvider extends ChangeNotifier {
   bool get hasMore => _hasMore;
 
   void _recomputeVisibleEqubs() {
+    // Keep active joined equbs visible even when payment math marks them
+    // "fully paid" (common on small test equbs / multi-round payments).
     _visibleEqubs = _equbs
-        .where((e) =>
-            e.status.trim().toLowerCase() != AppKeys.completed &&
-            !e.isFullyPaid)
+        .where((e) => e.status.trim().toLowerCase() != AppKeys.completed)
         .toList();
     PendingEqub.sortByLatestJoined(_visibleEqubs);
   }

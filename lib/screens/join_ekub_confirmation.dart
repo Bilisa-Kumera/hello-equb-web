@@ -351,7 +351,8 @@ class _JoinEkubConfirmationState extends State<JoinEkubConfirmation> {
                             ekubRound: widget.ekubRound,
                             selectedJoinOption: widget.items,
                             selectedAmount: equivalentController.text,
-                            expectedAmount: widget.expectedAmount),
+                            expectedAmount: widget.expectedAmount,
+                            numberOfEkubers: widget.numberOfEkubers),
                       ),
                     );
                     // Navigator.push(

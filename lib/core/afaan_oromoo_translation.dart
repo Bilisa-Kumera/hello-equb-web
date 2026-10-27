@@ -159,6 +159,7 @@ final Map<String, String> omET = {
   "lbl_payments": "Kaffaltiiwwan",
   "lbl_lotteries": "Ixaawwan",
   "lbl_next_round": "Marsaa itti aanuu",
+  "lbl_current_round": "Marsaa ammaa",
   "lbl_days": "Guyyota",
   "lbl_hours": "Sa’atii",
   "lbl_minutes": "Daqi",
@@ -273,11 +274,14 @@ final Map<String, String> omET = {
   "lbl_remaining_for_this_round": "Marsaa Kanatti Hafe",
 
   // Issue 5 — Exceeded amount dialog
-  "lbl_amount_exceeds_expected": "Hangi Eegamu Ol Darbe",
-  "lbl_excess_amount": "Hanga Dabalataa",
-  "lbl_paying_more_than_expected": "Uqubii kanaaf hanga eegamu ol kaffalaa jirtu. Ida'amni eegamu {expected} ETB yoo ta'u, {paying} ETB kaffalaa jirtu.",
+  "lbl_amount_exceeds_expected": "Marsaa Dabalataa Kaffaluu",
+  "lbl_excess_amount": "Hanga marsaa dabalataa",
+  "lbl_extra_rounds_payment": "Kaffaltii marsaa dabalataa",
+  "lbl_paying_more_than_expected":
+      "Qopheessaa kaffaltii kanaaf eegame ol marsaa uqubii dabalataa haguugaa jirtu. Amma eegamu {expected} ETB yoo ta'u, ida'amni keessan {paying} ETB dha.",
   "lbl_paying_less_than_expected": "Hanga eegamu gadi kaffalaa jirtu. Haftee hafee itti fufa.",
   "lbl_do_you_want_to_continue": "Itti fufuu barbaaddaa?",
+  "lbl_paying_up_to_round": "Hanga marsaa {round} tti kaffaluu",
 
   // Issue 6 — Transaction type
   "lbl_transaction_type": "Gosa Sochii Maallaqaa",

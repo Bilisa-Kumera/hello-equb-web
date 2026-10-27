@@ -250,9 +250,9 @@ class Equber {
 
   factory Equber.fromMap(Map<String, dynamic> map) {
     return Equber(
-      id: map['equberUserId'] as String?,
-      lotteryNumber: map['lotteryNumber'] as String?,
-      equberUserId: map['id'] as String?,
+      id: map['id']?.toString(),
+      lotteryNumber: map['lotteryNumber']?.toString(),
+      equberUserId: map['equberUserId']?.toString(),
     );
   }
 }

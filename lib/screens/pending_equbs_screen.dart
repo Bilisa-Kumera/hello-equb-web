@@ -91,6 +91,18 @@ class _WaitingEkubsState extends State<WaitingEkubs> {
     }
   }
 
+  Future<void> _leaveIfNoPending() async {
+    if (!mounted || hasError) return;
+    if (payments != null && payments!.isEmpty) {
+      await navigateToMainShell(context, initialIndex: 0);
+    }
+  }
+
+  Future<void> _refreshPending({bool silent = false}) async {
+    await fetchWaitingEkubs(silent: silent);
+    await _leaveIfNoPending();
+  }
+
   Future<void> tokenUpdate() async {
     TokenHelper.checkTokenExpiration(
       context: context,
@@ -147,7 +159,7 @@ class _WaitingEkubsState extends State<WaitingEkubs> {
             if (!isLoading)
               IconButton(
                 icon: const Icon(Icons.refresh_rounded, color: Colors.black87),
-                onPressed: () => fetchWaitingEkubs(),
+                onPressed: () => _refreshPending(),
               ),
           ],
         ),
@@ -193,7 +205,7 @@ class _WaitingEkubsState extends State<WaitingEkubs> {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: () => fetchWaitingEkubs(),
+                onPressed: () => _refreshPending(),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
@@ -213,7 +225,7 @@ class _WaitingEkubsState extends State<WaitingEkubs> {
 
     if (payments != null && payments!.isEmpty) {
       return RefreshIndicator(
-        onRefresh: fetchWaitingEkubs,
+        onRefresh: () => _refreshPending(silent: true),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
@@ -242,7 +254,7 @@ class _WaitingEkubsState extends State<WaitingEkubs> {
     }
 
     return RefreshIndicator(
-      onRefresh: () => fetchWaitingEkubs(silent: true),
+      onRefresh: () => _refreshPending(silent: true),
       displacement: 40,
       color: AppColors.primary,
       backgroundColor: Colors.white,
@@ -355,7 +367,7 @@ class _WaitingEkubsState extends State<WaitingEkubs> {
                           ekubId: item?.id ?? '',
                           joinOption: '100',
                         );
-                        if (mounted) fetchWaitingEkubs(silent: true);
+                        if (mounted) await _refreshPending(silent: true);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,

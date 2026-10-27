@@ -480,11 +480,14 @@ final Map<String, String> amET = {
   'lbl_remaining_for_this_round': 'በዚህ ዙር ቀሪ',
 
   // Issue 5 — Exceeded amount dialog
-  'lbl_amount_exceeds_expected': 'መጠኑ ከሚጠበቀው ይበልጣል',
-  'lbl_excess_amount': 'ትርፍ መጠን',
-  'lbl_paying_more_than_expected': 'ለዚህ ዕቁብ ከሚጠበቀው በላይ እየከፈሉ ነው። የሚጠበቀው ጠቅላላ {expected} ብር ነው፣ ግን {paying} ብር እየከፈሉ ነው።',
+  'lbl_amount_exceeds_expected': 'ተጨማሪ ዙሮችን መክፈል',
+  'lbl_excess_amount': 'የተጨማሪ ዙሮች መጠን',
+  'lbl_extra_rounds_payment': 'የተጨማሪ ዙሮች ክፍያ',
+  'lbl_paying_more_than_expected':
+      'ከዚህ ክፍያ ዝግጅት የሚጠበቀው በላይ ተጨማሪ የዕቁብ ዙሮችን እየሸፈኑ ነው። አሁን የሚጠበቀው {expected} ብር ሲሆን፣ ጠቅላላ ክፍያዎ {paying} ብር ነው።',
   'lbl_paying_less_than_expected': 'ከሚጠበቀው ያነሰ እየከፈሉ ነው። ቀሪ ቀሪ ሒሳብ ይተላለፋል።',
   'lbl_do_you_want_to_continue': 'መቀጠል ይፈልጋሉ?',
+  'lbl_paying_up_to_round': 'እስከ ዙር {round} ድረስ መክፈል',
 
   // Issue 6 — Transaction type
   'lbl_transaction_type': 'የግብይት ዓይነት',

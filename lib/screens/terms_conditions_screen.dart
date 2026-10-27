@@ -21,6 +21,7 @@ class TermsConditionsScreen extends StatefulWidget {
   final String selectedAmount;
   final List<ListItem>? items;
   final double expectedAmount;
+  final String? numberOfEkubers;
 
   const TermsConditionsScreen({
     super.key,
@@ -34,6 +35,7 @@ class TermsConditionsScreen extends StatefulWidget {
     required this.termAndConditionInAmharic,
     this.items,
     required this.expectedAmount,
+    this.numberOfEkubers,
   });
 
   @override
@@ -171,6 +173,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
                                 joinAmount: widget.selectedAmount,
                                 selectedJoinOption: widget.selectedJoinOption,
                                 expectedAmount: widget.expectedAmount,
+                                numberOfEqubers: widget.numberOfEkubers,
                               ),
                             ),
                           );

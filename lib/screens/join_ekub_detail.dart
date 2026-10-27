@@ -280,10 +280,25 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
     return options;
   }
 
+  static const int _maxSelectableShares = 5;
+
+  /// Cap at 5 full shares, or fewer if the equb has fewer total / open slots.
+  int get _maxSharesAllowed {
+    final total = widget.equb.numberOfEqubers ?? 0;
+    final filled = widget.equb.equbers?.length ?? 0;
+    if (total <= 0) return _maxSelectableShares;
+    final remaining = (total - filled).clamp(0, total);
+    final bySize = total < _maxSelectableShares ? total : _maxSelectableShares;
+    final byRemaining =
+        remaining < _maxSelectableShares ? remaining : _maxSelectableShares;
+    final cap = bySize < byRemaining ? bySize : byRemaining;
+    return cap < 1 ? 0 : cap;
+  }
+
   bool get _canAddAnotherShare {
     if (_blockedFromJoinAgain) return false;
     if (items.any((i) => i.title != '1')) return false;
-    return true;
+    return items.length < _maxSharesAllowed;
   }
 
   String _shareLabel(String value) {
@@ -374,12 +389,15 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
 
   void _addShareRow() {
     if (!_canAddAnotherShare) {
+      final atShareCap = items.length >= _maxSharesAllowed;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             _blockedFromJoinAgain
                 ? AppKeys.cannotJoinAgainPartial.tr(context)
-                : AppKeys.fullOnlyRejoin.tr(context),
+                : atShareCap
+                    ? 'You can select up to $_maxSharesAllowed Equb(s) for this join.'
+                    : AppKeys.fullOnlyRejoin.tr(context),
           ),
           behavior: SnackBarBehavior.floating,
         ),
@@ -745,7 +763,7 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
     final canChoose = _shareOptions.length > 1;
     if (!canChoose) {
       return Container(
-        padding: const EdgeInsets.symmetric( vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: AppColors.primary.withOpacity(0.12),
           borderRadius: BorderRadius.circular(8),
@@ -814,22 +832,44 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
         ];
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        constraints: const BoxConstraints(minWidth: 148, minHeight: 40),
+        padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
         decoration: BoxDecoration(
           color: AppColors.primary.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.primary.withOpacity(0.45)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.primary, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.12),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              _shareLabel(currentShare),
-              style:
-                  AppTextStyles.poppins60012.copyWith(color: AppColors.primary),
+            Flexible(
+              child: Text(
+                _shareLabel(currentShare),
+                style: AppTextStyles.poppins60012
+                    .copyWith(color: AppColors.primary),
+              ),
             ),
-            Icon(Icons.keyboard_arrow_down_rounded,
-                size: 18, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.expand_more_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
           ],
         ),
       ),

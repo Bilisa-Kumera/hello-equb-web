@@ -484,11 +484,14 @@ By using the Hello Equb app, you confirm that you have read, understood, and agr
   'lbl_remaining_for_this_round': 'Remaining This Round',
 
   // Issue 5 — Exceeded amount dialog
-  'lbl_amount_exceeds_expected': 'Amount Exceeds Expected',
-  'lbl_excess_amount': 'Excess Amount',
-  'lbl_paying_more_than_expected': 'You are paying more than the expected amount for this Equb. The expected total is {expected} ETB, but you are paying {paying} ETB.',
+  'lbl_amount_exceeds_expected': 'Paying for Extra Rounds',
+  'lbl_excess_amount': 'Extra rounds amount',
+  'lbl_extra_rounds_payment': 'Extra rounds payment',
+  'lbl_paying_more_than_expected':
+      'You are covering additional Equb rounds beyond the expected payment for this arrangement. Expected for now is {expected} ETB; your total is {paying} ETB.',
   'lbl_paying_less_than_expected': 'You are paying less than the expected amount. The remaining balance will carry over.',
   'lbl_do_you_want_to_continue': 'Do you want to continue?',
+  'lbl_paying_up_to_round': 'Paying up to round {round}',
 
   // Issue 6 — Transaction type
   'lbl_transaction_type': 'Transaction Type',

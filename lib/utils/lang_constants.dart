@@ -388,12 +388,14 @@ class AppKeys {
   static const String paidForThisRound = 'lbl_paid_for_this_round';
   static const String remainingForThisRound = 'lbl_remaining_for_this_round';
 
-  // Issue 5 — Exceeded amount dialog
+  // Issue 5 — Extra rounds dialog (avoid "excess money" wording)
   static const String amountExceedsExpected = 'lbl_amount_exceeds_expected';
   static const String excessAmount = 'lbl_excess_amount';
   static const String payingMoreThanExpected = 'lbl_paying_more_than_expected';
   static const String payingLessThanExpected = 'lbl_paying_less_than_expected';
   static const String doYouWantToContinue = 'lbl_do_you_want_to_continue';
+  static const String payingUpToRound = 'lbl_paying_up_to_round';
+  static const String extraRoundsPayment = 'lbl_extra_rounds_payment';
 
   // Issue 6 — Transaction type
   static const String transactionType = 'lbl_transaction_type';

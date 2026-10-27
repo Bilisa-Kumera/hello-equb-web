@@ -624,6 +624,8 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
           isFullyPaid: isFullyPaid,
           maxPayableAmount: p.maxRemainingPayable(numberOfEqubers),
           stake: p.stake,
+          paidRound: p.paidRound,
+          defaultAmount: initialAmount,
         ));
         listItems.add(ListItem(
           title: p.lotteryNumber,
@@ -1097,42 +1099,66 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
 
                     var visibleEqubs = equbProvider.visibleEqubs;
 
+                    Future<void> refreshJoined() =>
+                        _fetchEqubsForCurrentSelection(
+                          context,
+                          types,
+                          filteredCategories,
+                        );
+
                     if (visibleEqubs.isEmpty) {
-                      return Center(child: Text(AppKeys.noEkubs.tr(context)));
+                      return RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: refreshJoined,
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(height: 120.h),
+                            Center(
+                                child: Text(AppKeys.noEkubs.tr(context))),
+                          ],
+                        ),
+                      );
                     }
 
                     final showBottomItem =
                         equbProvider.isLoadingMore || equbProvider.hasMore;
 
-                    return ListView.separated(
-                      controller: _joinedListScrollController,
-                      padding: EdgeInsets.fromLTRB(
-                        20.w,
-                        4.h,
-                        20.w,
-                        MediaQuery.of(context).padding.bottom + 160.h,
-                      ),
-                      separatorBuilder: (_, __) => SizedBox(height: 12.h),
-                      itemCount:
-                          visibleEqubs.length + (showBottomItem ? 1 : 0),
-                      itemBuilder: (context, idx) {
-                        if (idx >= visibleEqubs.length) {
-                          if (equbProvider.isLoadingMore) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              child: Center(
-                                child: LoadingAnimationWidget
-                                    .threeRotatingDots(
-                                  color: AppColors.vibrantGreen,
-                                  size: 26,
+                    return RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: refreshJoined,
+                      child: ListView.separated(
+                        controller: _joinedListScrollController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(
+                          20.w,
+                          4.h,
+                          20.w,
+                          MediaQuery.of(context).padding.bottom + 160.h,
+                        ),
+                        separatorBuilder: (_, __) => SizedBox(height: 12.h),
+                        itemCount:
+                            visibleEqubs.length + (showBottomItem ? 1 : 0),
+                        itemBuilder: (context, idx) {
+                          if (idx >= visibleEqubs.length) {
+                            if (equbProvider.isLoadingMore) {
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                child: Center(
+                                  child: LoadingAnimationWidget
+                                      .threeRotatingDots(
+                                    color: AppColors.vibrantGreen,
+                                    size: 26,
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
+                            }
+                            return const SizedBox(height: 60);
                           }
-                          return const SizedBox(height: 60);
-                        }
-                        return _buildJoinedEqubCard(visibleEqubs[idx], idx);
-                      },
+                          return _buildJoinedEqubCard(visibleEqubs[idx], idx);
+                        },
+                      ),
                     );
                   },
                 ),
