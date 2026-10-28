@@ -32,6 +32,10 @@ if (keystoreExists) {
 }
 
 
+def hasValidReleaseKey = keystoreExists &&
+        keystoreProperties.getProperty('storeFile') != null &&
+        file(keystoreProperties.getProperty('storeFile')).exists()
+
 android {
     namespace "com.hello.equb"
     compileSdk  36
@@ -65,7 +69,7 @@ android {
 
     signingConfigs {
         release {
-            if (keystoreExists) {
+            if (hasValidReleaseKey) {
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
                 storeFile file(keystoreProperties['storeFile'])
@@ -76,7 +80,7 @@ android {
 
    buildTypes {
     release {
-        signingConfig signingConfigs.release
+        signingConfig (hasValidReleaseKey ? signingConfigs.release : signingConfigs.debug)
         minifyEnabled true
         shrinkResources true
         proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

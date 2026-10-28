@@ -94,7 +94,9 @@ class PendingEqub {
     DateTime? earliestAny;
     for (final raw in payments) {
       if (raw is! Map) continue;
-      if (raw['userId']?.toString() != currentUserId) continue;
+      final pUserId = raw['userId']?.toString() ?? '';
+      final pEquberUserId = raw['equberUserId']?.toString() ?? '';
+      if (pUserId != currentUserId && pEquberUserId != currentUserId) continue;
       final created = DateTime.tryParse(raw['createdAt']?.toString() ?? '');
       if (created == null) continue;
       final type = raw['type']?.toString().toLowerCase() ?? '';
@@ -165,34 +167,36 @@ class PendingEqub {
       status: json['status']?.toString() ?? '',
       userId: json['userId']?.toString(),
       staffId: json['staffId']?.toString() ?? '',
-      currentRound: (json['currentRound'] as num?)?.toInt() ?? 0,
-      nextRound: (json['nextRound'] as num?)?.toInt() ?? 0,
-      groupLimit: (json['groupLimit'] as num?)?.toInt() ?? 0,
-      serviceCharge: (json['serviceCharge'] as num?)?.toDouble() ?? 0,
-      startDate: DateTime.parse(json['startDate'].toString()),
-      endDate: json['endDate'] != null
-          ? DateTime.tryParse(json['endDate'].toString())
-          : null,
-      ethiopianStartDate: json['ethiopianStartDate']?.toString(),
-      ethiopianEndDate: json['ethiopianEndDate']?.toString(),
+      currentRound: (json['currentRound'] as num?)?.toInt() ?? 1,
+      nextRound: (json['nextRound'] as num?)?.toInt() ?? 1,
+      groupLimit: (json['groupLimit'] as num?)?.toInt() ?? 1,
+      serviceCharge: (json['serviceCharge'] as num?)?.toDouble() ?? 0.0,
+      startDate: DateTime.tryParse(json['startDate']?.toString() ?? '') ?? DateTime.now(),
+      endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
+      ethiopianStartDate: json['ethiopianStartDate'] as String?,
+      ethiopianEndDate: json['ethiopianEndDate'] as String?,
       nextRoundDate: json['nextRoundDate']?.toString(),
       nextRoundTime: json['nextRoundTime']?.toString(),
-      state: json['state']?.toString() ?? '',
+      state: json['state']?.toString() ?? 'active',
       branchId: json['branchId']?.toString() ?? '',
-      createdAt: DateTime.parse(json['createdAt'].toString()),
-      updatedAt: DateTime.parse(json['updatedAt'].toString()),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ?? DateTime.now(),
       userJoinedAt: joinedAtFromJson(json, currentUserId),
-      equbType:
-          json['equbType'] != null ? EqubType.fromJson(json['equbType']) : null,
-      equbCategory: json['equbCategory'] != null
-          ? EqubCategoryss.fromJson(
-              Map<String, dynamic>.from(json['equbCategory'] as Map),
-            )
+      equbType: json['equbType'] is Map
+          ? EqubType.fromJson(Map<String, dynamic>.from(json['equbType']))
           : null,
-      equbers: json['equbers'] != null
-          ? List<Equber>.from(json['equbers'].map((x) => Equber.fromJson(x)))
+      equbCategory: json['equbCategory'] is Map
+          ? EqubCategoryss.fromJson(Map<String, dynamic>.from(json['equbCategory']))
           : null,
-      branch: json['branch'] != null ? Branch.fromJson(json['branch']) : null,
+      equbers: json['equbers'] is List
+          ? (json['equbers'] as List)
+              .whereType<Map>()
+              .map((x) => Equber.fromJson(Map<String, dynamic>.from(x)))
+              .toList()
+          : null,
+      branch: json['branch'] is Map
+          ? Branch.fromJson(Map<String, dynamic>.from(json['branch']))
+          : null,
       lastPaidRound: lastPaidRoundFromJson(json),
     );
   }
@@ -211,9 +215,9 @@ class EqubType {
 
   factory EqubType.fromJson(Map<String, dynamic> json) {
     return EqubType(
-      id: json['id'],
-      name: json['name'],
-      interval: json['interval'] as int?,
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      interval: (json['interval'] as num?)?.toInt(),
     );
   }
 }
@@ -246,7 +250,7 @@ class Equber {
 
   factory Equber.fromJson(Map<String, dynamic> json) {
     return Equber(
-      id: json['id'],
+      id: json['id']?.toString() ?? '',
     );
   }
 }
@@ -259,8 +263,8 @@ class Branch {
 
   factory Branch.fromJson(Map<String, dynamic> json) {
     return Branch(
-      id: json['id'],
-      name: json['name'],
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
     );
   }
 }

@@ -97,16 +97,36 @@ class JoinedEqubsStatusProvider extends ChangeNotifier
     return status.isNotEmpty && status != AppKeys.completed;
   }
 
-  List<PendingEqub> _parseJoinedEqubs(dynamic raw) {
-    final Map<String, dynamic> data = raw is Map<String, dynamic>
-        ? raw
-        : Map<String, dynamic>.from(jsonDecode(raw.toString()));
-    final equbsJson = data['data']?['equbs'];
+  List<PendingEqub> _parseJoinedEqubs(dynamic raw, {String? userId}) {
+    dynamic data = raw;
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {}
+    }
 
-    if (equbsJson is! List) return const [];
+    List<dynamic>? equbsJson;
+    if (data is Map) {
+      final dataMap = data['data'];
+      if (dataMap is Map && dataMap['equbs'] is List) {
+        equbsJson = dataMap['equbs'] as List<dynamic>;
+      } else if (data['equbs'] is List) {
+        equbsJson = data['equbs'] as List<dynamic>;
+      } else if (dataMap is List) {
+        equbsJson = dataMap;
+      }
+    } else if (data is List) {
+      equbsJson = data;
+    }
+
+    if (equbsJson == null) return const [];
 
     return equbsJson
-        .map((json) => PendingEqub.fromJson(json as Map<String, dynamic>))
+        .whereType<Map>()
+        .map((json) => PendingEqub.fromJson(
+              Map<String, dynamic>.from(json),
+              currentUserId: userId,
+            ))
         .toList();
   }
 
@@ -149,7 +169,7 @@ class JoinedEqubsStatusProvider extends ChangeNotifier
       AppLogger.success('JoinedEqubsStatusProvider: API response status=${response.statusCode}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final equbs = _parseJoinedEqubs(response.data);
+        final equbs = _parseJoinedEqubs(response.data, userId: userId);
         _joinedEqubIds = equbs.map((equb) => equb.id).toSet();
         final nextValue = equbs.any(_isActiveJoinedEqub);
         AppLogger.log('JoinedEqubsStatusProvider: parsed ${equbs.length} equbs, active joined found: $nextValue');

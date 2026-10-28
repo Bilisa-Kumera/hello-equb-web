@@ -1,5 +1,6 @@
-﻿// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
@@ -169,12 +170,31 @@ class _ActiveEqubsScreenState extends State<ActiveEqubsScreen>
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        if (urls == null) {}
-        List<dynamic> pendingEqubsJson = response.data['data']['equbs'];
-        totalEqubs = pendingEqubsJson.length;
+        dynamic data = response.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+
+        List<dynamic> pendingEqubsJson = const [];
+        if (data is Map) {
+          final dataMap = data['data'];
+          if (dataMap is Map && dataMap['equbs'] is List) {
+            pendingEqubsJson = dataMap['equbs'] as List<dynamic>;
+          } else if (data['equbs'] is List) {
+            pendingEqubsJson = data['equbs'] as List<dynamic>;
+          } else if (dataMap is List) {
+            pendingEqubsJson = dataMap;
+          }
+        } else if (data is List) {
+          pendingEqubsJson = data;
+        }
+
         List<PendingEqub> freshData = pendingEqubsJson
+            .whereType<Map>()
             .map((json) => PendingEqub.fromJson(
-                  json as Map<String, dynamic>,
+                  Map<String, dynamic>.from(json),
                   currentUserId: userId,
                 ))
             .toList();
