@@ -2,16 +2,17 @@
 
 import 'package:dio/dio.dart';
 import 'package:helloequb/models/equb_model.dart';
-import 'package:helloequb/screens/allequb_payment.dart';
 import 'package:helloequb/utils/colors_constant.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:helloequb/core/amharic_translations.dart';
 import 'package:helloequb/core/api_url.dart';
 import 'package:helloequb/screens/join_ekub_confirmation.dart';
+import 'package:helloequb/screens/payment_arrangement_screen.dart';
 import 'package:helloequb/screens/payment_screen.dart';
 import 'package:helloequb/utils/app_localizations.dart';
 import 'package:helloequb/utils/custom_button.dart';
+import 'package:helloequb/utils/custom_snack_bar.dart';
 import 'package:helloequb/utils/lang_constants.dart';
 import 'package:intl/intl.dart';
 
@@ -128,6 +129,7 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
   bool isCheckingJoinStatus = true;
   /// True when user already holds a half/quarter in this equb → no rejoin.
   bool hasPartialShare = false;
+  bool _isOpeningPayment = false;
 
   final DataController dataController = DataController();
 
@@ -423,6 +425,119 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
       if (items.length <= 1) return;
       items.removeAt(index);
     });
+  }
+
+  /// Opens Payment Arrangement for this equb with freshly fetched round/amounts.
+  Future<void> _openCurrentEqubPayment() async {
+    final equbId = widget.equb.id ?? '';
+    if (equbId.isEmpty || _isOpeningPayment) return;
+
+    setState(() => _isOpeningPayment = true);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
+    );
+
+    try {
+      final token = await SecureStorageHelper.getAccessToken() ?? '';
+      final res = await Dio().get(
+        ekubPaymentsUrl + equbId,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+
+      if (res.statusCode != 200 && res.statusCode != 201) {
+        setState(() => _isOpeningPayment = false);
+        CustomSnackBar.show(
+          context,
+          AppKeys.noData.tr(context),
+          Colors.red,
+        );
+        return;
+      }
+
+      final ekubRound = res.data['data']['equbRound']?.toString() ??
+          widget.equb.nextRound?.toString() ??
+          '1';
+      final numberOfEqubers = int.tryParse(
+              res.data['data']['numberOfEqubers']?.toString() ?? '') ??
+          widget.equb.numberOfEqubers ??
+          0;
+      final payments = ((res.data['data']['payments'] as List?) ?? [])
+          .map((e) => Payment.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+
+      final listItemss = <ListItems>[];
+      final listItems = <ListItem>[];
+      for (final p in payments) {
+        final isFullyPaid =
+            p.fullyPaid || p.isFullyPaidForEqub(numberOfEqubers);
+        final initialAmount = p.remainingPaymentAmount(numberOfEqubers);
+
+        listItemss.add(ListItems(
+          title: p.lotteryNumber,
+          subtitle: initialAmount.toString(),
+          userIds: p.equbersId,
+          roundAmount: p.equbAmount,
+          isFullyPaid: isFullyPaid,
+          maxPayableAmount: p.maxRemainingPayable(numberOfEqubers),
+          stake: p.stake,
+          paidRound: p.paidRound,
+          defaultAmount: initialAmount,
+        ));
+        listItems.add(ListItem(
+          title: p.lotteryNumber,
+          subtitle: initialAmount.toString(),
+        ));
+      }
+
+      if (listItems.isEmpty) {
+        setState(() => _isOpeningPayment = false);
+        CustomSnackBar.show(
+          context,
+          AppKeys.noData.tr(context),
+          Colors.red,
+        );
+        return;
+      }
+
+      final expected =
+          listItemss.fold<double>(0, (s, e) => s + double.parse(e.subtitle));
+
+      if (!mounted) return;
+      setState(() => _isOpeningPayment = false);
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentArragement(
+            selectedJoinOption: listItems,
+            selectedJoinOptions: listItemss,
+            ekubAmount: widget.equb.equbAmount.toString(),
+            ekubId: equbId,
+            ekubName: widget.equb.name,
+            ekubRound: ekubRound,
+            round: ekubRound,
+            expectedAmount: expected,
+            type: 'payment',
+            numberOfEqubers: numberOfEqubers.toString(),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      setState(() => _isOpeningPayment = false);
+      CustomSnackBar.show(
+        context,
+        AppKeys.enableInternet.tr(context),
+        Colors.red,
+      );
+    }
   }
 
   void _proceedToJoinConfirmation() {
@@ -999,14 +1114,8 @@ class _EqubJoinDetailState extends State<EqubJoinDetail> {
                         if (hasJoinedBefore) ...[
                           if (!_blockedFromJoinAgain) SizedBox(height: 8.h),
                           OutlinedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const PaymentList(),
-                                ),
-                              );
-                            },
+                            onPressed:
+                                _isOpeningPayment ? null : _openCurrentEqubPayment,
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: AppColors.primary),
                               shape: RoundedRectangleBorder(
