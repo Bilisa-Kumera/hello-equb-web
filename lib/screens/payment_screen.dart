@@ -652,33 +652,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(isSuccess ? Icons.check_circle : Icons.error,
-                color: isSuccess ? Colors.green : Colors.red, size: 28),
-            SizedBox(width: 10.w),
-            Text(title,
-                style: TextStyle(
-                    color: isSuccess ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold)),
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(isSuccess ? Icons.check_circle : Icons.error,
+                  color: isSuccess ? Colors.green : Colors.red, size: 28),
+              SizedBox(width: 10.w),
+              Text(title,
+                  style: TextStyle(
+                      color: isSuccess ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(message, style: const TextStyle(fontSize: 16)),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                if (isSuccess) {
+                  await navigateToMainShell(dialogContext, initialIndex: 0);
+                  return;
+                }
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text(AppKeys.ok.tr(context)),
+            )
           ],
         ),
-        content: Text(message, style: const TextStyle(fontSize: 16)),
-        actions: [
-          TextButton(
-            // onPressed: () => navigateToMainShell(context, initialIndex: 0),
-            onPressed: () {
-              // Close this dialog, then the payment page (one screen back).
-              Navigator.of(context).pop();
-              if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              }
-            },
-            child: Text(AppKeys.ok.tr(context)),
-          )
-        ],
       ),
     );
   }
