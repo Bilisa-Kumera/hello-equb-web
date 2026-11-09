@@ -1017,12 +1017,15 @@ class _PaymentArragementState extends State<PaymentArragement> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
+                          disabledBackgroundColor: AppColors.grey400,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                         ),
-                        onPressed: _isContinuing ? null : validateAndContinue,
+                        onPressed: (_isContinuing || totalTobePaid <= 0)
+                            ? null
+                            : validateAndContinue,
                         child: _isContinuing
                             ? SizedBox(
                                 width: 22.w,
